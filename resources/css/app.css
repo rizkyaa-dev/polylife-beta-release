@@ -1,0 +1,231 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root[data-theme='dark'] {
+        color-scheme: dark;
+    }
+
+    .app-shell :is(.border, .border-t, .border-r, .border-b, .border-l, .border-x, .border-y) {
+        --tw-border-opacity: 1;
+        border-color: rgb(243 244 246 / var(--tw-border-opacity));
+    }
+
+    .dark .app-shell :is(.border, .border-t, .border-r, .border-b, .border-l, .border-x, .border-y) {
+        --tw-border-opacity: 1;
+        border-color: rgb(30 41 59 / var(--tw-border-opacity));
+    }
+
+    .dark .bg-white {
+        @apply bg-slate-900;
+    }
+
+    .dark .bg-gray-50,
+    .dark .bg-gray-100 {
+        @apply bg-slate-900/80;
+    }
+
+    .dark .bg-gray-50\/80 {
+        @apply bg-slate-900/70;
+    }
+
+    .dark .bg-white\/80 {
+        @apply bg-slate-900/80;
+    }
+
+    .dark .bg-white\/20 {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+    }
+
+    .dark .bg-white\/10 {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .dark .text-gray-900,
+    .dark .text-gray-800 {
+        @apply text-slate-100;
+    }
+
+    .dark .text-gray-700 {
+        @apply text-slate-200;
+    }
+
+    .dark .text-gray-600 {
+        @apply text-slate-300;
+    }
+
+    .dark .text-gray-500 {
+        @apply text-slate-400;
+    }
+
+    .dark .text-gray-400 {
+        @apply text-slate-400;
+    }
+
+    .dark .border-gray-100,
+    .dark .border-gray-200 {
+        @apply border-slate-800;
+    }
+
+    .dark .border-green-100,
+    .dark .border-green-200 {
+        @apply border-green-500/40;
+    }
+
+    .dark .border-amber-100,
+    .dark .border-amber-200 {
+        @apply border-amber-400/40;
+    }
+
+    .dark .border-rose-100,
+    .dark .border-rose-200 {
+        @apply border-rose-400/40;
+    }
+
+    .dark .shadow-sm,
+    .dark .shadow,
+    .dark .shadow-lg {
+        --tw-shadow-color: rgba(15, 23, 42, 0.5);
+    }
+
+    .dark .ring-indigo-100 {
+        --tw-ring-color: rgba(129, 140, 248, 0.25);
+    }
+
+    .dark .bg-indigo-50 {
+        @apply bg-indigo-950/30 text-indigo-100;
+    }
+
+    .dark .bg-rose-50 {
+        @apply bg-rose-950/20 text-rose-100;
+    }
+
+    .dark .bg-amber-50 {
+        @apply bg-amber-950/20 text-amber-100;
+    }
+
+    .dark .bg-green-50 {
+        @apply bg-green-950/20 text-green-100;
+    }
+
+    /* Force sensible dark defaults for native form controls (when missing utility classes) */
+    .dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+    .dark select,
+    .dark textarea {
+        @apply bg-slate-900 border-slate-700 text-slate-100 placeholder-slate-500;
+    }
+
+    .dark input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):focus,
+    .dark select:focus,
+    .dark textarea:focus {
+        @apply border-indigo-400/70 ring ring-indigo-500/30;
+    }
+
+    .dark option {
+        @apply bg-slate-900 text-slate-100;
+    }
+
+    /* Normalize hover states that would otherwise flip to white in dark mode */
+    .dark .hover\:bg-white:hover,
+    .dark .hover\:bg-gray-50:hover,
+    .dark .hover\:bg-gray-100:hover,
+    .dark .hover\:bg-gray-200:hover {
+        @apply bg-slate-800 text-slate-100;
+    }
+
+    .dark .hover\:bg-indigo-50:hover,
+    .dark .hover\:bg-indigo-100:hover {
+        @apply bg-indigo-900/50 text-indigo-100;
+    }
+
+    .dark .hover\:bg-rose-50:hover,
+    .dark .hover\:bg-rose-100:hover {
+        @apply bg-rose-900/50 text-rose-100;
+    }
+}
+
+@layer components {
+    .kegiatan-dot {
+        @apply inline-block bg-black;
+    }
+
+    .reminder-dot-critical {
+        @apply bg-black;
+    }
+
+    .dark .kegiatan-dot,
+    .dark .reminder-dot-critical {
+        background-color: #fff !important;
+    }
+
+    .calendar-day-selected {
+        position: relative;
+    }
+
+    .dark .calendar-day-selected {
+        background-color: rgba(67, 56, 202, 0.45) !important;
+        border-color: rgba(165, 180, 252, 0.7) !important;
+        color: #e0e7ff !important;
+    }
+
+    .dark .calendar-day-selected .text-gray-400,
+    .dark .calendar-day-selected .text-gray-500,
+    .dark .calendar-day-selected .text-gray-900 {
+        color: #e0e7ff !important;
+    }
+
+    body::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(circle at center, rgba(15,23,42,0.25), rgba(15,23,42,0.45));
+        opacity: 0;
+        pointer-events: none;
+        z-index: 9999;
+    }
+
+    @keyframes themeDimPulse {
+        0% { opacity: 0; }
+        35% { opacity: 0.3; }
+        80% { opacity: 0.15; }
+        100% { opacity: 0; }
+    }
+
+    body.theme-switching::after {
+        animation: themeDimPulse 650ms ease-out forwards;
+    }
+
+
+    .form-label {
+        @apply block text-sm font-semibold text-gray-800 dark:text-slate-100;
+    }
+
+    .form-helper {
+        @apply text-xs text-gray-500 dark:text-slate-400;
+    }
+
+    .form-input {
+        @apply w-full rounded-2xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:border-indigo-400 focus:ring focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-indigo-400/70 dark:focus:ring-indigo-500/30;
+    }
+
+    .page-stack {
+        @apply flex flex-col gap-6;
+    }
+
+    .page-alert {
+        @apply flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/90 px-4 py-3 text-sm font-medium text-emerald-800 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100;
+    }
+
+    .page-alert-dot {
+        @apply h-2.5 w-2.5 rounded-full bg-emerald-400 dark:bg-emerald-300;
+    }
+
+    .page-toolbar {
+        @apply flex flex-wrap gap-3 text-xs sm:text-sm text-slate-500 dark:text-slate-400;
+    }
+
+    .app-shell {
+        overscroll-behavior-y: contain;
+    }
+}

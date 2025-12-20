@@ -1,0 +1,152 @@
+@extends('layouts.app')
+
+@section('page_title', 'Edit To-Do')
+
+@section('content')
+    @php
+        $activeReminder = $todolist->reminders->firstWhere('aktif', true);
+        $reminderEnabled = old('reminder_enabled', $activeReminder ? 1 : 0);
+        $reminderDateValue = old('reminder_date', optional($activeReminder?->waktu_reminder)->format('Y-m-d'));
+        $reminderTimeValue = old('reminder_time', optional($activeReminder?->waktu_reminder)->format('H:i'));
+    @endphp
+
+    <div class="max-w-2xl mx-auto bg-white border rounded-2xl shadow-sm p-6 space-y-6">
+        <div>
+            <p class="text-sm text-gray-500">Perbarui detail tugasmu</p>
+            <h2 class="text-2xl font-semibold text-gray-900">Edit Tugas</h2>
+            <p class="text-sm text-gray-500 mt-1">Sesuaikan nama, status, atau jadwal reminder bila perlu.</p>
+        </div>
+
+        <form action="{{ route('todolist.update', $todolist) }}" method="POST" class="space-y-5">
+            @csrf
+            @method('PUT')
+
+            <div>
+                <label for="nama_item" class="block text-sm font-medium text-gray-700">Nama Tugas</label>
+                <input type="text"
+                       name="nama_item"
+                       id="nama_item"
+                       value="{{ old('nama_item', $todolist->nama_item) }}"
+                       class="mt-1 block w-full rounded-xl border-gray-200 focus:border-indigo-400 focus:ring focus:ring-indigo-100"
+                       placeholder="Contoh: Kerjakan laporan praktikum"
+                       required>
+                @error('nama_item')
+                    <p class="text-sm text-rose-600 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="flex items-center gap-3 rounded-2xl border border-gray-200 px-4 py-3">
+                <input type="checkbox"
+                       name="status"
+                       id="status"
+                       value="1"
+                       class="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                       {{ old('status', $todolist->status) ? 'checked' : '' }}>
+                <div>
+                    <label for="status" class="text-sm font-medium text-gray-900">Tandai selesai</label>
+                    <p class="text-xs text-gray-500">Centang bila tugas ini sudah rampung.</p>
+                </div>
+            </div>
+
+            <div class="space-y-3 rounded-2xl border border-dashed border-indigo-200 p-4">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox"
+                           name="reminder_enabled"
+                           id="reminder_enabled"
+                           value="1"
+                           class="h-4 w-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+                           {{ $reminderEnabled ? 'checked' : '' }}>
+                    <div>
+                        <label for="reminder_enabled" class="text-sm font-semibold text-gray-900">Atur reminder</label>
+                        <p class="text-xs text-gray-500">Aktifkan untuk mengatur ulang tanggal dan jam pengingat.</p>
+                    </div>
+                </div>
+
+                <div id="reminder_fields" class="space-y-3 {{ $reminderEnabled ? '' : 'hidden' }}">
+                    <label class="block text-sm font-medium text-gray-700">Waktu Pengingat</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="relative flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3">
+                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3M5 11h14M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            </span>
+                            <div class="flex-1">
+                                <p class="text-xs uppercase tracking-wide text-gray-500">Tanggal</p>
+                                <input type="date"
+                                       name="reminder_date"
+                                       id="reminder_date_input"
+                                       value="{{ $reminderDateValue }}"
+                                       class="mt-1 block w-full border-0 bg-transparent p-0 text-sm font-semibold text-gray-900 focus:ring-0">
+                                @error('reminder_date')
+                                    <p class="text-xs text-rose-600 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </label>
+                        <label class="relative flex items-center gap-3 rounded-xl border border-gray-200 px-4 py-3">
+                            <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            </span>
+                            <div class="flex-1">
+                                <p class="text-xs uppercase tracking-wide text-gray-500">Jam</p>
+                                <input type="time"
+                                       name="reminder_time"
+                                       id="reminder_time_input"
+                                       value="{{ $reminderTimeValue }}"
+                                       class="mt-1 block w-full border-0 bg-transparent p-0 text-sm font-semibold text-gray-900 focus:ring-0">
+                                @error('reminder_time')
+                                    <p class="text-xs text-rose-600 mt-1">{{ $message }}</p>
+                                @enderror
+                            </div>
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-500">Tanggal & jam akan digabung sebagai waktu reminder.</p>
+                </div>
+
+                @if ($activeReminder && $activeReminder->waktu_reminder)
+                    <div class="rounded-xl bg-indigo-50 px-4 py-3 text-xs text-indigo-700">
+                        Reminder aktif saat ini: <span class="font-semibold">{{ $activeReminder->waktu_reminder->format('d M Y H:i') }}</span>
+                    </div>
+                @endif
+            </div>
+
+            <div class="flex items-center justify-between">
+                <a href="{{ route('todolist.index') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                    &larr; Kembali ke daftar
+                </a>
+                <button type="submit"
+                        class="px-4 py-2 rounded-xl text-white font-semibold shadow"
+                        style="background-color: #1261DE;">
+                    Simpan Perubahan
+                </button>
+            </div>
+        </form>
+    </div>
+@endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkbox = document.getElementById('reminder_enabled');
+            const fields = document.getElementById('reminder_fields');
+            const dateInput = document.getElementById('reminder_date_input');
+            const timeInput = document.getElementById('reminder_time_input');
+            const form = document.querySelector('form');
+
+            const toggleFields = () => {
+                if (!checkbox || !fields) return;
+                fields.classList.toggle('hidden', !checkbox.checked);
+            };
+
+            checkbox?.addEventListener('change', toggleFields);
+            toggleFields();
+
+            form?.addEventListener('submit', (event) => {
+                if (!checkbox?.checked) return;
+                if (!dateInput?.value) {
+                    alert('Silakan pilih tanggal reminder.');
+                    event.preventDefault();
+                    dateInput?.focus();
+                }
+            });
+        });
+    </script>
+@endpush
