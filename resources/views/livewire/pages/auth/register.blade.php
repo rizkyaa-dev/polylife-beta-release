@@ -36,9 +36,15 @@ new #[Layout('layouts.guest')] class extends Component
             'password' => $validated['password'],
         ];
 
-        event(new Registered($user = User::create($userData)));
+        $user = User::create($userData);
 
-        Session::flash('status', 'Akun berhasil dibuat. Silakan cek email untuk verifikasi, lalu login kembali.');
+        try {
+            event(new Registered($user));
+            Session::flash('status', 'Akun berhasil dibuat. Silakan cek email untuk verifikasi, lalu login kembali.');
+        } catch (\Throwable $e) {
+            report($e);
+            Session::flash('status', 'Akun berhasil dibuat. Email verifikasi belum dapat dikirim. Silakan login dan kirim ulang verifikasi.');
+        }
 
         $this->redirect(route('login', absolute: false), navigate: true);
     }
