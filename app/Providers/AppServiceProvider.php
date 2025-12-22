@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use InvalidArgumentException;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Mailer\Transport;
@@ -23,6 +24,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (! app()->environment('local')) {
+            Vite::useHotFile(storage_path('app/vite.hot'));
+        }
+
         Mail::extend('mailtrap', function (array $config = []) {
             $dsn = $config['dsn'] ?? null;
 
