@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\{
     DashboardController,
     GuestDashboardController,
@@ -66,6 +67,15 @@ Route::prefix('guest')->name('guest.')->group(function () {
     Route::get('/ipk', [GuestWorkspaceController::class, 'ipk'])->name('ipk.index');
     Route::get('/nilai-mutu', [GuestWorkspaceController::class, 'nilaiMutu'])->name('nilai-mutu.index');
 });
+
+Route::prefix('admin')
+    ->name('admin.')
+    ->middleware(['auth', 'admin', 'prevent-back-history'])
+    ->group(function () {
+        Route::get('/', fn () => redirect()->route('admin.users.index'))->name('dashboard');
+        Route::patch('users/{user}/verify', [AdminUserController::class, 'verify'])->name('users.verify');
+        Route::resource('users', AdminUserController::class)->only(['index', 'edit', 'update', 'destroy']);
+    });
 
 Route::get('/', function () {
     return Auth::check()

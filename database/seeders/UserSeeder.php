@@ -18,5 +18,15 @@ class UserSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        User::updateOrCreate(
+            ['email' => 'admin@polylife.site'],
+            [
+                'name'              => 'Admin',
+                'password'          => Hash::make('admin123'),
+                'email_verified_at' => now(),
+                'is_admin'          => true,
+            ]
+        );
     }
 }

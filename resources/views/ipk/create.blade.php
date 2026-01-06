@@ -33,6 +33,8 @@
             @include('ipk.partials.form', [
                 'action' => route('ipk.store'),
                 'submitLabel' => 'Simpan IPS',
+                'enforceSequential' => true,
+                'nextSemester' => $nextSemester ?? 1,
             ])
         </div>
     </div>

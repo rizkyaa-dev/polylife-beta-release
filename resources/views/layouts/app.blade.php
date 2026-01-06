@@ -458,7 +458,7 @@
 
 <body class="app-shell antialiased bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100" data-guest-mode="{{ $guestMode ? '1' : '0' }}">
     <div id="app-shell" class="min-h-screen flex">
-        @include('layouts.components.sidebar')
+        @include($sidebarView ?? 'layouts.components.sidebar')
         <div class="sidebar-backdrop hidden lg:hidden" data-mobile-sidebar-backdrop></div>
 
         <div class="flex-1 flex flex-col w-full bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">

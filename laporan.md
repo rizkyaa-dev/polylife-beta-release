@@ -18,7 +18,7 @@ Polylife adalah aplikasi manajemen produktivitas mahasiswa yang menggabungkan pe
 ### 1.4 Lingkungan & Teknologi
 - Backend: PHP 8.2, Laravel Framework ^12 (composer.json), migrasi database MySQL/PostgreSQL kompatibel.
 - Frontend: Blade, Tailwind CSS ^3.1, Vite ^7, axios untuk AJAX (package.json).
-- Library pendukung: Livewire ^3.6 (tersedia), minishlink/web-push ^10.0 untuk Web Push, Pest untuk testing.
+- Library pendukung: Livewire ^3.6 (tersedia), minishlink/web-push ^10.0 untuk Web Push, Symfony Mailer (bridge Mailtrap API), Pest untuk testing.
 - Konfigurasi waktu: `config('app.dashboard_timezone')` default `Asia/Jakarta` dengan fallback env `APP_DASHBOARD_TIMEZONE`.
 
 ### 1.5 Sumber Data & Referensi Kode
@@ -113,6 +113,9 @@ Bab 2 membahas perancangan, Bab 3 implementasi, Bab 4 pengujian & hasil, Bab 5 k
 - Testing: Pest configuration `tests/Pest.php`; contoh Feature test untuk IPK (lihat Bab 4).
 
 ### 3.3 Implementasi Fitur Per Modul (kode rujukan)
+- **Autentikasi & Verifikasi Email** (`resources/views/livewire/pages/auth/register.blade.php`, `app/Http/Controllers/Auth/VerifyEmailController.php`):
+  - Pendaftaran memicu event `Registered` dan pengiriman email verifikasi; bila pengiriman gagal ditangani dengan try/catch dan pesan fallback agar user dapat login lalu resend verifikasi.
+  - Verifikasi email memakai signed URL (`verification.verify`) sehingga validasi bergantung pada host/protocol yang benar di environment.
 - **Dashboard** (`app/Http/Controllers/DashboardController.php`): 
   - Resolusi bulan terpilih (`resolveMonthSelection`), opsi bulan dari data keuangan (`buildMonthOptions`).
   - Ringkasan keuangan & dataset grafik harian; to-do prioritas dengan penanda selesai <10 menit; reminder dengan badge urgensi berdasarkan sisa detik.
@@ -142,12 +145,14 @@ Bab 2 membahas perancangan, Bab 3 implementasi, Bab 4 pengujian & hasil, Bab 5 k
 - Web Push: library `minishlink/web-push`; endpoint subscribe/unsubscribe siap, memerlukan konfigurasi VAPID & worker/queue untuk pengiriman.
 - Build tool: Vite + Tailwind; plugin `@tailwindcss/forms` untuk form styling.
 - Queue/Logs: skrip dev menjalankan `php artisan queue:listen` dan `php artisan pail` (live tail) via concurrently.
+- Mailer: Mailtrap Email API via `symfony/mailtrap-mailer` + `symfony/http-client`, dengan transport custom di `AppServiceProvider` (mendukung token/DSN).
 
 ### 3.5 Konfigurasi & Operasional
-- Variabel penting: `APP_DASHBOARD_TIMEZONE`, kredensial database, kunci VAPID (untuk push).
+- Variabel penting: `APP_DASHBOARD_TIMEZONE`, kredensial database, kunci VAPID (untuk push), serta mailer (`MAIL_MAILER`, `MAILTRAP_API_TOKEN`/`MAILTRAP_DSN`, `MAIL_FROM_ADDRESS`, `MAIL_TIMEOUT`).
 - Migrasi: jalankan `php artisan migrate` setelah konfigurasi DB.
 - Serving: `php artisan serve` + `npm run dev` saat pengembangan; `npm run build` untuk produksi.
 - Keamanan data: hampir semua tabel memakai cascading delete pada relasi ke users; matkul/jadwal/kegiatan memakai `nullOnDelete` bila relevan.
+- Deploy produksi (Railway): pastikan `APP_URL` memakai HTTPS agar signed URL verifikasi valid, trust proxy aktif agar `X-Forwarded-Proto/Host` terbaca, dan pastikan Vite memakai build asset (hindari `public/hot` di production).
 
 ---
 
@@ -168,10 +173,12 @@ Bab 2 membahas perancangan, Bab 3 implementasi, Bab 4 pengujian & hasil, Bab 5 k
 - Catatan: pindah ke sampah, restore, hapus permanen.
 - IPK & Nilai Mutu: simpan IPS per semester, hitung ipk_running, validasi semester unik, buat/edit profil nilai mutu.
 - Push: simpan/unsubscribe endpoint via `push.subscribe` dan `push.unsubscribe` dengan payload webpush standar.
+- Verifikasi email: uji link verifikasi dari email, pastikan tidak 403 (signed URL valid) dan redirect ke workspace.
+- Asset produksi: uji navigasi menu di production untuk memastikan CSS tetap ter-load (tanpa `public/hot`).
 
 ### 4.3 Hasil Uji & Temuan
 - Bukti uji otomatis: belum dieksekusi dalam penulisan laporan ini; jalankan `php artisan test` setelah environment siap.
-- Risiko yang perlu diperhatikan: ketergantungan timezone pada konfigurasi, parsing impor batch matkul bergantung format teks, pengiriman push memerlukan VAPID & worker.
+- Risiko yang perlu diperhatikan: ketergantungan timezone pada konfigurasi, parsing impor batch matkul bergantung format teks, pengiriman push memerlukan VAPID & worker, serta validitas signed URL/verifikasi email bergantung pada `APP_URL` dan konfigurasi proxy HTTPS di production.
 
 ### 4.4 Bukti Tangkapan Layar (placeholder)
 - (ini screenshot dashboard: jadwal/to-do/keuangan/reminder)

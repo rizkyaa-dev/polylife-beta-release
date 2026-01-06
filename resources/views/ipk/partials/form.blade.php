@@ -1,10 +1,12 @@
 @php
     $inputClasses = 'w-full rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm focus:border-indigo-400 focus:ring focus:ring-indigo-100 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100';
+    $enforceSequential = $enforceSequential ?? false;
+    $nextSemester = $nextSemester ?? null;
+    $ipk = $ipk ?? null;
 @endphp
 
-@php $ipk = $ipk ?? null; @endphp
-
-<form action="{{ $action }}" method="POST" class="space-y-6">
+<form id="ipk-form" action="{{ $action }}" method="POST" class="space-y-6"
+      @if($enforceSequential && $nextSemester) data-next-semester="{{ $nextSemester }}" @endif>
     @csrf
     @isset($method)
         @if(strtoupper($method) !== 'POST')
@@ -18,7 +20,9 @@
             <input type="number" name="semester" id="semester" min="1" max="14"
                    class="{{ $inputClasses }}"
                    value="{{ old('semester', optional($ipk)->semester) }}">
-            <p class="text-xs text-gray-500">Isi angka semester (1-14).</p>
+            <p class="text-xs text-gray-500">
+                Isi angka semester (1-14)@if($enforceSequential && $nextSemester). Semester berikutnya: {{ $nextSemester }}@endif.
+            </p>
             @error('semester')
                 <p class="text-xs text-rose-600 mt-1">{{ $message }}</p>
             @enderror
@@ -67,3 +71,33 @@
         </button>
     </div>
 </form>
+
+@if($enforceSequential && $nextSemester)
+    <script>
+        (function () {
+            const form = document.getElementById('ipk-form');
+            if (!form) {
+                return;
+            }
+
+            const semesterInput = form.querySelector('#semester');
+            const submitButton = form.querySelector('button[type="submit"]');
+            const expected = Number(form.dataset.nextSemester);
+
+            if (!semesterInput || !submitButton || !Number.isFinite(expected)) {
+                return;
+            }
+
+            const updateState = () => {
+                const value = Number(semesterInput.value);
+                const isValid = Number.isInteger(value) && value === expected;
+                submitButton.disabled = !isValid;
+                submitButton.classList.toggle('opacity-50', !isValid);
+                submitButton.classList.toggle('cursor-not-allowed', !isValid);
+            };
+
+            updateState();
+            semesterInput.addEventListener('input', updateState);
+        })();
+    </script>
+@endif

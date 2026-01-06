@@ -39,7 +39,11 @@ class IpkController extends Controller
 
     public function create()
     {
-        return view('ipk.create');
+        $userId = Auth::id();
+        $lastSemester = Ipk::forUser($userId)->whereNotNull('semester')->max('semester');
+        $nextSemester = $lastSemester ? ($lastSemester + 1) : 1;
+
+        return view('ipk.create', compact('nextSemester'));
     }
 
     public function store(StoreIpkRequest $request)

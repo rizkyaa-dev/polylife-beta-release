@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Forms\LoginForm;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
@@ -20,7 +21,12 @@ new #[Layout('layouts.guest')] class extends Component
 
         Session::regenerate();
 
-        $this->redirectIntended(default: route('workspace.home', absolute: false), navigate: true);
+        $user = Auth::user();
+        $defaultRoute = ($user && $user->is_admin)
+            ? route('admin.dashboard', absolute: false)
+            : route('workspace.home', absolute: false);
+
+        $this->redirectIntended(default: $defaultRoute, navigate: true);
     }
 }; ?>
 
