@@ -11,6 +11,7 @@
             <div>
                 <p class="text-sm text-gray-500">Simpan ide, ringkasan, atau hal penting lainnya</p>
                 <h2 class="text-2xl font-semibold text-gray-900">Catatan Pribadi</h2>
+                <p class="mt-1 text-xs text-gray-500">Semua catatan terenkripsi</p>
             </div>
             <div class="flex flex-wrap items-center gap-3">
                 <a @if($guestMode) aria-disabled="true" @else href="{{ route('catatan.sampah') }}" @endif
@@ -28,12 +29,6 @@
             </div>
         </div>
 
-        @if (session('success'))
-            <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                {{ session('success') }}
-            </div>
-        @endif
-
         @if($guestMode)
             <div class="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs text-indigo-900">
                 Mode tamu menonaktifkan edit & hapus. Data contoh bisa disesuaikan lewat <code>storage/app/guest/workspace.json</code>.
@@ -45,7 +40,7 @@
                 Belum ada catatan. Mulai tulis hal penting dengan klik tombol <span class="font-semibold">+ Catatan Baru</span>.
             </div>
         @else
-            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 items-start">
                 @foreach ($catatans as $catatan)
                     <article data-catatan-card tabindex="0"
                              class="flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:shadow-lg focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:outline-none">
@@ -106,6 +101,7 @@
         [data-catatan-card] {
             position: relative;
             transform-origin: center;
+            height: auto;
         }
         [data-catatan-card].is-expanded {
             transform: scale(1.05);
@@ -114,6 +110,16 @@
         }
         [data-catatan-card].is-expanded .line-clamp-2,
         [data-catatan-card].is-expanded .line-clamp-3 {
+            -webkit-line-clamp: unset;
+            line-clamp: unset;
+            max-height: none;
+            overflow: visible;
+            display: block;
+            -webkit-box-orient: unset;
+            white-space: normal;
+        }
+        [data-catatan-container].view-full .line-clamp-2,
+        [data-catatan-container].view-full .line-clamp-3 {
             -webkit-line-clamp: unset;
             line-clamp: unset;
             max-height: none;
@@ -163,10 +169,17 @@
             };
 
             const toggle = (card, button) => {
-                if (card.classList.contains('is-expanded')) {
-                    collapse(card, button);
-                } else {
+                const willExpand = !card.classList.contains('is-expanded');
+
+                if (willExpand) {
+                    cards.forEach((other) => {
+                        if (other === card) return;
+                        const otherBtn = other.querySelector('[data-catatan-toggle]');
+                        collapse(other, otherBtn);
+                    });
                     expand(card, button);
+                } else {
+                    collapse(card, button);
                 }
             };
 

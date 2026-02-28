@@ -22,9 +22,8 @@ new #[Layout('layouts.guest')] class extends Component
         Session::regenerate();
 
         $user = Auth::user();
-        $defaultRoute = ($user && $user->is_admin)
-            ? route('admin.dashboard', absolute: false)
-            : route('workspace.home', absolute: false);
+        $defaultRouteName = $user ? $user->defaultDashboardRouteName() : 'workspace.home';
+        $defaultRoute = route($defaultRouteName, absolute: false);
 
         $this->redirectIntended(default: $defaultRoute, navigate: true);
     }

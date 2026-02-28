@@ -21,7 +21,10 @@ test('new users can register', function () {
 
     $component->call('register');
 
-    $component->assertRedirect(route('workspace.home', absolute: false));
+    $component->assertRedirect(route('login', absolute: false));
 
-    $this->assertAuthenticated();
+    $this->assertGuest();
+    $this->assertDatabaseHas('users', [
+        'email' => 'test@example.com',
+    ]);
 });

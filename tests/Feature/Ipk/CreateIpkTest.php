@@ -1,72 +1,51 @@
 <?php
 
 use App\Models\Ipk;
-use App\Models\Matkul;
 use App\Models\User;
 
-it('creates IPS targets and attaches selected matkul snapshots', function () {
+it('creates IPS records and normalizes planning fields', function () {
     $user = User::factory()->create();
-    $matkulA = createTestMatkul($user, ['kode' => 'KOM101', 'nama' => 'Algoritma', 'semester' => 3]);
-    $matkulB = createTestMatkul($user, ['kode' => 'MAT201', 'nama' => 'Kalkulus', 'semester' => 3]);
 
     $response = $this->actingAs($user)->post(route('ipk.store'), [
-        'target_mode' => 'ips',
-        'semester' => 3,
+        'target_mode' => 'ipk',
+        'semester' => 1,
         'academic_year' => '2025/2026',
-        'ips_target' => 3.7,
-        'ipk_target' => 3.8,
+        'ips_actual' => 3.7,
+        'ips_target' => 3.9,
+        'ipk_target' => 4.0,
         'status' => 'planned',
-        'matkul_ids' => [$matkulA->id, $matkulB->id],
+        'remarks' => 'Semester pertama',
     ]);
 
     $response->assertRedirect(route('ipk.index'));
 
-    $ipk = Ipk::with('courses')->where('user_id', $user->id)->first();
+    $ipk = Ipk::where('user_id', $user->id)->first();
     expect($ipk)->not->toBeNull();
+    expect($ipk->semester)->toBe(1);
+    expect((float) $ipk->ips_actual)->toBe(3.7);
     expect($ipk->target_mode)->toBe('ips');
-    expect($ipk->courses)->toHaveCount(2);
-
-    expect($ipk->courses->pluck('matkul_id')->all())
-        ->toContain($matkulA->id)
-        ->toContain($matkulB->id);
+    expect($ipk->status)->toBe('final');
+    expect($ipk->ips_target)->toBeNull();
+    expect($ipk->ipk_target)->toBeNull();
+    expect((float) $ipk->ipk_running)->toBe(3.7);
 });
 
-it('prevents multiple active IPK targets per user', function () {
+it('prevents non sequential semester insertion', function () {
     $user = User::factory()->create();
     Ipk::create([
         'user_id' => $user->id,
-        'target_mode' => 'ipk',
-        'semester' => null,
-        'status' => 'planned',
-        'ipk_target' => 3.9,
+        'target_mode' => 'ips',
+        'semester' => 1,
+        'status' => 'final',
+        'ips_actual' => 3.2,
     ]);
 
     $response = $this->actingAs($user)->post(route('ipk.store'), [
-        'target_mode' => 'ipk',
-        'ipk_target' => 3.7,
-        'status' => 'planned',
+        'semester' => 3,
+        'academic_year' => '2025/2026',
+        'ips_actual' => 3.7,
     ]);
 
-    $response->assertSessionHasErrors(['target_mode']);
+    $response->assertSessionHasErrors(['semester']);
     expect(Ipk::where('user_id', $user->id)->count())->toBe(1);
 });
-
-function createTestMatkul(User $user, array $overrides = []): Matkul
-{
-    $defaults = [
-        'kode' => 'TES101',
-        'nama' => 'Matkul Uji',
-        'kelas' => 'A',
-        'dosen' => 'Dosen Penguji',
-        'semester' => 1,
-        'sks' => 3,
-        'hari' => 'Senin',
-        'jam_mulai' => '08:00',
-        'jam_selesai' => '09:40',
-        'ruangan' => 'R101',
-        'warna_label' => '#2563eb',
-        'catatan' => 'Catatan uji',
-    ];
-
-    return Matkul::create(array_merge($defaults, $overrides, ['user_id' => $user->id]));
-}

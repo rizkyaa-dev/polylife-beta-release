@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use InvalidArgumentException;
+use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
@@ -25,6 +27,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RedirectIfAuthenticated::redirectUsing(function (Request $request): string {
+            $user = $request->user();
+
+            if ($user) {
+                return route($user->defaultDashboardRouteName());
+            }
+
+            return route('workspace.home');
+        });
+
         if (! app()->runningInConsole()) {
             $requestHost = request()->getHost();
             $isLocalHost = in_array($requestHost, ['localhost', '127.0.0.1', '::1'], true);

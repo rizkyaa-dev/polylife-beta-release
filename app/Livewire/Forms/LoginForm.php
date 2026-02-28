@@ -38,6 +38,16 @@ class LoginForm extends Form
             ]);
         }
 
+        $user = Auth::user();
+        if ($user && ! $user->isActiveAccount()) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'form.email' => 'Akun ini sedang diblokir. Hubungi super admin.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

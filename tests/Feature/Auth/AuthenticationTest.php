@@ -50,9 +50,11 @@ test('navigation menu can be rendered', function () {
 
     $response = $this->get('/workspace');
 
-    $response
+    $response->assertRedirect(route('workspace.home'));
+
+    $this->get(route('workspace.home'))
         ->assertOk()
-        ->assertSeeVolt('layout.navigation');
+        ->assertSee('Jadwal Hari Ini');
 });
 
 test('users can logout', function () {
@@ -60,13 +62,9 @@ test('users can logout', function () {
 
     $this->actingAs($user);
 
-    $component = Volt::test('layout.navigation');
+    $response = $this->post(route('logout'));
 
-    $component->call('logout');
-
-    $component
-        ->assertHasNoErrors()
-        ->assertRedirect('/');
+    $response->assertRedirect('/login');
 
     $this->assertGuest();
 });

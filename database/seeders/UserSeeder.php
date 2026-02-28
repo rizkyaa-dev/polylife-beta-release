@@ -11,21 +11,41 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         User::updateOrCreate(
-            ['email' => '1@2.com'],
+            ['email' => '1@2.c'],
             [
-                'name'              => 'testing',
+                'name'               => 'User',
                 'password'          => Hash::make('1'),
                 'email_verified_at' => now(),
+                'is_admin'           => User::ADMIN_LEVEL_USER,
+                'role'               => 'user',
+                'account_status'     => 'active',
+                'affiliation_status' => 'pending',
             ]
         );
 
         User::updateOrCreate(
-            ['email' => 'admin@polylife.site'],
+            ['email' => '2@3.c'],
             [
-                'name'              => 'Admin',
-                'password'          => Hash::make('admin123'),
+                'name'               => 'Admin',
+                'password'          => Hash::make('1'),
                 'email_verified_at' => now(),
-                'is_admin'          => true,
+                'is_admin'           => User::ADMIN_LEVEL_ADMIN,
+                'role'               => 'admin',
+                'account_status'     => 'active',
+                'affiliation_status' => 'verified',
+            ]
+        );
+
+        User::updateOrCreate(
+            ['email' => '3@4.c'],
+            [
+                'name'               => 'Super Admin',
+                'password'          => Hash::make('1'),
+                'email_verified_at' => now(),
+                'is_admin'           => User::ADMIN_LEVEL_SUPER_ADMIN,
+                'role'               => 'super_admin',
+                'account_status'     => 'active',
+                'affiliation_status' => 'verified',
             ]
         );
     }
