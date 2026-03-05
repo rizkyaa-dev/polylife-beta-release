@@ -17,11 +17,17 @@ class Jadwal extends Model
         'tanggal_selesai',
         'semester',
         'catatan_tambahan',
+        'title',
+        'location',
+        'start_time',
+        'end_time',
+        'is_completed',
     ];
 
     protected $casts = [
         'tanggal_mulai' => 'date',
         'tanggal_selesai' => 'date',
+        'is_completed' => 'boolean',
     ];
 
     public function user()

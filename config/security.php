@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\Security\ProxyTrustSettings;
+
 return [
     'registration' => [
         'blocked_agents' => explode(',', env('REGISTER_BLOCKED_AGENTS', 'curl,python,wget,guzzle')),
@@ -16,6 +18,8 @@ return [
         'view_decay' => (int) env('REGISTER_VIEW_DECAY', 60),
         'log_channel' => env('REGISTER_RATE_LIMIT_LOG_CHANNEL', null),
     ],
+
+    'proxy' => ProxyTrustSettings::config(),
 
     'headers' => [
         'hsts' => [

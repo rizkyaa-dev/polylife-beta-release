@@ -38,3 +38,22 @@ Thumbs.db
 
 Homestead.json
 Homestead.yaml
+
+# Flutter (mobile_ver) generated/cache files
+/mobile_ver/.dart_tool/
+/mobile_ver/.flutter-plugins
+/mobile_ver/.flutter-plugins-dependencies
+/mobile_ver/.pub-cache/
+/mobile_ver/.pub/
+/mobile_ver/build/
+/mobile_ver/.idea/
+/mobile_ver/*.iml
+/mobile_ver/android/.gradle/
+/mobile_ver/android/local.properties
+/mobile_ver/ios/Flutter/.last_build_id
+/mobile_ver/ios/Flutter/Generated.xcconfig
+/mobile_ver/ios/Flutter/flutter_export_environment.sh
+/mobile_ver/ios/Flutter/ephemeral/
+/mobile_ver/macos/Flutter/ephemeral/
+/mobile_ver/linux/flutter/ephemeral/
+/mobile_ver/windows/flutter/ephemeral/

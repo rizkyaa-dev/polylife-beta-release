@@ -20,8 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'workspace-access' => \App\Http\Middleware\WorkspaceAccessMiddleware::class,
             'prevent-back-history' => \App\Http\Middleware\PreventBackHistory::class,
             'api-active' => \App\Http\Middleware\EnsureApiUserIsActive::class,
+            'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
+            'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
         ]);
-        $middleware->trustProxies(at: '*');
+        $middleware->prepend(\App\Http\Middleware\SanitizeForwardedHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

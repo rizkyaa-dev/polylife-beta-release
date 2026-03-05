@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use App\Events\Security\UntrustedProxyHeadersDetected;
+use App\Listeners\Security\LogUntrustedProxyHeaders;
 use InvalidArgumentException;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
@@ -27,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(UntrustedProxyHeadersDetected::class, LogUntrustedProxyHeaders::class);
+
         RedirectIfAuthenticated::redirectUsing(function (Request $request): string {
             $user = $request->user();
 
@@ -53,9 +58,8 @@ class AppServiceProvider extends ServiceProvider
                 Vite::useHotFile(storage_path('app/vite.hot'));
             }
 
-            $forwardedProto = request()->header('x-forwarded-proto');
-            $usesHttps = request()->isSecure() || ($forwardedProto && str_contains($forwardedProto, 'https'));
-            if (! $isLocalHost && $usesHttps) {
+            $appUrlScheme = strtolower((string) parse_url((string) config('app.url'), PHP_URL_SCHEME));
+            if (! $isLocalHost && $appUrlScheme === 'https') {
                 URL::forceScheme('https');
             }
         }
