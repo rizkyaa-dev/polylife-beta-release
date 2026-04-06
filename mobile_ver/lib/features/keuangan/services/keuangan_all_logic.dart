@@ -32,7 +32,9 @@ class KeuanganAllLogic {
 
       if (dateRangeFilter != null) {
         if (item.tanggal.isBefore(dateRangeFilter.start) ||
-            item.tanggal.isAfter(dateRangeFilter.end.add(const Duration(days: 1)))) {
+            item.tanggal.isAfter(
+              dateRangeFilter.end.add(const Duration(days: 1)),
+            )) {
           return false;
         }
       }
@@ -45,12 +47,15 @@ class KeuanganAllLogic {
         return false;
       }
 
-      if (categoryFilters.isNotEmpty && !categoryFilters.contains(item.kategori)) {
+      if (categoryFilters.isNotEmpty &&
+          !categoryFilters.contains(item.kategori)) {
         return false;
       }
 
       if (normalizedQuery.isNotEmpty) {
-        final haystack = '${item.kategori} ${item.deskripsi ?? ''} ${item.jenis}'.toLowerCase();
+        final haystack =
+            '${item.kategori} ${item.deskripsi ?? ''} ${item.jenis}'
+                .toLowerCase();
         if (!haystack.contains(normalizedQuery)) {
           return false;
         }
@@ -87,7 +92,11 @@ class KeuanganAllLogic {
     }
 
     final days = trendRange == '7d' ? 7 : 30;
-    final start = DateTime(now.year, now.month, now.day).subtract(Duration(days: days - 1));
+    final start = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: days - 1));
     final end = DateTime(now.year, now.month, now.day);
     return _dailyExpenseSeries(source: source, start: start, end: end);
   }
@@ -99,8 +108,12 @@ class KeuanganAllLogic {
   }
 
   List<String> availableMonths(List<KeuanganTransaction> items) {
-    final months = items.map((item) => DateFormat('yyyy-MM').format(item.tanggal)).toSet().toList()
-      ..sort((a, b) => b.compareTo(a));
+    final months =
+        items
+            .map((item) => DateFormat('yyyy-MM').format(item.tanggal))
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
     return months;
   }
 
@@ -193,7 +206,32 @@ class KeuanganAllLogic {
     if (frequency == 'weekly') {
       return base.add(const Duration(days: 7));
     }
-    return DateTime(base.year, base.month + 1, base.day);
+
+    // Prevent month overflow drift (e.g. Jan 31 -> Mar 3).
+    final nextMonthDate = DateTime(base.year, base.month + 1, 1);
+    final lastDayOfCurrentMonth = DateUtils.getDaysInMonth(
+      base.year,
+      base.month,
+    );
+    final lastDayOfNextMonth = DateUtils.getDaysInMonth(
+      nextMonthDate.year,
+      nextMonthDate.month,
+    );
+    final isEndOfMonth = base.day == lastDayOfCurrentMonth;
+
+    final targetDay = isEndOfMonth
+        ? lastDayOfNextMonth
+        : base.day.clamp(1, lastDayOfNextMonth).toInt();
+    return DateTime(
+      nextMonthDate.year,
+      nextMonthDate.month,
+      targetDay,
+      base.hour,
+      base.minute,
+      base.second,
+      base.millisecond,
+      base.microsecond,
+    );
   }
 
   List<double> _dailyExpenseSeries({
@@ -208,11 +246,13 @@ class KeuanganAllLogic {
 
     while (!cursor.isAfter(endDay)) {
       final dayTotal = source
-          .where((item) =>
-              item.jenis == 'pengeluaran' &&
-              item.tanggal.year == cursor.year &&
-              item.tanggal.month == cursor.month &&
-              item.tanggal.day == cursor.day)
+          .where(
+            (item) =>
+                item.jenis == 'pengeluaran' &&
+                item.tanggal.year == cursor.year &&
+                item.tanggal.month == cursor.month &&
+                item.tanggal.day == cursor.day,
+          )
           .fold<double>(0, (sum, item) => sum + item.nominal);
       values.add(dayTotal);
       cursor = cursor.add(const Duration(days: 1));

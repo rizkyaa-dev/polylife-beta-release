@@ -42,10 +42,10 @@ class AuthController extends StateNotifier<bool> {
         } else {
           await logout();
         }
-      } catch (e) {
-        await LocalStorage.removeToken();
-        ref.read(userProvider.notifier).state = null;
-        state = false;
+      } catch (_) {
+        // Keep local session on transient network/startup failure.
+        // Invalid token is still handled by non-200 response above.
+        state = true;
       }
     } else {
       ref.read(userProvider.notifier).state = null;

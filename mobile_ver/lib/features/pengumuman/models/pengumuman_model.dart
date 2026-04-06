@@ -20,15 +20,30 @@ class Pengumuman {
   });
 
   factory Pengumuman.fromJson(Map<String, dynamic> json) {
+    final rawCreator = json['creator'];
+    final parsedTitle = (json['title'] ?? '').toString().trim();
+    final parsedTargetMode = (json['target_mode'] ?? '').toString().trim();
+
     return Pengumuman(
-      id: json['id'],
-      title: json['title'],
-      body: json['body'],
-      excerpt: json['excerpt'] ?? '',
-      imageUrl: json['image_url'],
-      targetMode: json['target_mode'] ?? 'global',
-      publishedAt: json['published_at'],
-      creator: json['creator'],
+      id: _toInt(json['id']),
+      title: parsedTitle.isEmpty ? 'Tanpa Judul' : parsedTitle,
+      body: _toNullableString(json['body']),
+      excerpt: _toNullableString(json['excerpt']) ?? '',
+      imageUrl: _toNullableString(json['image_url']),
+      targetMode: parsedTargetMode.isEmpty ? 'global' : parsedTargetMode,
+      publishedAt: _toNullableString(json['published_at']) ?? '',
+      creator: rawCreator is Map ? Map<String, dynamic>.from(rawCreator) : null,
     );
   }
+}
+
+int _toInt(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse((value ?? '').toString()) ?? 0;
+}
+
+String? _toNullableString(dynamic value) {
+  if (value == null) return null;
+  final parsed = value.toString().trim();
+  return parsed.isEmpty ? null : parsed;
 }

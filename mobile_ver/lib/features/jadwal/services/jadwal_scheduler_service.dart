@@ -19,19 +19,6 @@ class JadwalSchedulerService {
     return DateTime(value.year, value.month, value.day);
   }
 
-  List<DateTime> buildDayWindow({
-    required DateTime selectedDate,
-    int daysBefore = 3,
-    int daysAfter = 7,
-  }) {
-    final normalized = normalizeDate(selectedDate);
-    final output = <DateTime>[];
-    for (var i = -daysBefore; i <= daysAfter; i++) {
-      output.add(normalized.add(Duration(days: i)));
-    }
-    return output;
-  }
-
   List<DateTime> buildMonthGrid(DateTime monthAnchor) {
     final firstDay = DateTime(monthAnchor.year, monthAnchor.month, 1);
     // Monday-based grid: Monday=1 ... Sunday=7
@@ -45,38 +32,6 @@ class JadwalSchedulerService {
     return output;
   }
 
-  List<JadwalItem> filterByDate({
-    required List<JadwalItem> allItems,
-    required DateTime selectedDate,
-    required String searchQuery,
-  }) {
-    final dayStart = normalizeDate(selectedDate);
-    final dayEnd = dayStart.add(const Duration(days: 1));
-    final normalizedQuery = searchQuery.trim().toLowerCase();
-
-    final filtered = allItems.where((item) {
-      final intersectsDay = item.startAt.isBefore(dayEnd) && item.endAt.isAfter(dayStart);
-      if (!intersectsDay) {
-        return false;
-      }
-
-      if (normalizedQuery.isEmpty) {
-        return true;
-      }
-
-      final haystack = '${item.title} ${item.location} ${item.notes}'.toLowerCase();
-      return haystack.contains(normalizedQuery);
-    }).toList();
-
-    filtered.sort((a, b) {
-      final byStart = a.startAt.compareTo(b.startAt);
-      if (byStart != 0) return byStart;
-      return a.id.compareTo(b.id);
-    });
-
-    return filtered;
-  }
-
   List<JadwalItem> itemsForDate({
     required List<JadwalItem> allItems,
     required DateTime date,
@@ -84,14 +39,18 @@ class JadwalSchedulerService {
     final dayStart = normalizeDate(date);
     final dayEnd = dayStart.add(const Duration(days: 1));
 
-    final rows = allItems
-        .where((item) => item.startAt.isBefore(dayEnd) && item.endAt.isAfter(dayStart))
-        .toList()
-      ..sort((a, b) {
-        final byStart = a.startAt.compareTo(b.startAt);
-        if (byStart != 0) return byStart;
-        return a.id.compareTo(b.id);
-      });
+    final rows =
+        allItems
+            .where(
+              (item) =>
+                  item.startAt.isBefore(dayEnd) && item.endAt.isAfter(dayStart),
+            )
+            .toList()
+          ..sort((a, b) {
+            final byStart = a.startAt.compareTo(b.startAt);
+            if (byStart != 0) return byStart;
+            return a.id.compareTo(b.id);
+          });
     return rows;
   }
 
@@ -127,7 +86,9 @@ class JadwalSchedulerService {
         continue;
       }
 
-      final overlaps = candidate.startAt.isBefore(item.endAt) && candidate.endAt.isAfter(item.startAt);
+      final overlaps =
+          candidate.startAt.isBefore(item.endAt) &&
+          candidate.endAt.isAfter(item.startAt);
       if (overlaps) {
         return true;
       }
@@ -138,7 +99,9 @@ class JadwalSchedulerService {
   JadwalDayStats buildDayStats(List<JadwalItem> dayItems) {
     final now = DateTime.now();
     final completed = dayItems.where((item) => item.completed).length;
-    final upcoming = dayItems.where((item) => !item.completed && item.endAt.isAfter(now)).length;
+    final upcoming = dayItems
+        .where((item) => !item.completed && item.endAt.isAfter(now))
+        .length;
 
     return JadwalDayStats(
       total: dayItems.length,
@@ -153,6 +116,11 @@ class JadwalSchedulerService {
   }) {
     final dayStart = normalizeDate(date);
     final dayEnd = dayStart.add(const Duration(days: 1));
-    return allItems.where((item) => item.startAt.isBefore(dayEnd) && item.endAt.isAfter(dayStart)).length;
+    return allItems
+        .where(
+          (item) =>
+              item.startAt.isBefore(dayEnd) && item.endAt.isAfter(dayStart),
+        )
+        .length;
   }
 }

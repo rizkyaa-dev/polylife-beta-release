@@ -11,19 +11,14 @@ class JadwalActionResult {
   final bool success;
   final String? message;
 
-  const JadwalActionResult({
-    required this.success,
-    this.message,
-  });
+  const JadwalActionResult({required this.success, this.message});
 }
 
 class JadwalState {
   final bool isLoading;
   final List<JadwalItem> allItems;
   final DateTime selectedDate;
-  final String searchQuery;
   final List<JadwalItem> dayItems;
-  final List<DateTime> dayWindow;
   final JadwalDayStats dayStats;
   final String? errorMessage;
 
@@ -31,9 +26,7 @@ class JadwalState {
     required this.isLoading,
     required this.allItems,
     required this.selectedDate,
-    required this.searchQuery,
     required this.dayItems,
-    required this.dayWindow,
     required this.dayStats,
     required this.errorMessage,
   });
@@ -44,9 +37,7 @@ class JadwalState {
       isLoading: true,
       allItems: const <JadwalItem>[],
       selectedDate: DateTime(selected.year, selected.month, selected.day),
-      searchQuery: '',
       dayItems: const <JadwalItem>[],
-      dayWindow: const <DateTime>[],
       dayStats: const JadwalDayStats(total: 0, completed: 0, upcoming: 0),
       errorMessage: null,
     );
@@ -56,9 +47,7 @@ class JadwalState {
     bool? isLoading,
     List<JadwalItem>? allItems,
     DateTime? selectedDate,
-    String? searchQuery,
     List<JadwalItem>? dayItems,
-    List<DateTime>? dayWindow,
     JadwalDayStats? dayStats,
     String? errorMessage,
     bool clearError = false,
@@ -67,9 +56,7 @@ class JadwalState {
       isLoading: isLoading ?? this.isLoading,
       allItems: allItems ?? this.allItems,
       selectedDate: selectedDate ?? this.selectedDate,
-      searchQuery: searchQuery ?? this.searchQuery,
       dayItems: dayItems ?? this.dayItems,
-      dayWindow: dayWindow ?? this.dayWindow,
       dayStats: dayStats ?? this.dayStats,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
@@ -83,10 +70,13 @@ class JadwalNotifier extends StateNotifier<JadwalState> {
   JadwalNotifier({
     JadwalRepository? repository,
     JadwalSchedulerService? scheduler,
-  })  : _repository = repository ??
-            (AppMode.uiOnly ? InMemoryJadwalRepository() : ApiJadwalRepository()),
-        _scheduler = scheduler ?? const JadwalSchedulerService(),
-        super(JadwalState.initial()) {
+  }) : _repository =
+           repository ??
+           (AppMode.uiOnly
+               ? InMemoryJadwalRepository()
+               : ApiJadwalRepository()),
+       _scheduler = scheduler ?? const JadwalSchedulerService(),
+       super(JadwalState.initial()) {
     _recomputeDerived();
     load();
   }
@@ -108,11 +98,6 @@ class JadwalNotifier extends StateNotifier<JadwalState> {
   void selectDate(DateTime value) {
     final normalized = _scheduler.normalizeDate(value);
     state = state.copyWith(selectedDate: normalized);
-    _recomputeDerived();
-  }
-
-  void setSearchQuery(String value) {
-    state = state.copyWith(searchQuery: value);
     _recomputeDerived();
   }
 
@@ -175,7 +160,9 @@ class JadwalNotifier extends StateNotifier<JadwalState> {
 
     try {
       final saved = await _repository.update(updated);
-      final merged = state.allItems.map((item) => item.id == id ? saved : item).toList();
+      final merged = state.allItems
+          .map((item) => item.id == id ? saved : item)
+          .toList();
       _setAllItems(merged);
       return const JadwalActionResult(success: true);
     } catch (_) {
@@ -190,7 +177,9 @@ class JadwalNotifier extends StateNotifier<JadwalState> {
     try {
       final updated = item.copyWith(completed: !item.completed);
       final saved = await _repository.update(updated);
-      final merged = state.allItems.map((row) => row.id == item.id ? saved : row).toList();
+      final merged = state.allItems
+          .map((row) => row.id == item.id ? saved : row)
+          .toList();
       _setAllItems(merged);
     } catch (_) {
       state = state.copyWith(errorMessage: 'Gagal mengubah status jadwal.');
@@ -233,23 +222,18 @@ class JadwalNotifier extends StateNotifier<JadwalState> {
   }
 
   void _recomputeDerived() {
-    final dayItems = _scheduler.filterByDate(
+    final dayItems = _scheduler.itemsForDate(
       allItems: state.allItems,
-      selectedDate: state.selectedDate,
-      searchQuery: state.searchQuery,
+      date: state.selectedDate,
     );
-
-    final dayWindow = _scheduler.buildDayWindow(selectedDate: state.selectedDate);
     final dayStats = _scheduler.buildDayStats(dayItems);
 
-    state = state.copyWith(
-      dayItems: dayItems,
-      dayWindow: dayWindow,
-      dayStats: dayStats,
-    );
+    state = state.copyWith(dayItems: dayItems, dayStats: dayStats);
   }
 }
 
-final jadwalProvider = StateNotifierProvider<JadwalNotifier, JadwalState>((ref) {
+final jadwalProvider = StateNotifierProvider<JadwalNotifier, JadwalState>((
+  ref,
+) {
   return JadwalNotifier();
 });

@@ -27,7 +27,7 @@ class Catatan {
   }
 
   DateTime get tanggalAsDate {
-    return DateTime.tryParse(tanggal) ?? DateTime.now();
+    return DateTime.tryParse(tanggal) ?? DateTime(1970, 1, 1);
   }
 
   Catatan copyWith({

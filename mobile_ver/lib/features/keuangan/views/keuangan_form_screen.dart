@@ -4,17 +4,14 @@ import 'package:intl/intl.dart';
 
 import 'package:mobile_ver/features/keuangan/models/keuangan_model.dart';
 import 'package:mobile_ver/features/keuangan/providers/keuangan_provider.dart';
+import 'package:mobile_ver/features/keuangan/services/keuangan_all_exporter.dart';
 import 'package:mobile_ver/features/keuangan/utils/category_icon_resolver.dart';
 
 class KeuanganFormScreen extends ConsumerStatefulWidget {
   final KeuanganTransaction? transaction;
   final String? initialJenis;
 
-  const KeuanganFormScreen({
-    super.key,
-    this.transaction,
-    this.initialJenis,
-  });
+  const KeuanganFormScreen({super.key, this.transaction, this.initialJenis});
 
   @override
   ConsumerState<KeuanganFormScreen> createState() => _KeuanganFormScreenState();
@@ -71,7 +68,10 @@ class _KeuanganFormScreenState extends ConsumerState<KeuanganFormScreen> {
     _CategoryPreset('Jual Barang Bekas', Icons.inventory_2_outlined),
     _CategoryPreset('Royalti/Lisensi', Icons.monetization_on_outlined),
     _CategoryPreset('Sewa Aset', Icons.account_balance_wallet_outlined),
-    _CategoryPreset('Sponsorship/Donasi Masuk', Icons.volunteer_activism_outlined),
+    _CategoryPreset(
+      'Sponsorship/Donasi Masuk',
+      Icons.volunteer_activism_outlined,
+    ),
     _CategoryPreset('Hadiah', Icons.redeem_outlined),
     _CategoryPreset('Refund', Icons.replay_outlined),
     _CategoryPreset('Reimburse', Icons.replay_outlined),
@@ -79,6 +79,7 @@ class _KeuanganFormScreenState extends ConsumerState<KeuanganFormScreen> {
   ];
 
   final _formKey = GlobalKey<FormState>();
+  final KeuanganAllExporter _moneyParser = const KeuanganAllExporter();
   late final TextEditingController _kategoriController;
   late final TextEditingController _deskripsiController;
   late final TextEditingController _nominalController;
@@ -170,7 +171,9 @@ class _KeuanganFormScreenState extends ConsumerState<KeuanganFormScreen> {
     final nextValue = selected.label;
     setState(() {
       _kategoriController.text = nextValue;
-      _kategoriController.selection = TextSelection.collapsed(offset: nextValue.length);
+      _kategoriController.selection = TextSelection.collapsed(
+        offset: nextValue.length,
+      );
       _selectedKategoriIcon = resolveKeuanganCategoryIcon(
         kategori: nextValue,
         jenis: _jenis,
@@ -219,7 +222,9 @@ class _KeuanganFormScreenState extends ConsumerState<KeuanganFormScreen> {
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isEdit ? 'Transaksi diperbarui.' : 'Transaksi ditambahkan.'),
+          content: Text(
+            _isEdit ? 'Transaksi diperbarui.' : 'Transaksi ditambahkan.',
+          ),
           backgroundColor: const Color(0xFF166534),
         ),
       );
@@ -259,7 +264,10 @@ class _KeuanganFormScreenState extends ConsumerState<KeuanganFormScreen> {
               decoration: const InputDecoration(labelText: 'Jenis'),
               items: const [
                 DropdownMenuItem(value: 'pemasukan', child: Text('Pemasukan')),
-                DropdownMenuItem(value: 'pengeluaran', child: Text('Pengeluaran')),
+                DropdownMenuItem(
+                  value: 'pengeluaran',
+                  child: Text('Pengeluaran'),
+                ),
               ],
               onChanged: _isSaving
                   ? null
@@ -308,7 +316,9 @@ class _KeuanganFormScreenState extends ConsumerState<KeuanganFormScreen> {
             TextFormField(
               controller: _nominalController,
               enabled: !_isSaving,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Nominal',
                 hintText: 'Contoh: 50000',
@@ -374,17 +384,8 @@ class _KeuanganFormScreenState extends ConsumerState<KeuanganFormScreen> {
   }
 
   double? _parseNominal(String raw) {
-    final cleaned = raw.trim();
-    if (cleaned.isEmpty) return null;
-
-    final onlyNumber = cleaned
-        .replaceAll(RegExp(r'[^0-9,\.]'), '')
-        .replaceAll('.', '')
-        .replaceAll(',', '.');
-
-    return double.tryParse(onlyNumber);
+    return _moneyParser.parseMoney(raw);
   }
-
 }
 
 class _CategoryPreset {

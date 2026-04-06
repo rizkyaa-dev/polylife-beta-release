@@ -18,24 +18,47 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
 
-  runApp(
-    const ProviderScope(
-      child: MyApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final isLoading = ref.watch(authLoadingProvider);
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
 
-    final router = GoRouter(
+class _MyAppState extends ConsumerState<MyApp> {
+  late final _RouterRefreshNotifier _routerRefreshNotifier;
+  late final ProviderSubscription<bool> _authSubscription;
+  late final ProviderSubscription<bool> _authLoadingSubscription;
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _routerRefreshNotifier = _RouterRefreshNotifier();
+    _router = _buildRouter();
+
+    _authSubscription = ref.listenManual<bool>(authProvider, (previous, next) {
+      _routerRefreshNotifier.refresh();
+    });
+    _authLoadingSubscription = ref.listenManual<bool>(authLoadingProvider, (
+      previous,
+      next,
+    ) {
+      _routerRefreshNotifier.refresh();
+    });
+  }
+
+  GoRouter _buildRouter() {
+    return GoRouter(
       initialLocation: '/',
+      refreshListenable: _routerRefreshNotifier,
       redirect: (context, state) {
+        final isLoading = ref.read(authLoadingProvider);
+        final authState = ref.read(authProvider);
+
         if (AppMode.uiOnly) {
           if (state.matchedLocation == '/login') {
             return '/';
@@ -45,7 +68,7 @@ class MyApp extends ConsumerWidget {
 
         if (isLoading) return null; // wait for check to finish
         final isAuthRoute = state.matchedLocation == '/login';
-        
+
         if (!authState && !isAuthRoute) {
           return '/login';
         }
@@ -70,10 +93,7 @@ class MyApp extends ConsumerWidget {
               path: '/jadwal',
               builder: (context, state) => const JadwalScreen(),
             ),
-            GoRoute(
-              path: '/',
-              builder: (context, state) => const HomeScreen(),
-            ),
+            GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
             GoRoute(
               path: '/todo',
               builder: (context, state) => const TodoScreen(),
@@ -91,21 +111,37 @@ class MyApp extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  @override
+  void dispose() {
+    _authSubscription.close();
+    _authLoadingSubscription.close();
+    _router.dispose();
+    _routerRefreshNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = ref.watch(authLoadingProvider);
 
     if (isLoading && !AppMode.uiOnly) {
       return MaterialApp(
         theme: AppTheme.lightTheme,
-        home: const Scaffold(
-          body: Center(child: CircularProgressIndicator()),
-        ),
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
 
     return MaterialApp.router(
       title: 'PolyLife',
       theme: AppTheme.lightTheme,
-      routerConfig: router,
+      routerConfig: _router,
       debugShowCheckedModeBanner: false,
     );
   }
+}
+
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void refresh() => notifyListeners();
 }
