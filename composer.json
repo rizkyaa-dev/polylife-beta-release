@@ -13,6 +13,7 @@
         "livewire/livewire": "^3.6.4",
         "livewire/volt": "^1.7.0",
         "minishlink/web-push": "^10.0",
+        "predis/predis": "^3.4",
         "symfony/http-client": "7.4",
         "symfony/mailtrap-mailer": "7.4"
     },
