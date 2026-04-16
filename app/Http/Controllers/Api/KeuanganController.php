@@ -3,15 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\StoreKeuanganRequest;
+use App\Http\Requests\Api\UpdateKeuanganRequest;
+use App\Http\Resources\Api\KeuanganResource;
 use App\Models\Keuangan;
-use Carbon\Carbon;
+use App\Queries\Keuangan\AvailableMonthOptionsQuery;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 
 class KeuanganController extends Controller
 {
+    public function __construct(
+        private readonly AvailableMonthOptionsQuery $availableMonthOptionsQuery
+    ) {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -31,14 +40,14 @@ class KeuanganController extends Controller
         $items = collect($paginator->items());
 
         return response()->json([
-            'data' => $items->map(fn (Keuangan $keuangan) => $this->keuanganPayload($keuangan))->all(),
+            'data' => KeuanganResource::collection($items)->resolve(),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
                 'selected_month' => $selectedMonth->format('Y-m'),
-                'month_options' => $this->buildMonthOptions($user->id, $selectedMonth, $today),
+                'month_options' => $this->availableMonthOptionsQuery->forUser($user->id, $selectedMonth, $today),
                 'summary' => $this->buildSummary($items),
             ],
             'links' => [
@@ -48,15 +57,9 @@ class KeuanganController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreKeuanganRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'jenis' => ['required', 'in:pemasukan,pengeluaran'],
-            'kategori' => ['required', 'string', 'max:255'],
-            'deskripsi' => ['nullable', 'string'],
-            'nominal' => ['required', 'numeric', 'min:0'],
-            'tanggal' => ['required', 'date'],
-        ]);
+        $validated = $request->validated();
 
         $keuangan = Keuangan::query()->create([
             'user_id' => $request->user()->id,
@@ -69,7 +72,7 @@ class KeuanganController extends Controller
 
         return response()->json([
             'message' => 'Data keuangan berhasil ditambahkan.',
-            'data' => $this->keuanganPayload($keuangan),
+            'data' => (new KeuanganResource($keuangan))->resolve(),
         ], 201);
     }
 
@@ -78,21 +81,14 @@ class KeuanganController extends Controller
         $item = $this->findOwnedOrFail($request, $keuangan);
 
         return response()->json([
-            'data' => $this->keuanganPayload($item),
+            'data' => (new KeuanganResource($item))->resolve(),
         ]);
     }
 
-    public function update(Request $request, int $keuangan): JsonResponse
+    public function update(UpdateKeuanganRequest $request, int $keuangan): JsonResponse
     {
         $item = $this->findOwnedOrFail($request, $keuangan);
-
-        $validated = $request->validate([
-            'jenis' => ['required', 'in:pemasukan,pengeluaran'],
-            'kategori' => ['required', 'string', 'max:255'],
-            'deskripsi' => ['nullable', 'string'],
-            'nominal' => ['required', 'numeric', 'min:0'],
-            'tanggal' => ['required', 'date'],
-        ]);
+        $validated = $request->validated();
 
         $item->update([
             'jenis' => $validated['jenis'],
@@ -104,7 +100,7 @@ class KeuanganController extends Controller
 
         return response()->json([
             'message' => 'Data keuangan berhasil diperbarui.',
-            'data' => $this->keuanganPayload($item->fresh()),
+            'data' => (new KeuanganResource($item->fresh()))->resolve(),
         ]);
     }
 
@@ -156,45 +152,6 @@ class KeuanganController extends Controller
         return $fallback->copy()->startOfMonth();
     }
 
-    private function buildMonthOptions(int $userId, Carbon $selectedMonth, Carbon $defaultMonth): array
-    {
-        $options = Keuangan::query()
-            ->where('user_id', $userId)
-            ->selectRaw('DATE_FORMAT(tanggal, "%Y-%m-01") as periode')
-            ->distinct()
-            ->orderByDesc('periode')
-            ->limit(12)
-            ->get()
-            ->map(function ($row) {
-                $date = Carbon::parse($row->periode);
-
-                return [
-                    'value' => $date->format('Y-m'),
-                    'label' => $date->translatedFormat('F Y'),
-                ];
-            });
-
-        if ($options->isEmpty()) {
-            $options->push([
-                'value' => $defaultMonth->format('Y-m'),
-                'label' => $defaultMonth->translatedFormat('F Y'),
-            ]);
-        }
-
-        if (! $options->contains(fn (array $option) => $option['value'] === $selectedMonth->format('Y-m'))) {
-            $options->push([
-                'value' => $selectedMonth->format('Y-m'),
-                'label' => $selectedMonth->translatedFormat('F Y'),
-            ]);
-        }
-
-        return $options
-            ->unique('value')
-            ->sortByDesc('value')
-            ->values()
-            ->all();
-    }
-
     private function buildSummary(Collection $items): array
     {
         $totalPemasukan = (float) $items->where('jenis', 'pemasukan')->sum('nominal');
@@ -204,20 +161,6 @@ class KeuanganController extends Controller
             'total_pemasukan' => $totalPemasukan,
             'total_pengeluaran' => $totalPengeluaran,
             'saldo' => $totalPemasukan - $totalPengeluaran,
-        ];
-    }
-
-    private function keuanganPayload(Keuangan $keuangan): array
-    {
-        return [
-            'id' => (int) $keuangan->id,
-            'jenis' => (string) $keuangan->jenis,
-            'kategori' => (string) ($keuangan->kategori ?? ''),
-            'deskripsi' => $keuangan->deskripsi,
-            'nominal' => (float) $keuangan->nominal,
-            'tanggal' => (string) $keuangan->tanggal,
-            'created_at' => optional($keuangan->created_at)->toIso8601String(),
-            'updated_at' => optional($keuangan->updated_at)->toIso8601String(),
         ];
     }
 }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/keuangan/models/keuangan_model.dart';
 import 'package:mobile_ver/features/keuangan/providers/keuangan_provider.dart';
 import 'package:mobile_ver/features/keuangan/utils/category_icon_resolver.dart';
-import 'package:mobile_ver/features/keuangan/views/keuangan_all_screen.dart';
 import 'package:mobile_ver/features/keuangan/views/keuangan_form_screen.dart';
 
 final NumberFormat _idrFormatter = NumberFormat.currency(
@@ -19,408 +21,164 @@ class KeuanganScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(userProvider);
     final state = ref.watch(keuanganProvider);
     final notifier = ref.read(keuanganProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Keuangan'),
-      ),
-      body: state.isLoading && state.items.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: () => notifier.fetchKeuangan(),
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(22, 22, 22, 22),
-                children: [
-                  _buildSaldoHeader(state),
-                  const SizedBox(height: 12),
-                  _buildMonthChip(
-                    state,
-                    onTap: () => _showMonthPicker(context, ref, state),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildActionButtons(
-                    context,
-                    ref,
-                  ),
-                  const SizedBox(height: 18),
-                  _buildMonthlyRecap(state),
-                  const SizedBox(height: 30),
-                  _buildTransactionHeader(
-                    context,
-                    onFilterTap: () => _openAllTransactionsView(context),
-                  ),
-                  const SizedBox(height: 12),
-                  if (state.errorMessage != null)
-                    _ErrorBanner(message: state.errorMessage!)
-                  else
-                    const SizedBox.shrink(),
-                  if (state.errorMessage != null) const SizedBox(height: 12),
-                  if (state.items.isEmpty)
-                    _buildEmptyState()
-                  else
-                    Column(
-                      children: state.items
-                          .map(
-                            (item) => _TransactionRow(
-                              item: item,
-                              onTap: () => _showTransactionActions(context, ref, item),
+      backgroundColor: const Color(0xFFF5F4FA),
+      body: SafeArea(
+        child: state.isLoading && state.items.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : RefreshIndicator(
+                color: const Color(0xFF4B3FF2),
+                onRefresh: () => notifier.fetchKeuangan(showLoader: false),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+                  children: [
+                    _FinanceTopBar(
+                      userName: user?.name ?? 'Pengguna',
+                      onOpenNotifications: () => context.go('/pengumuman'),
+                      onLogout: () => ref.read(authProvider.notifier).logout(),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Ringkasan Bulan Ini',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF221D33),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Kelola arus kas harian',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF7A819C),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _BalanceHeroCard(
+                      saldoLabel: _idrFormatter.format(state.summary.saldo),
+                      monthLabel: _selectedMonthLabelForState(state),
+                      onTapMonth: () => _showMonthPicker(context, ref, state),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _SummaryMetricCard(
+                            icon: Icons.south_rounded,
+                            iconColor: const Color(0xFF16A34A),
+                            iconBackground: const Color(0xFFDDF8E7),
+                            label: 'Pemasukan',
+                            amountLabel: _idrFormatter.format(
+                              state.summary.totalPemasukan,
                             ),
-                          )
-                          .toList(),
+                            onTap: () => _openFilteredList(
+                              context,
+                              jenis: 'pemasukan',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _SummaryMetricCard(
+                            icon: Icons.north_rounded,
+                            iconColor: const Color(0xFFE25555),
+                            iconBackground: const Color(0xFFFFE5E8),
+                            label: 'Pengeluaran',
+                            amountLabel: _idrFormatter.format(
+                              state.summary.totalPengeluaran,
+                            ),
+                            onTap: () => _openFilteredList(
+                              context,
+                              jenis: 'pengeluaran',
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                ],
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Transaksi',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF221D33),
+                            ),
+                          ),
+                        ),
+                        FilledButton.icon(
+                          onPressed: () => _openKeuanganForm(context),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF4E44F2),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            elevation: 0,
+                          ),
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: Text(
+                            'Tambah Transaksi',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    if (state.errorMessage != null) ...[
+                      _ErrorBanner(message: state.errorMessage!),
+                      const SizedBox(height: 12),
+                    ],
+                    if (state.items.isEmpty)
+                      const _EmptyTransactionCard()
+                    else
+                      Column(
+                        children: [
+                          for (var i = 0; i < state.items.length; i++) ...[
+                            _TransactionCard(
+                              item: state.items[i],
+                              onTap: () => _showTransactionActionsSheet(
+                                context,
+                                ref,
+                                state.items[i],
+                              ),
+                            ),
+                            if (i != state.items.length - 1)
+                              const SizedBox(height: 12),
+                          ],
+                        ],
+                      ),
+                  ],
+                ),
               ),
-            ),
-    );
-  }
-
-  Widget _buildSaldoHeader(KeuanganState state) {
-    return Column(
-      children: [
-        const Text(
-          'RINGKASAN BULAN INI',
-          style: TextStyle(
-            color: Color(0xFF6366F1),
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.7,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'Total Saldo',
-          style: TextStyle(
-            color: Colors.grey.shade600,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _idrFormatter.format(state.summary.saldo),
-          style: const TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 46 / 2,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0.1,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMonthChip(KeuanganState state, {required VoidCallback onTap}) {
-    final label = state.monthOptions
-            .firstWhere(
-              (option) => option.value == state.selectedMonth,
-              orElse: () => state.monthOptions.isNotEmpty
-                  ? state.monthOptions.first
-                  : const KeuanganMonthOption(value: '', label: 'Pilih bulan'),
-            )
-            .label
-            .trim()
-            .isEmpty
-        ? state.selectedMonth
-        : state.monthOptions
-            .firstWhere(
-              (option) => option.value == state.selectedMonth,
-              orElse: () => state.monthOptions.isNotEmpty
-                  ? state.monthOptions.first
-                  : const KeuanganMonthOption(value: '', label: 'Pilih bulan'),
-            )
-            .label;
-
-    return Center(
-      child: OutlinedButton.icon(
-        onPressed: onTap,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF4B5563),
-          side: const BorderSide(color: Color(0xFFE5E7EB)),
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        icon: const Icon(Icons.calendar_month_outlined, size: 16),
-        label: Text(label),
       ),
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, WidgetRef ref) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ActionButton(
-            label: 'Pemasukan',
-            icon: Icons.south_west_rounded,
-            textColor: const Color(0xFF15803D),
-            bgColor: const Color(0xFFE7F6EE),
-            borderColor: const Color(0xFFCDEBD9),
-            onTap: () => _openForm(context, ref, presetJenis: 'pemasukan'),
-          ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: _ActionButton(
-            label: 'Pengeluaran',
-            icon: Icons.north_east_rounded,
-            textColor: const Color(0xFFB42318),
-            bgColor: const Color(0xFFFBEDEE),
-            borderColor: const Color(0xFFF0D4D7),
-            onTap: () => _openForm(context, ref, presetJenis: 'pengeluaran'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMonthlyRecap(KeuanganState state) {
-    final shortMonth = _selectedMonthShort(state);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x140F172A),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pemasukan ($shortMonth)',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF16A34A),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _idrFormatter.format(state.summary.totalPemasukan),
-                    style: const TextStyle(
-                      fontSize: 34 / 2,
-                      color: Color(0xFF0F172A),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 54,
-            color: const Color(0xFFD7DEE8),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Pengeluaran ($shortMonth)',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFFE11D48),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _idrFormatter.format(state.summary.totalPengeluaran),
-                    style: const TextStyle(
-                      fontSize: 34 / 2,
-                      color: Color(0xFF0F172A),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTransactionHeader(
+  Future<void> _openFilteredList(
     BuildContext context, {
-    required VoidCallback onFilterTap,
-  }) {
-    return Row(
-      children: [
-        Text(
-          'Transaksi',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF0F172A),
-              ),
-        ),
-        const Spacer(),
-        OutlinedButton(
-          onPressed: onFilterTap,
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: Color(0xFFE5E7EB)),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-            foregroundColor: const Color(0xFF64748B),
-            backgroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          ),
-          child: const Text(
-            'Semua',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: const Text(
-        'Belum ada transaksi di bulan ini.',
-        style: TextStyle(
-          color: Color(0xFF64748B),
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openForm(
-    BuildContext context,
-    WidgetRef ref, {
-    KeuanganTransaction? transaction,
-    String? presetJenis,
+    required String jenis,
   }) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => KeuanganFormScreen(
-          transaction: transaction,
-          initialJenis: presetJenis,
-        ),
+        builder: (_) => _MonthlyTransactionListScreen(jenis: jenis),
       ),
-    );
-  }
-
-  Future<void> _openAllTransactionsView(BuildContext context) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const KeuanganAllScreen(),
-      ),
-    );
-  }
-
-  Future<void> _confirmDelete(
-    BuildContext context,
-    WidgetRef ref,
-    KeuanganTransaction item,
-  ) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus transaksi?'),
-        content: Text('Transaksi "${item.kategori}" akan dihapus permanen.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFE11D48)),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldDelete != true) return;
-
-    final success = await ref.read(keuanganProvider.notifier).deleteTransaction(item.id);
-    if (!context.mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? 'Transaksi dihapus.' : 'Gagal menghapus transaksi.'),
-        backgroundColor: success ? const Color(0xFF166534) : const Color(0xFFB91C1C),
-      ),
-    );
-  }
-
-  Future<void> _showTransactionActions(
-    BuildContext context,
-    WidgetRef ref,
-    KeuanganTransaction item,
-  ) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD1D5DB),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                leading: const Icon(Icons.edit_outlined),
-                title: const Text('Edit transaksi'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _openForm(context, ref, transaction: item);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_outline, color: Color(0xFFE11D48)),
-                title: const Text(
-                  'Hapus transaksi',
-                  style: TextStyle(color: Color(0xFFE11D48)),
-                ),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _confirmDelete(context, ref, item);
-                },
-              ),
-              const SizedBox(height: 10),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -447,13 +205,17 @@ class KeuanganScreen extends ConsumerWidget {
                 ),
               ),
               ...state.monthOptions.map((option) {
-                final selected = option.value == state.selectedMonth;
+                final isSelected = option.value == state.selectedMonth;
                 return ListTile(
                   title: Text(option.label),
-                  trailing: selected ? const Icon(Icons.check, color: Color(0xFF4F46E5)) : null,
+                  trailing: isSelected
+                      ? const Icon(Icons.check, color: Color(0xFF4F46E5))
+                      : null,
                   onTap: () {
                     Navigator.of(ctx).pop();
-                    ref.read(keuanganProvider.notifier).selectMonth(option.value);
+                    ref
+                        .read(keuanganProvider.notifier)
+                        .selectMonth(option.value);
                   },
                 );
               }),
@@ -465,36 +227,210 @@ class KeuanganScreen extends ConsumerWidget {
     );
   }
 
-  String _selectedMonthShort(KeuanganState state) {
-    final value = state.selectedMonth;
-    final split = value.split('-');
-    if (split.length != 2) return 'Bulan';
+}
 
-    final year = int.tryParse(split[0]);
-    final month = int.tryParse(split[1]);
-    if (year == null || month == null || month < 1 || month > 12) return 'Bulan';
+class _MonthlyTransactionListScreen extends ConsumerWidget {
+  final String jenis;
 
-    final date = DateTime(year, month, 1);
-    final short = DateFormat('MMM', 'id_ID').format(date);
-    return '${short[0].toUpperCase()}${short.substring(1)}';
+  const _MonthlyTransactionListScreen({
+    required this.jenis,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(keuanganProvider);
+    final visual = _jenisVisual(jenis);
+    final monthLabel = _selectedMonthLabelForState(state);
+    final rows = state.items.where((item) => item.jenis == jenis).toList();
+    final total = rows.fold<double>(0, (sum, item) => sum + item.nominal);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F4FA),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF5F4FA),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: Text(
+          visual.screenTitle,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF221D33),
+          ),
+        ),
+      ),
+      body: state.isLoading && state.items.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                _FilteredTransactionHeroCard(
+                  visual: visual,
+                  monthLabel: monthLabel,
+                  totalLabel: _idrFormatter.format(total),
+                  totalItems: rows.length,
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        visual.sectionTitle,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF221D33),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0xFFE5E7F2)),
+                      ),
+                      child: Text(
+                        '${rows.length} item',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF707792),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                if (state.errorMessage != null) ...[
+                  _ErrorBanner(message: state.errorMessage!),
+                  const SizedBox(height: 12),
+                ],
+                if (rows.isEmpty)
+                  _EmptyTransactionCard(
+                    message: visual.emptyMessage(monthLabel),
+                  )
+                else
+                  Column(
+                    children: [
+                      for (var i = 0; i < rows.length; i++) ...[
+                        _TransactionCard(
+                          item: rows[i],
+                          onTap: () => _showTransactionActionsSheet(
+                            context,
+                            ref,
+                            rows[i],
+                          ),
+                        ),
+                        if (i != rows.length - 1) const SizedBox(height: 12),
+                      ],
+                    ],
+                  ),
+              ],
+            ),
+    );
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final Color textColor;
-  final Color bgColor;
-  final Color borderColor;
-  final VoidCallback onTap;
+class _FinanceTopBar extends StatelessWidget {
+  final String userName;
+  final VoidCallback onOpenNotifications;
+  final VoidCallback onLogout;
 
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.textColor,
-    required this.bgColor,
-    required this.borderColor,
-    required this.onTap,
+  const _FinanceTopBar({
+    required this.userName,
+    required this.onOpenNotifications,
+    required this.onLogout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          height: 46,
+          width: 46,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFE3E8FF), Color(0xFFB9C6FF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x140F172A),
+                blurRadius: 14,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              _initialsFromName(userName),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF3440C8),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                userName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF3542D4),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _greetingLabel(),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF7A7F9A),
+                ),
+              ),
+            ],
+          ),
+        ),
+        _IconCapsuleButton(
+          icon: Icons.notifications_none_rounded,
+          showDot: true,
+          onTap: onOpenNotifications,
+        ),
+        const SizedBox(width: 8),
+        _IconCapsuleButton(
+          icon: Icons.logout_rounded,
+          onTap: onLogout,
+        ),
+      ],
+    );
+  }
+}
+
+class _BalanceHeroCard extends StatelessWidget {
+  final String saldoLabel;
+  final String monthLabel;
+  final VoidCallback onTapMonth;
+
+  const _BalanceHeroCard({
+    required this.saldoLabel,
+    required this.monthLabel,
+    required this.onTapMonth,
   });
 
   @override
@@ -502,41 +438,83 @@ class _ActionButton extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTapMonth,
         child: Container(
-          height: 52,
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
           decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(20),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF4A45F3), Color(0xFF4036DA)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x120F172A),
-                blurRadius: 8,
-                offset: Offset(0, 4),
+                color: Color(0x334B3FF2),
+                blurRadius: 22,
+                offset: Offset(0, 12),
               ),
             ],
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                height: 24,
-                width: 24,
+                height: 40,
+                width: 40,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.85),
+                  color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, size: 14, color: textColor),
+                child: const Icon(
+                  Icons.account_balance_wallet_outlined,
+                  color: Colors.white,
+                  size: 21,
+                ),
               ),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: TextStyle(
-                  color: textColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 26 / 2,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'SALDO',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white.withValues(alpha: 0.78),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      saldoLabel,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_month_outlined,
+                          size: 14,
+                          color: Colors.white.withValues(alpha: 0.82),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          monthLabel,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white.withValues(alpha: 0.82),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -547,73 +525,234 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _TransactionRow extends StatelessWidget {
+class _SummaryMetricCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBackground;
+  final String label;
+  final String amountLabel;
+  final VoidCallback onTap;
+
+  const _SummaryMetricCard({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBackground,
+    required this.label,
+    required this.amountLabel,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x120F172A),
+                blurRadius: 16,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 38,
+                width: 38,
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                label.toUpperCase(),
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.55,
+                  color: const Color(0xFF7A819C),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                amountLabel,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF221D33),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilteredTransactionHeroCard extends StatelessWidget {
+  final _JenisVisual visual;
+  final String monthLabel;
+  final String totalLabel;
+  final int totalItems;
+
+  const _FilteredTransactionHeroCard({
+    required this.visual,
+    required this.monthLabel,
+    required this.totalLabel,
+    required this.totalItems,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x120F172A),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                height: 48,
+                width: 48,
+                decoration: BoxDecoration(
+                  color: visual.iconBackground,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  visual.icon,
+                  color: visual.iconColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      visual.heroKicker,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: visual.primaryColor,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      monthLabel,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF7A819C),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            totalLabel,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF221D33),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            visual.totalLabel(totalItems),
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF6F7690),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TransactionCard extends StatelessWidget {
   final KeuanganTransaction item;
   final VoidCallback onTap;
 
-  const _TransactionRow({
+  const _TransactionCard({
     required this.item,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isIncome = item.jenis == 'pemasukan';
-    final amountColor = isIncome ? const Color(0xFF166534) : const Color(0xFF0F172A);
-    final dateText = DateFormat('dd MMM', 'id_ID').format(item.tanggal);
-    final subtitle = (item.deskripsi ?? '').trim().isNotEmpty ? item.deskripsi!.trim() : item.jenis;
+    final isIncome = item.isPemasukan;
+    final subtitle = (item.deskripsi ?? '').trim().isNotEmpty
+        ? item.deskripsi!.trim()
+        : item.jenis == 'pemasukan'
+            ? 'Pemasukan'
+            : 'Pengeluaran';
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(18),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: Color(0xFFE9EDF3),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x110F172A),
+                blurRadius: 14,
+                offset: Offset(0, 6),
               ),
-            ),
+            ],
           ),
           child: Row(
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    height: 48,
-                    width: 48,
-                    decoration: BoxDecoration(
-                      color: isIncome ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Icon(
-                      _resolveCategoryIcon(item),
-                      color: isIncome ? const Color(0xFF16A34A) : const Color(0xFF4B5563),
-                      size: 22,
-                    ),
+              Container(
+                height: 48,
+                width: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F8),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  resolveKeuanganCategoryIcon(
+                    kategori: item.kategori,
+                    jenis: item.jenis,
+                    emptyFallback: Icons.receipt_long_outlined,
                   ),
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Container(
-                      height: 18,
-                      width: 18,
-                      decoration: BoxDecoration(
-                        color: isIncome ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
-                        borderRadius: BorderRadius.circular(9),
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: Icon(
-                        isIncome ? Icons.south_west_rounded : Icons.north_east_rounded,
-                        color: Colors.white,
-                        size: 10,
-                      ),
-                    ),
-                  ),
-                ],
+                  color: const Color(0xFF525A6F),
+                  size: 22,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -621,33 +760,53 @@ class _TransactionRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.kategori,
-                      style: const TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontSize: 29 / 2,
-                        fontWeight: FontWeight.w700,
+                      item.kategori.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF221D33),
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '$dateText • $subtitle',
+                      subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 13.5,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF6F7690),
                       ),
                     ),
                   ],
                 ),
               ),
-              Text(
-                '${isIncome ? '+' : '-'}${_idrFormatter.format(item.nominal)}',
-                style: TextStyle(
-                  color: isIncome ? amountColor : const Color(0xFF0F172A),
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '${isIncome ? '+' : '-'} ${_idrFormatter.format(item.nominal)}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: isIncome
+                          ? const Color(0xFF16A34A)
+                          : const Color(0xFFE25555),
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _formatTransactionMoment(item.tanggal),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFA0A5B8),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -655,12 +814,89 @@ class _TransactionRow extends StatelessWidget {
       ),
     );
   }
+}
 
-  IconData _resolveCategoryIcon(KeuanganTransaction row) {
-    return resolveKeuanganCategoryIcon(
-      kategori: row.kategori,
-      jenis: row.jenis,
-      emptyFallback: Icons.receipt_long_outlined,
+class _EmptyTransactionCard extends StatelessWidget {
+  final String message;
+
+  const _EmptyTransactionCard({
+    this.message = 'Belum ada transaksi di bulan ini.',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x100F172A),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Text(
+        message,
+        style: GoogleFonts.plusJakartaSans(
+          color: const Color(0xFF64748B),
+          fontWeight: FontWeight.w600,
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+}
+
+class _IconCapsuleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool showDot;
+
+  const _IconCapsuleButton({
+    required this.icon,
+    required this.onTap,
+    this.showDot = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: SizedBox(
+          height: 40,
+          width: 40,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Center(
+                child: Icon(icon, color: const Color(0xFF202033), size: 22),
+              ),
+              if (showDot)
+                Positioned(
+                  top: 9,
+                  right: 10,
+                  child: Container(
+                    height: 8,
+                    width: 8,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF4D4F),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -678,15 +914,266 @@ class _ErrorBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFF1F2),
         border: Border.all(color: const Color(0xFFFDA4AF)),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         message,
-        style: const TextStyle(
-          color: Color(0xFFBE123C),
-          fontWeight: FontWeight.w600,
+        style: GoogleFonts.plusJakartaSans(
+          color: const Color(0xFFBE123C),
+          fontWeight: FontWeight.w700,
+          fontSize: 12.5,
         ),
       ),
     );
   }
+}
+
+String _initialsFromName(String name) {
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+
+  if (parts.isEmpty) {
+    return 'PL';
+  }
+
+  if (parts.length == 1) {
+    final chunk = parts.first;
+    return chunk.substring(0, chunk.length >= 2 ? 2 : 1).toUpperCase();
+  }
+
+  return (parts.first[0] + parts.last[0]).toUpperCase();
+}
+
+String _greetingLabel() {
+  final hour = DateTime.now().hour;
+  if (hour < 11) {
+    return 'Pagi produktif';
+  }
+  if (hour < 15) {
+    return 'Siang fokus';
+  }
+  if (hour < 18) {
+    return 'Sore terarah';
+  }
+  return 'Malam terencana';
+}
+
+String _formatTransactionMoment(DateTime dateTime) {
+  final now = DateTime.now();
+  final dayStart = DateTime(now.year, now.month, now.day);
+  final targetDay = DateTime(dateTime.year, dateTime.month, dateTime.day);
+  final difference = dayStart.difference(targetDay).inDays;
+  final timeLabel = DateFormat('HH:mm', 'id_ID').format(dateTime);
+
+  if (difference == 0) {
+    return 'Hari ini, $timeLabel';
+  }
+
+  if (difference == 1) {
+    return 'Kemarin, $timeLabel';
+  }
+
+  return '${DateFormat('dd MMM', 'id_ID').format(dateTime)}, $timeLabel';
+}
+
+String _selectedMonthLabelForState(KeuanganState state) {
+  final selected = state.monthOptions.where(
+    (option) => option.value == state.selectedMonth,
+  );
+
+  if (selected.isNotEmpty) {
+    final label = selected.first.label.trim();
+    if (label.isNotEmpty) {
+      return label;
+    }
+  }
+
+  return state.selectedMonth;
+}
+
+Future<void> _openKeuanganForm(
+  BuildContext context, {
+  KeuanganTransaction? transaction,
+  String? presetJenis,
+}) async {
+  await Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => KeuanganFormScreen(
+        transaction: transaction,
+        initialJenis: presetJenis,
+      ),
+    ),
+  );
+}
+
+Future<void> _confirmDeleteTransaction(
+  BuildContext context,
+  WidgetRef ref,
+  KeuanganTransaction item,
+) async {
+  final shouldDelete = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Hapus transaksi?'),
+      content: Text('Transaksi "${item.kategori}" akan dihapus permanen.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFE11D48),
+          ),
+          child: const Text('Hapus'),
+        ),
+      ],
+    ),
+  );
+
+  if (shouldDelete != true) {
+    return;
+  }
+
+  final success = await ref.read(keuanganProvider.notifier).deleteTransaction(
+        item.id,
+      );
+
+  if (!context.mounted) {
+    return;
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        success ? 'Transaksi dihapus.' : 'Gagal menghapus transaksi.',
+      ),
+      backgroundColor: success
+          ? const Color(0xFF166534)
+          : const Color(0xFFB91C1C),
+    ),
+  );
+}
+
+Future<void> _showTransactionActionsSheet(
+  BuildContext context,
+  WidgetRef ref,
+  KeuanganTransaction item,
+) async {
+  await showModalBottomSheet<void>(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1D5DB),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('Edit transaksi'),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _openKeuanganForm(context, transaction: item);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.delete_outline,
+                color: Color(0xFFE11D48),
+              ),
+              title: const Text(
+                'Hapus transaksi',
+                style: TextStyle(color: Color(0xFFE11D48)),
+              ),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                _confirmDeleteTransaction(context, ref, item);
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+class _JenisVisual {
+  final String jenis;
+  final String screenTitle;
+  final String sectionTitle;
+  final String heroKicker;
+  final IconData icon;
+  final Color primaryColor;
+  final Color iconColor;
+  final Color iconBackground;
+
+  const _JenisVisual({
+    required this.jenis,
+    required this.screenTitle,
+    required this.sectionTitle,
+    required this.heroKicker,
+    required this.icon,
+    required this.primaryColor,
+    required this.iconColor,
+    required this.iconBackground,
+  });
+
+  String totalLabel(int totalItems) {
+    if (jenis == 'pemasukan') {
+      return '$totalItems pemasukan tercatat bulan ini';
+    }
+
+    return '$totalItems pengeluaran tercatat bulan ini';
+  }
+
+  String emptyMessage(String monthLabel) {
+    if (jenis == 'pemasukan') {
+      return 'Belum ada pemasukan yang tercatat di $monthLabel.';
+    }
+
+    return 'Belum ada pengeluaran yang tercatat di $monthLabel.';
+  }
+}
+
+_JenisVisual _jenisVisual(String jenis) {
+  if (jenis == 'pemasukan') {
+    return const _JenisVisual(
+      jenis: 'pemasukan',
+      screenTitle: 'Pemasukan',
+      sectionTitle: 'Daftar Pemasukan',
+      heroKicker: 'PEMASUKAN BULAN INI',
+      icon: Icons.south_rounded,
+      primaryColor: Color(0xFF16A34A),
+      iconColor: Color(0xFF16A34A),
+      iconBackground: Color(0xFFDDF8E7),
+    );
+  }
+
+  return const _JenisVisual(
+    jenis: 'pengeluaran',
+    screenTitle: 'Pengeluaran',
+    sectionTitle: 'Daftar Pengeluaran',
+    heroKicker: 'PENGELUARAN BULAN INI',
+    icon: Icons.north_rounded,
+    primaryColor: Color(0xFFE25555),
+    iconColor: Color(0xFFE25555),
+    iconBackground: Color(0xFFFFE5E8),
+  );
 }

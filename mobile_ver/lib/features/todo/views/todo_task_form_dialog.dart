@@ -20,14 +20,11 @@ class _TodoTaskFormDialog extends StatefulWidget {
 class _TodoTaskFormDialogState extends State<_TodoTaskFormDialog> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  TodoPriority _priority = TodoPriority.normal;
   DateTime? _dueDate;
 
   @override
   void dispose() {
     _titleController.dispose();
-    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -64,9 +61,9 @@ class _TodoTaskFormDialogState extends State<_TodoTaskFormDialog> {
     Navigator.of(context).pop(
       TodoInput(
         title: _titleController.text.trim(),
-        description: _descriptionController.text.trim(),
+        description: '',
         dueDate: _dueDate,
-        priority: _priority,
+        priority: TodoPriority.normal,
       ),
     );
   }
@@ -77,7 +74,7 @@ class _TodoTaskFormDialogState extends State<_TodoTaskFormDialog> {
         _dueDate == null ? 'Atur deadline (opsional)' : DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(_dueDate!);
 
     return AlertDialog(
-      title: const Text('Tugas Baru'),
+      title: const Text('To-Do Baru'),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -87,38 +84,12 @@ class _TodoTaskFormDialogState extends State<_TodoTaskFormDialog> {
               TextFormField(
                 controller: _titleController,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Judul tugas'),
+                decoration: const InputDecoration(labelText: 'Nama item'),
                 validator: (value) {
                   if ((value ?? '').trim().isEmpty) {
-                    return 'Judul tugas wajib diisi.';
+                    return 'Nama item wajib diisi.';
                   }
                   return null;
-                },
-              ),
-              const SizedBox(height: 10),
-              TextFormField(
-                controller: _descriptionController,
-                minLines: 2,
-                maxLines: 4,
-                decoration: const InputDecoration(labelText: 'Deskripsi (opsional)'),
-              ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<TodoPriority>(
-                initialValue: _priority,
-                decoration: const InputDecoration(labelText: 'Prioritas'),
-                items: const [
-                  DropdownMenuItem(
-                    value: TodoPriority.normal,
-                    child: Text('Normal'),
-                  ),
-                  DropdownMenuItem(
-                    value: TodoPriority.high,
-                    child: Text('Tinggi'),
-                  ),
-                ],
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _priority = value);
                 },
               ),
               const SizedBox(height: 10),

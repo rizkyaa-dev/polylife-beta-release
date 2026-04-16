@@ -12,6 +12,8 @@ import 'features/catatan/views/catatan_list_screen.dart';
 import 'features/pengumuman/views/pengumuman_list_screen.dart';
 import 'features/keuangan/views/keuangan_screen.dart';
 import 'features/jadwal/views/jadwal_screen.dart';
+import 'features/reminder/views/reminder_create_screen.dart';
+import 'features/reminder/views/reminder_screen.dart';
 import 'features/todo/views/todo_screen.dart';
 
 Future<void> main() async {
@@ -81,6 +83,14 @@ class _MyAppState extends ConsumerState<MyApp> {
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/reminder',
+          builder: (context, state) => const ReminderScreen(),
+        ),
+        GoRoute(
+          path: '/reminder/new',
+          builder: (context, state) => const ReminderCreateScreen(),
         ),
         ShellRoute(
           builder: (context, state, child) => MainLayout(child: child),

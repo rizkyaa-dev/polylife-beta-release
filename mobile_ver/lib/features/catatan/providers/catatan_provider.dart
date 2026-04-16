@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_ver/core/config/app_mode.dart';
 import 'package:mobile_ver/core/network/api_client.dart';
 import 'dart:convert';
+
 import '../models/catatan_model.dart';
 
 class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
@@ -10,6 +11,8 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
       id: 1,
       judul: 'Materi Web',
       isi: 'Ringkasan HTML, CSS, JavaScript untuk latihan minggu ini.',
+      previewIsi: 'Ringkasan HTML, CSS, JavaScript untuk latihan minggu ini.',
+      hasFullIsi: true,
       tanggal: '2026-02-28',
       statusSampah: false,
     ),
@@ -17,6 +20,8 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
       id: 2,
       judul: 'To-Do UTS',
       isi: 'Revisi catatan kuliah, latihan soal, dan cek jadwal ujian.',
+      previewIsi: 'Revisi catatan kuliah, latihan soal, dan cek jadwal ujian.',
+      hasFullIsi: true,
       tanggal: '2026-02-27',
       statusSampah: false,
     ),
@@ -83,6 +88,8 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
         id: nextId,
         judul: judul,
         isi: isi,
+        previewIsi: isi,
+        hasFullIsi: true,
         tanggal: tanggal,
         statusSampah: false,
       );
@@ -114,6 +121,8 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
                   id: item.id,
                   judul: judul,
                   isi: isi,
+                  previewIsi: isi,
+                  hasFullIsi: true,
                   tanggal: tanggal,
                   statusSampah: item.statusSampah,
                 )
@@ -198,6 +207,41 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     }
   }
 
+  Future<Catatan?> fetchCatatanDetail(int id) async {
+    final current = state.valueOrNull;
+
+    if (AppMode.uiOnly) {
+      try {
+        return current?.firstWhere((item) => item.id == id);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    try {
+      final response = await ApiClient.get('/catatan/$id');
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      final item = _parseCatatanItem(response.body);
+      if (item == null) {
+        return null;
+      }
+
+      if (current != null) {
+        final updated = current
+            .map((row) => row.id == item.id ? item : row)
+            .toList();
+        state = AsyncValue.data(updated);
+      }
+
+      return item;
+    } catch (_) {
+      return null;
+    }
+  }
+
   List<Catatan> _parseCatatanList(String rawBody) {
     final decoded = jsonDecode(rawBody);
     if (decoded is! Map<String, dynamic>) return const <Catatan>[];
@@ -209,6 +253,16 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
         .whereType<Map>()
         .map((row) => Catatan.fromJson(Map<String, dynamic>.from(row)))
         .toList();
+  }
+
+  Catatan? _parseCatatanItem(String rawBody) {
+    final decoded = jsonDecode(rawBody);
+    if (decoded is! Map<String, dynamic>) return null;
+
+    final rawData = decoded['data'];
+    if (rawData is! Map) return null;
+
+    return Catatan.fromJson(Map<String, dynamic>.from(rawData));
   }
 }
 

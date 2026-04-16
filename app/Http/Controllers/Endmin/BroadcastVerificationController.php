@@ -2,73 +2,40 @@
 
 namespace App\Http\Controllers\Endmin;
 
+use App\Actions\Broadcast\ArchiveAffiliationBroadcastAction;
+use App\Actions\Broadcast\DeleteAffiliationBroadcastAction;
+use App\Actions\Broadcast\UnarchiveAffiliationBroadcastAction;
 use App\Http\Controllers\Controller;
 use App\Models\AffiliationBroadcast;
-use App\Services\BroadcastImageService;
+use App\Queries\Broadcast\BroadcastVerificationIndexQuery;
 use App\Support\Endmin\AuditLogger;
 use Illuminate\Http\Request;
 
 class BroadcastVerificationController extends Controller
 {
+    public function __construct(
+        private readonly BroadcastVerificationIndexQuery $broadcastVerificationIndexQuery,
+        private readonly ArchiveAffiliationBroadcastAction $archiveAffiliationBroadcastAction,
+        private readonly UnarchiveAffiliationBroadcastAction $unarchiveAffiliationBroadcastAction,
+        private readonly DeleteAffiliationBroadcastAction $deleteAffiliationBroadcastAction
+    ) {
+    }
+
     public function index(Request $request)
     {
         $search = trim((string) $request->query('q', ''));
         $statusFilter = trim((string) $request->query('status', ''));
         $targetModeFilter = trim((string) $request->query('target_mode', ''));
-
-        $broadcastsQuery = AffiliationBroadcast::query()
-            ->with([
-                'creator:id,name,email,is_admin,role',
-                'targets:id,broadcast_id,affiliation_name',
-            ]);
-
-        if ($search !== '') {
-            $broadcastsQuery->where(function ($query) use ($search): void {
-                $query->where('title', 'like', '%'.$search.'%')
-                    ->orWhere('body', 'like', '%'.$search.'%')
-                    ->orWhereHas('creator', function ($creatorQuery) use ($search): void {
-                        $creatorQuery->where('name', 'like', '%'.$search.'%')
-                            ->orWhere('email', 'like', '%'.$search.'%');
-                    })
-                    ->orWhereHas('targets', function ($targetQuery) use ($search): void {
-                        $targetQuery->where('affiliation_name', 'like', '%'.$search.'%');
-                    });
-            });
-        }
-
-        if (in_array($statusFilter, [
-            AffiliationBroadcast::STATUS_DRAFT,
-            AffiliationBroadcast::STATUS_PUBLISHED,
-            AffiliationBroadcast::STATUS_ARCHIVED,
-        ], true)) {
-            $broadcastsQuery->where('status', $statusFilter);
-        }
-
-        if (in_array($targetModeFilter, [
-            AffiliationBroadcast::TARGET_MODE_AFFILIATION,
-            AffiliationBroadcast::TARGET_MODE_GLOBAL,
-        ], true)) {
-            $broadcastsQuery->where('target_mode', $targetModeFilter);
-        }
-
-        $broadcasts = $broadcastsQuery
-            ->latest('id')
-            ->paginate(15)
-            ->withQueryString();
+        $payload = $this->broadcastVerificationIndexQuery->build($search, $statusFilter, $targetModeFilter);
 
         return view('endmin.broadcasts.index', [
-            'broadcasts' => $broadcasts,
+            'broadcasts' => $payload['broadcasts'],
             'filters' => [
                 'q' => $search,
                 'status' => $statusFilter,
                 'target_mode' => $targetModeFilter,
             ],
-            'stats' => [
-                'total' => AffiliationBroadcast::query()->count(),
-                'published' => AffiliationBroadcast::query()->where('status', AffiliationBroadcast::STATUS_PUBLISHED)->count(),
-                'archived' => AffiliationBroadcast::query()->where('status', AffiliationBroadcast::STATUS_ARCHIVED)->count(),
-                'draft' => AffiliationBroadcast::query()->where('status', AffiliationBroadcast::STATUS_DRAFT)->count(),
-            ],
+            'stats' => $payload['stats'],
             'sidebarView' => 'layouts.components.endmin-sidebar',
         ]);
     }
@@ -90,16 +57,11 @@ class BroadcastVerificationController extends Controller
 
     public function archive(Request $request, AffiliationBroadcast $broadcast)
     {
-        $actor = $request->user();
         $beforeStatus = $broadcast->status;
-
-        if (! $broadcast->isArchived()) {
-            $broadcast->status = AffiliationBroadcast::STATUS_ARCHIVED;
-            $broadcast->save();
-        }
+        ($this->archiveAffiliationBroadcastAction)($broadcast);
 
         AuditLogger::log(
-            actor: $actor,
+            actor: $request->user(),
             module: 'broadcasts',
             action: 'archive',
             targetUser: $broadcast->creator,
@@ -124,18 +86,11 @@ class BroadcastVerificationController extends Controller
 
     public function unarchive(Request $request, AffiliationBroadcast $broadcast)
     {
-        $actor = $request->user();
         $beforeStatus = $broadcast->status;
-
-        if ($broadcast->isArchived()) {
-            $broadcast->status = $broadcast->published_at
-                ? AffiliationBroadcast::STATUS_PUBLISHED
-                : AffiliationBroadcast::STATUS_DRAFT;
-            $broadcast->save();
-        }
+        ($this->unarchiveAffiliationBroadcastAction)($broadcast);
 
         AuditLogger::log(
-            actor: $actor,
+            actor: $request->user(),
             module: 'broadcasts',
             action: 'unarchive',
             targetUser: $broadcast->creator,
@@ -158,14 +113,9 @@ class BroadcastVerificationController extends Controller
             ->with('success', 'Broadcast berhasil dikembalikan dari arsip.');
     }
 
-    public function destroy(
-        Request $request,
-        AffiliationBroadcast $broadcast,
-        BroadcastImageService $broadcastImageService
-    ) {
-        $actor = $request->user();
+    public function destroy(Request $request, AffiliationBroadcast $broadcast)
+    {
         $creator = $broadcast->creator;
-
         $before = [
             'broadcast_id' => $broadcast->id,
             'status' => $broadcast->status,
@@ -174,14 +124,10 @@ class BroadcastVerificationController extends Controller
             'target_mode' => $broadcast->target_mode,
         ];
 
-        if ($broadcast->image_path) {
-            $broadcastImageService->delete($broadcast->image_path);
-        }
-
-        $broadcast->delete();
+        ($this->deleteAffiliationBroadcastAction)($broadcast);
 
         AuditLogger::log(
-            actor: $actor,
+            actor: $request->user(),
             module: 'broadcasts',
             action: 'delete',
             targetUser: $creator,

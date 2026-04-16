@@ -21,6 +21,7 @@ class Reminder extends Model
 
     protected $casts = [
         'waktu_reminder' => 'datetime',
+        'aktif' => 'boolean',
     ];
 
     public function user()

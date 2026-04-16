@@ -19,6 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'super-admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
             'workspace-access' => \App\Http\Middleware\WorkspaceAccessMiddleware::class,
             'prevent-back-history' => \App\Http\Middleware\PreventBackHistory::class,
+            'prevent-duplicate-write' => \App\Http\Middleware\PreventDuplicateWrite::class,
             'api-active' => \App\Http\Middleware\EnsureApiUserIsActive::class,
             'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,

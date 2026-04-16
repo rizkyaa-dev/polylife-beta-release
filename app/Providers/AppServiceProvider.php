@@ -5,10 +5,12 @@ namespace App\Providers;
 use App\Events\Security\UntrustedProxyHeadersDetected;
 use App\Listeners\Security\LogUntrustedProxyHeaders;
 use InvalidArgumentException;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\View;
@@ -30,6 +32,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->registerWriteRateLimiters();
+
         Event::listen(UntrustedProxyHeadersDetected::class, LogUntrustedProxyHeaders::class);
 
         RedirectIfAuthenticated::redirectUsing(function (Request $request): string {
@@ -84,5 +88,28 @@ class AppServiceProvider extends ServiceProvider
             $guestMode = request()->routeIs('guest.*');
             $view->with('guestMode', $guestMode);
         });
+    }
+
+    private function registerWriteRateLimiters(): void
+    {
+        RateLimiter::for('workspace-write', function (Request $request) {
+            return Limit::perMinute(30)->by($this->writeLimiterKey($request, 'workspace-write'));
+        });
+
+        RateLimiter::for('api-write', function (Request $request) {
+            return Limit::perMinute(30)->by($this->writeLimiterKey($request, 'api-write'));
+        });
+
+        RateLimiter::for('bulk-write', function (Request $request) {
+            return Limit::perMinute(5)->by($this->writeLimiterKey($request, 'bulk-write'));
+        });
+    }
+
+    private function writeLimiterKey(Request $request, string $prefix): string
+    {
+        $userId = $request->user()?->getAuthIdentifier();
+        $identifier = $userId !== null ? 'user:'.$userId : 'ip:'.$request->ip();
+
+        return $prefix.':'.$identifier;
     }
 }

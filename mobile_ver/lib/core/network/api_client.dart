@@ -8,12 +8,6 @@ class ApiClient {
   static const Duration _timeout = Duration(seconds: 20);
   static String get baseUrl => ApiConfig.baseUrl;
 
-  static String _buildUrl(String endpoint) {
-    final normalizedBase = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl;
-    final normalizedEndpoint = endpoint.startsWith('/') ? endpoint : '/$endpoint';
-    return '$normalizedBase$normalizedEndpoint';
-  }
-
   static Future<Map<String, String>> _getHeaders() async {
     final token = await LocalStorage.getToken();
     return {
@@ -25,13 +19,13 @@ class ApiClient {
 
   static Future<http.Response> get(String endpoint) async {
     final headers = await _getHeaders();
-    return http.get(Uri.parse(_buildUrl(endpoint)), headers: headers).timeout(_timeout);
+    return http.get(ApiConfig.endpointUri(endpoint), headers: headers).timeout(_timeout);
   }
 
   static Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
     final headers = await _getHeaders();
     return http.post(
-      Uri.parse(_buildUrl(endpoint)),
+      ApiConfig.endpointUri(endpoint),
       headers: headers,
       body: jsonEncode(body),
     ).timeout(_timeout);
@@ -40,7 +34,7 @@ class ApiClient {
   static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
     final headers = await _getHeaders();
     return http.put(
-      Uri.parse(_buildUrl(endpoint)),
+      ApiConfig.endpointUri(endpoint),
       headers: headers,
       body: jsonEncode(body),
     ).timeout(_timeout);
@@ -49,7 +43,7 @@ class ApiClient {
   static Future<http.Response> patch(String endpoint, Map<String, dynamic> body) async {
     final headers = await _getHeaders();
     return http.patch(
-      Uri.parse(_buildUrl(endpoint)),
+      ApiConfig.endpointUri(endpoint),
       headers: headers,
       body: jsonEncode(body),
     ).timeout(_timeout);
@@ -57,6 +51,6 @@ class ApiClient {
 
   static Future<http.Response> delete(String endpoint) async {
     final headers = await _getHeaders();
-    return http.delete(Uri.parse(_buildUrl(endpoint)), headers: headers).timeout(_timeout);
+    return http.delete(ApiConfig.endpointUri(endpoint), headers: headers).timeout(_timeout);
   }
 }

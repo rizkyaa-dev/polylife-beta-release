@@ -2,18 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Reminder;
+use App\Actions\Todolist\SaveTodolistAction;
+use App\Actions\Todolist\ToggleTodolistStatusAction;
+use App\Http\Requests\Todolist\StoreTodolistRequest;
+use App\Http\Requests\Todolist\ToggleTodolistStatusRequest;
+use App\Http\Requests\Todolist\UpdateTodolistRequest;
 use App\Models\Todolist;
+use App\Services\Reminder\TodolistReminderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
-use Carbon\Carbon;
 
 class TodolistController extends Controller
 {
+    public function __construct(
+        private readonly SaveTodolistAction $saveTodolistAction,
+        private readonly ToggleTodolistStatusAction $toggleTodolistStatusAction,
+        private readonly TodolistReminderService $todolistReminderService
+    ) {
+    }
+
     public function index()
     {
-        $todolists = Todolist::with('reminders')
+        $todolists = Todolist::query()
+            ->with('reminders')
             ->where('user_id', Auth::id())
             ->latest()
             ->get();
@@ -26,42 +37,15 @@ class TodolistController extends Controller
         return view('todolist.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreTodolistRequest $request)
     {
-        $validated = $request->validate([
-            'nama_item' => 'required|string|max:150',
-            'status' => 'nullable|boolean',
-            'reminder_enabled' => 'nullable|boolean',
-            'reminder_date' => [
-                Rule::requiredIf(fn () => $request->boolean('reminder_enabled')),
-                'nullable',
-                'date',
-            ],
-            'reminder_time' => [
-                Rule::requiredIf(fn () => $request->boolean('reminder_enabled')),
-                'nullable',
-                'date_format:H:i',
-            ],
-        ]);
-
-        $todolist = Todolist::create([
-            'user_id' => Auth::id(),
-            'nama_item' => $validated['nama_item'],
-            'status' => $request->boolean('status'),
-        ]);
-
-        if ($request->boolean('reminder_enabled')) {
-            $reminderDateTime = Carbon::parse(
-                $validated['reminder_date'] . ' ' . ($validated['reminder_time'] ?? '00:00')
-            );
-
-            Reminder::create([
-                'user_id' => Auth::id(),
-                'todolist_id' => $todolist->id,
-                'waktu_reminder' => $reminderDateTime,
-                'aktif' => true,
-            ]);
-        }
+        ($this->saveTodolistAction)(
+            null,
+            Auth::id(),
+            $request->validated(),
+            $request->boolean('status'),
+            $request->boolean('reminder_enabled')
+        );
 
         return redirect()->route('todolist.index')->with('success', 'Item to-do berhasil ditambahkan.');
     }
@@ -70,87 +54,31 @@ class TodolistController extends Controller
     {
         $this->authorizeAccess($todolist);
         $todolist->load('reminders');
+
         return view('todolist.edit', compact('todolist'));
     }
 
-    public function update(Request $request, Todolist $todolist)
+    public function update(UpdateTodolistRequest $request, Todolist $todolist)
     {
         $this->authorizeAccess($todolist);
-
-        $validated = $request->validate([
-            'nama_item' => 'required|string|max:150',
-            'status' => 'nullable|boolean',
-            'reminder_enabled' => 'nullable|boolean',
-            'reminder_date' => [
-                Rule::requiredIf(fn () => $request->boolean('reminder_enabled')),
-                'nullable',
-                'date',
-            ],
-            'reminder_time' => [
-                Rule::requiredIf(fn () => $request->boolean('reminder_enabled')),
-                'nullable',
-                'date_format:H:i',
-            ],
-        ]);
-
-        $status = $request->boolean('status');
-
-        $todolist->update([
-            'nama_item' => $validated['nama_item'],
-            'status' => $status,
-        ]);
-
-        $reminderEnabled = $request->boolean('reminder_enabled');
-        $existingReminder = $todolist->reminders()->first();
-
-        if ($reminderEnabled) {
-            $reminderDateTime = Carbon::parse(
-                $validated['reminder_date'] . ' ' . ($validated['reminder_time'] ?? '00:00')
-            );
-
-            if ($existingReminder) {
-                $existingReminder->update([
-                    'waktu_reminder' => $reminderDateTime,
-                    'aktif' => true,
-                ]);
-            } else {
-                Reminder::create([
-                    'user_id' => Auth::id(),
-                    'todolist_id' => $todolist->id,
-                    'waktu_reminder' => $reminderDateTime,
-                    'aktif' => true,
-                ]);
-            }
-        } elseif ($existingReminder) {
-            $existingReminder->update([
-                'aktif' => false,
-            ]);
-        }
+        ($this->saveTodolistAction)(
+            $todolist,
+            Auth::id(),
+            $request->validated(),
+            $request->boolean('status'),
+            $request->boolean('reminder_enabled')
+        );
 
         return redirect()->route('todolist.index')->with('success', 'Item to-do berhasil diperbarui.');
     }
 
-    public function toggleStatus(Request $request, Todolist $todolist)
+    public function toggleStatus(ToggleTodolistStatusRequest $request, Todolist $todolist)
     {
         $this->authorizeAccess($todolist);
-
-        $validated = $request->validate([
-            'status' => 'required|boolean',
-        ]);
-
         $newStatus = $request->boolean('status');
-
-        $todolist->update([
-            'status' => $newStatus,
-        ]);
-
-        $todolist->reminders()->update([
-            'aktif' => $newStatus ? false : true,
-        ]);
+        $todolist = ($this->toggleTodolistStatusAction)($todolist, $newStatus);
 
         $tab = $newStatus ? 'completed' : 'ongoing';
-
-        $todolist->load('reminders');
 
         if ($request->expectsJson()) {
             $metaMessage = $newStatus
@@ -160,7 +88,7 @@ class TodolistController extends Controller
             return response()->json([
                 'status' => $newStatus,
                 'tab' => $tab,
-                'badge' => $this->reminderBadge($todolist),
+                'badge' => $this->todolistReminderService->badgeFor($todolist),
                 'timestamp' => $newStatus
                     ? 'Selesai ' . ($todolist->updated_at?->diffForHumans() ?? '')
                     : 'Dibuat ' . ($todolist->created_at?->diffForHumans() ?? ''),
@@ -181,35 +109,10 @@ class TodolistController extends Controller
         return redirect()->route('todolist.index')->with('success', 'Item to-do berhasil dihapus.');
     }
 
-    private function authorizeAccess(Todolist $todolist)
+    private function authorizeAccess(Todolist $todolist): void
     {
-        if ($todolist->user_id !== Auth::id()) {
+        if ((int) $todolist->user_id !== (int) Auth::id()) {
             abort(403, 'Akses ditolak');
         }
-    }
-
-    private function reminderBadge(Todolist $todolist): array
-    {
-        $hasReminder = $todolist->reminders->isNotEmpty();
-        $hasActiveReminder = $todolist->reminders->where('aktif', true)->isNotEmpty();
-
-        if (! $hasReminder) {
-            return [
-                'text' => 'Tanpa reminder',
-                'classes' => 'bg-gray-100 text-gray-600',
-            ];
-        }
-
-        if ($hasActiveReminder) {
-            return [
-                'text' => 'Reminder aktif',
-                'classes' => 'bg-indigo-50 text-indigo-700',
-            ];
-        }
-
-        return [
-            'text' => 'Reminder nonaktif',
-            'classes' => 'bg-amber-50 text-amber-700',
-        ];
     }
 }

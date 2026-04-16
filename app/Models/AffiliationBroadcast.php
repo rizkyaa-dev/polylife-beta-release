@@ -103,19 +103,37 @@ class AffiliationBroadcast extends Model
 
     public function getImageUrlAttribute(): ?string
     {
+        $path = $this->normalizedImageStoragePath();
+        if ($path === null) {
+            return null;
+        }
+
+        if (Str::startsWith($path, ['http://', 'https://', '/media/'])) {
+            return $path;
+        }
+
+        return route('broadcast-images.show', ['path' => $path], false);
+    }
+
+    private function normalizedImageStoragePath(): ?string
+    {
         $path = trim((string) ($this->image_path ?? ''));
         if ($path === '') {
             return null;
         }
 
-        if (Str::startsWith($path, ['http://', 'https://', '/'])) {
+        if (Str::startsWith($path, ['http://', 'https://', '/media/'])) {
             return $path;
         }
 
-        if (Str::startsWith($path, 'storage/')) {
-            return '/'.$path;
+        if (Str::startsWith($path, '/storage/')) {
+            $path = Str::after($path, '/storage/');
+        } elseif (Str::startsWith($path, 'storage/')) {
+            $path = Str::after($path, 'storage/');
+        } else {
+            $path = ltrim($path, '/');
         }
 
-        return '/storage/'.$path;
+        return $path === '' ? null : $path;
     }
 }

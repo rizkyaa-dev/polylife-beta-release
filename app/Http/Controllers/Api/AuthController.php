@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\Api\LoginRequest;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
@@ -21,13 +22,9 @@ class AuthController extends Controller
     private const MAX_DEVICE_NAME_LENGTH = 120;
     private const MOBILE_API_TOKEN_TTL_DAYS = 30;
 
-    public function login(Request $request): JsonResponse
+    public function login(LoginRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required', 'string'],
-            'device_name' => ['nullable', 'string', 'max:'.self::MAX_DEVICE_NAME_LENGTH],
-        ]);
+        $validated = $request->validated();
 
         $email = strtolower(trim((string) $validated['email']));
         $password = (string) $validated['password'];

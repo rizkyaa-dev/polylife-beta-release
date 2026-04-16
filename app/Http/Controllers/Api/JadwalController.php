@@ -3,7 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\StoreJadwalRequest;
+use App\Http\Requests\Api\UpdateJadwalRequest;
+use App\Http\Resources\Api\JadwalResource;
 use App\Models\Jadwal;
+use App\Services\Jadwal\KuliahScheduleService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +15,11 @@ use Illuminate\Http\Request;
 
 class JadwalController extends Controller
 {
+    public function __construct(
+        private readonly KuliahScheduleService $kuliahScheduleService
+    ) {
+    }
+
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -33,11 +42,12 @@ class JadwalController extends Controller
         }
 
         $paginator = $query->paginate($perPage);
+        $items = collect($paginator->items());
+
+        $this->appendMatkulDetails($items, $user->id);
 
         return response()->json([
-            'data' => collect($paginator->items())
-                ->map(fn (Jadwal $jadwal) => $this->jadwalPayload($jadwal))
-                ->all(),
+            'data' => JadwalResource::collection($items)->resolve(),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -51,17 +61,9 @@ class JadwalController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreJadwalRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:180'],
-            'type' => ['required', 'string', 'in:kuliah,tugas,ujian,rapat,personal'],
-            'start_at' => ['required', 'date'],
-            'end_at' => ['required', 'date', 'after:start_at'],
-            'location' => ['nullable', 'string', 'max:180'],
-            'notes' => ['nullable', 'string'],
-            'completed' => ['nullable', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         $startAt = Carbon::parse((string) $validated['start_at']);
         $endAt = Carbon::parse((string) $validated['end_at']);
@@ -81,34 +83,28 @@ class JadwalController extends Controller
             'is_completed' => (bool) ($validated['completed'] ?? false),
         ]);
 
+        $this->appendMatkulDetails([$jadwal], $request->user()->id);
+
         return response()->json([
             'message' => 'Jadwal berhasil ditambahkan.',
-            'data' => $this->jadwalPayload($jadwal),
+            'data' => (new JadwalResource($jadwal))->resolve(),
         ], 201);
     }
 
     public function show(Request $request, int $jadwal): JsonResponse
     {
         $item = $this->findOwnedJadwalOrFail($request, $jadwal);
+        $this->appendMatkulDetails([$item], $request->user()->id);
 
         return response()->json([
-            'data' => $this->jadwalPayload($item),
+            'data' => (new JadwalResource($item))->resolve(),
         ]);
     }
 
-    public function update(Request $request, int $jadwal): JsonResponse
+    public function update(UpdateJadwalRequest $request, int $jadwal): JsonResponse
     {
         $item = $this->findOwnedJadwalOrFail($request, $jadwal);
-
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:180'],
-            'type' => ['required', 'string', 'in:kuliah,tugas,ujian,rapat,personal'],
-            'start_at' => ['required', 'date'],
-            'end_at' => ['required', 'date', 'after:start_at'],
-            'location' => ['nullable', 'string', 'max:180'],
-            'notes' => ['nullable', 'string'],
-            'completed' => ['nullable', 'boolean'],
-        ]);
+        $validated = $request->validated();
 
         $startAt = Carbon::parse((string) $validated['start_at']);
         $endAt = Carbon::parse((string) $validated['end_at']);
@@ -125,9 +121,12 @@ class JadwalController extends Controller
             'is_completed' => (bool) ($validated['completed'] ?? false),
         ]);
 
+        $freshItem = $item->fresh();
+        $this->appendMatkulDetails([$freshItem], $request->user()->id);
+
         return response()->json([
             'message' => 'Jadwal berhasil diperbarui.',
-            'data' => $this->jadwalPayload($item->fresh()),
+            'data' => (new JadwalResource($freshItem))->resolve(),
         ]);
     }
 
@@ -168,6 +167,7 @@ class JadwalController extends Controller
     private function normalizeNullableText(mixed $value): ?string
     {
         $text = trim((string) ($value ?? ''));
+
         return $text === '' ? null : $text;
     }
 
@@ -182,68 +182,8 @@ class JadwalController extends Controller
         };
     }
 
-    private function jenisToType(?string $jenis): string
+    private function appendMatkulDetails(iterable $jadwals, int $userId): void
     {
-        $value = strtolower(trim((string) $jenis));
-
-        return match ($value) {
-            'kuliah' => 'kuliah',
-            'tugas', 'deadline' => 'tugas',
-            'ujian', 'uts', 'uas' => 'ujian',
-            'rapat', 'meeting', 'organisasi' => 'rapat',
-            default => 'personal',
-        };
-    }
-
-    private function defaultTitleFromJenis(?string $jenis): string
-    {
-        return match ($this->jenisToType($jenis)) {
-            'kuliah' => 'Agenda Kuliah',
-            'tugas' => 'Agenda Tugas',
-            'ujian' => 'Agenda Ujian',
-            'rapat' => 'Agenda Rapat',
-            default => 'Agenda Personal',
-        };
-    }
-
-    private function jadwalPayload(Jadwal $jadwal): array
-    {
-        $startDate = optional($jadwal->tanggal_mulai)->toDateString() ?? (string) $jadwal->tanggal_mulai;
-        $endDate = optional($jadwal->tanggal_selesai)->toDateString() ?? (string) $jadwal->tanggal_selesai;
-
-        $startTime = trim((string) ($jadwal->start_time ?? ''));
-        if ($startTime === '') {
-            $startTime = '08:00:00';
-        }
-
-        $endTime = trim((string) ($jadwal->end_time ?? ''));
-        if ($endTime === '') {
-            $endTime = '09:00:00';
-        }
-
-        $startAt = Carbon::parse($startDate . ' ' . $startTime);
-        $endAt = Carbon::parse($endDate . ' ' . $endTime);
-        if ($endAt->lessThanOrEqualTo($startAt)) {
-            $endAt = $startAt->copy()->addHour();
-        }
-
-        $title = trim((string) ($jadwal->title ?? ''));
-        if ($title === '') {
-            $title = $this->defaultTitleFromJenis($jadwal->jenis);
-        }
-
-        return [
-            'id' => (int) $jadwal->id,
-            'title' => $title,
-            'type' => $this->jenisToType($jadwal->jenis),
-            'start_at' => $startAt->toIso8601String(),
-            'end_at' => $endAt->toIso8601String(),
-            'location' => (string) ($jadwal->location ?? ''),
-            'notes' => (string) ($jadwal->catatan_tambahan ?? ''),
-            'completed' => (bool) ($jadwal->is_completed ?? false),
-            'source_jenis' => (string) ($jadwal->jenis ?? ''),
-            'created_at' => optional($jadwal->created_at)->toIso8601String(),
-            'updated_at' => optional($jadwal->updated_at)->toIso8601String(),
-        ];
+        $this->kuliahScheduleService->appendMatkulDetailsForUser($jadwals, $userId);
     }
 }

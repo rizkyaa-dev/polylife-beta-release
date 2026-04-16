@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/catatan/models/catatan_model.dart';
 import 'package:mobile_ver/features/catatan/providers/catatan_provider.dart';
 import 'package:mobile_ver/features/catatan/views/catatan_form_screen.dart';
-import 'package:mobile_ver/features/catatan/widgets/catatan_empty_state.dart';
-import 'package:mobile_ver/features/catatan/widgets/catatan_header_card.dart';
-import 'package:mobile_ver/features/catatan/widgets/catatan_note_card.dart';
-import 'package:mobile_ver/features/catatan/widgets/catatan_success_banner.dart';
 
 class CatatanListScreen extends ConsumerStatefulWidget {
   const CatatanListScreen({super.key});
@@ -21,66 +21,94 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(userProvider);
     final catatanAsyncValue = ref.watch(catatanProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Catatan'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => ref.read(catatanProvider.notifier).fetchCatatan(showLoader: false),
-          ),
-        ],
-      ),
-      body: catatanAsyncValue.when(
-        data: (rows) {
-          final activeNotes = rows.where((item) => !item.statusSampah).toList()
-            ..sort((a, b) => b.tanggalAsDate.compareTo(a.tanggalAsDate));
-          final trashNotes = rows.where((item) => item.statusSampah).toList()
-            ..sort((a, b) => b.tanggalAsDate.compareTo(a.tanggalAsDate));
+      backgroundColor: const Color(0xFFF5F4FA),
+      body: SafeArea(
+        child: catatanAsyncValue.when(
+          data: (rows) {
+            final activeNotes = rows.where((item) => !item.statusSampah).toList()
+              ..sort((a, b) => b.tanggalAsDate.compareTo(a.tanggalAsDate));
+            final trashNotes = rows.where((item) => item.statusSampah).toList()
+              ..sort((a, b) => b.tanggalAsDate.compareTo(a.tanggalAsDate));
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              await ref.read(catatanProvider.notifier).fetchCatatan(showLoader: false);
-            },
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
-              children: [
-                if (_successMessage != null) ...[
-                  CatatanSuccessBanner(
-                    message: _successMessage!,
-                    onClose: () => setState(() => _successMessage = null),
+            return RefreshIndicator(
+              color: const Color(0xFF4B3FF2),
+              onRefresh: () async {
+                await ref.read(catatanProvider.notifier).fetchCatatan(showLoader: false);
+              },
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+                children: [
+                  _TopBar(
+                    userName: user?.name ?? 'Pengguna',
+                    onOpenNotifications: () => context.go('/pengumuman'),
                   ),
-                  const SizedBox(height: 12),
-                ],
-                CatatanHeaderCard(
-                  trashCount: trashNotes.length,
-                  onCreate: _openCreateForm,
-                  onOpenTrash: () => _openTrashSheet(trashNotes),
-                ),
-                const SizedBox(height: 12),
-                if (activeNotes.isEmpty)
-                  const CatatanEmptyState()
-                else
-                  ...activeNotes.map(
-                    (item) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: CatatanNoteCard(
-                        item: item,
-                        onEdit: () => _openEditForm(item),
-                        onDelete: () => _confirmMoveToTrash(item),
-                      ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Catatan',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF2A233A),
                     ),
                   ),
-              ],
-            ),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Text('Error: $err'),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _OutlineActionButton(
+                          label: 'Sampah (${trashNotes.length})',
+                          icon: Icons.delete_outline_rounded,
+                          onTap: () => _openTrashSheet(trashNotes),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _PrimaryActionButton(
+                          label: 'Catatan Baru',
+                          icon: Icons.add_rounded,
+                          onTap: _openCreateForm,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (_successMessage != null) ...[
+                    const SizedBox(height: 14),
+                    _SuccessBanner(
+                      message: _successMessage!,
+                      onClose: () => setState(() => _successMessage = null),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  if (activeNotes.isEmpty)
+                    const _CatatanEmptyStateCard()
+                  else
+                    Column(
+                      children: [
+                        for (var i = 0; i < activeNotes.length; i++) ...[
+                          _CatatanFeedCard(
+                            item: activeNotes[i],
+                            onTap: () => _openEditForm(activeNotes[i]),
+                            onLongPress: () => _openNoteActions(activeNotes[i]),
+                          ),
+                          if (i != activeNotes.length - 1)
+                            const SizedBox(height: 14),
+                        ],
+                      ],
+                    ),
+                ],
+              ),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => _ErrorState(
+            message: 'Gagal memuat catatan.',
+            onRetry: () => ref.read(catatanProvider.notifier).fetchCatatan(),
+          ),
         ),
       ),
     );
@@ -92,7 +120,9 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
         builder: (_) => const CatatanFormScreen(),
       ),
     );
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (result == CatatanFormResult.created) {
       setState(() {
@@ -102,18 +132,102 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
   }
 
   Future<void> _openEditForm(Catatan catatan) async {
+    Catatan target = catatan;
+
+    if (!catatan.hasFullIsi) {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final detail = await ref.read(catatanProvider.notifier).fetchCatatanDetail(catatan.id);
+
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (detail == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gagal memuat isi penuh catatan.')),
+          );
+        }
+        return;
+      }
+
+      target = detail;
+    }
+
+    if (!mounted) {
+      return;
+    }
+
     final result = await Navigator.of(context).push<CatatanFormResult>(
       MaterialPageRoute(
-        builder: (_) => CatatanFormScreen(catatan: catatan),
+        builder: (_) => CatatanFormScreen(catatan: target),
       ),
     );
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (result == CatatanFormResult.updated) {
       setState(() {
         _successMessage = 'Catatan berhasil diperbarui.';
       });
     }
+  }
+
+  Future<void> _openNoteActions(Catatan catatan) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1D5DB),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 10),
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Edit catatan'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _openEditForm(catatan);
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Color(0xFFE25555),
+                ),
+                title: const Text(
+                  'Pindahkan ke sampah',
+                  style: TextStyle(color: Color(0xFFE25555)),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _confirmMoveToTrash(catatan);
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _confirmMoveToTrash(Catatan catatan) async {
@@ -137,10 +251,15 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
       },
     );
 
-    if (move != true || !mounted) return;
+    if (move != true || !mounted) {
+      return;
+    }
 
     final success = await ref.read(catatanProvider.notifier).deleteCatatan(catatan.id);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+
     if (success) {
       setState(() {
         _successMessage = 'Catatan dipindahkan ke sampah.';
@@ -158,73 +277,120 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
-                    const Text(
+                    Text(
                       'Sampah Catatan',
-                      style: TextStyle(
-                        color: Color(0xFF0F172A),
-                        fontWeight: FontWeight.w800,
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF231D34),
                       ),
                     ),
                     const Spacer(),
                     Text(
                       '${trashNotes.length} item',
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontWeight: FontWeight.w600,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFF7B8197),
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 if (trashNotes.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Text(
                       'Belum ada catatan di sampah.',
-                      style: TextStyle(color: Color(0xFF64748B)),
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFF64748B),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   )
                 else
                   SizedBox(
-                    height: MediaQuery.of(ctx).size.height * 0.5,
+                    height: MediaQuery.of(ctx).size.height * 0.56,
                     child: ListView.separated(
-                      shrinkWrap: true,
                       itemCount: trashNotes.length,
-                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
                       itemBuilder: (context, index) {
                         final item = trashNotes[index];
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(item.judul),
-                          subtitle: Text(
-                            item.isi.trim().isEmpty ? '(Tanpa isi)' : item.isi,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        final tone = _resolveCatatanTone(item);
+
+                        return Container(
+                          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: const Color(0xFFE7EAF4)),
                           ),
-                          trailing: Wrap(
-                            spacing: 4,
+                          child: Row(
                             children: [
-                              IconButton(
-                                tooltip: 'Pulihkan',
-                                onPressed: () => _restoreFromTrash(item),
-                                icon: const Icon(Icons.restore_rounded),
+                              Container(
+                                width: 4,
+                                height: 58,
+                                decoration: BoxDecoration(
+                                  color: tone.accentColor,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
                               ),
-                              IconButton(
-                                tooltip: 'Hapus permanen',
-                                onPressed: () => _forceDelete(item),
-                                icon: const Icon(Icons.delete_forever_rounded, color: Color(0xFFDC2626)),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.judul,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                        color: const Color(0xFF201B31),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      item.listPreview.isEmpty ? '(Tanpa isi)' : item.listPreview,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF7B8197),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Pulihkan',
+                                    onPressed: () => _restoreFromTrash(item),
+                                    icon: const Icon(Icons.restore_rounded),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Hapus permanen',
+                                    onPressed: () => _forceDelete(item),
+                                    icon: const Icon(
+                                      Icons.delete_forever_rounded,
+                                      color: Color(0xFFDC2626),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -242,7 +408,10 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
 
   Future<void> _restoreFromTrash(Catatan item) async {
     final success = await ref.read(catatanProvider.notifier).restoreCatatan(item.id);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+
     if (success) {
       Navigator.of(context).pop();
       setState(() {
@@ -258,7 +427,10 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
 
   Future<void> _forceDelete(Catatan item) async {
     final success = await ref.read(catatanProvider.notifier).forceDeleteCatatan(item.id);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
+
     if (success) {
       Navigator.of(context).pop();
       setState(() {
@@ -271,4 +443,591 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
       const SnackBar(content: Text('Gagal menghapus catatan.')),
     );
   }
+}
+
+class _TopBar extends StatelessWidget {
+  final String userName;
+  final VoidCallback onOpenNotifications;
+
+  const _TopBar({
+    required this.userName,
+    required this.onOpenNotifications,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          height: 46,
+          width: 46,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+            gradient: const LinearGradient(
+              colors: [Color(0xFFE3E8FF), Color(0xFFB9C6FF)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x140F172A),
+                blurRadius: 14,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              _initialsFromName(userName),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: const Color(0xFF3440C8),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            userName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF3542D4),
+            ),
+          ),
+        ),
+        _IconCapsuleButton(
+          icon: Icons.notifications_none_rounded,
+          showDot: true,
+          onTap: onOpenNotifications,
+        ),
+      ],
+    );
+  }
+}
+
+class _CatatanFeedCard extends StatelessWidget {
+  final Catatan item;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+
+  const _CatatanFeedCard({
+    required this.item,
+    required this.onTap,
+    required this.onLongPress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = _resolveCatatanTone(item);
+    final preview = item.listPreview.isEmpty ? 'Catatan tanpa isi.' : item.listPreview;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onLongPress,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x100F172A),
+                blurRadius: 14,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 5,
+                  decoration: BoxDecoration(
+                    color: tone.accentColor,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            item.judul,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF201B31),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: tone.badgeBackground,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            tone.label,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: tone.badgeForeground,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      preview,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13.5,
+                        height: 1.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF6D748E),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 15,
+                          color: Color(0xFFA0A5B8),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _catatanTimeLabel(item),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFFA0A5B8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PrimaryActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _PrimaryActionButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: onTap,
+      style: FilledButton.styleFrom(
+        backgroundColor: const Color(0xFF4E44F2),
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(999),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        elevation: 0,
+      ),
+      icon: Icon(icon, size: 18),
+      label: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _OutlineActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _OutlineActionButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF5A50E8),
+        side: const BorderSide(color: Color(0xFFD9D6F9)),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(999),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      ),
+      icon: Icon(icon, size: 18),
+      label: Text(
+        label,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _SuccessBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onClose;
+
+  const _SuccessBanner({
+    required this.message,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFB7E7CB)),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.check_circle_rounded,
+            color: Color(0xFF16A34A),
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.plusJakartaSans(
+                color: const Color(0xFF166534),
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(Icons.close_rounded, size: 18),
+            color: const Color(0xFF166534),
+            visualDensity: VisualDensity.compact,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CatatanEmptyStateCard extends StatelessWidget {
+  const _CatatanEmptyStateCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x100F172A),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Belum ada catatan aktif.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF201B31),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tambahkan catatan baru untuk menyimpan ide, materi, atau daftar belanja harianmu.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12.5,
+              height: 1.45,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF8D91A5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF4B5563),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: onRetry,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF4E44F2),
+              ),
+              child: const Text('Coba Lagi'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _IconCapsuleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool showDot;
+
+  const _IconCapsuleButton({
+    required this.icon,
+    required this.onTap,
+    this.showDot = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: SizedBox(
+          height: 40,
+          width: 40,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Center(
+                child: Icon(icon, color: const Color(0xFF202033), size: 22),
+              ),
+              if (showDot)
+                Positioned(
+                  top: 9,
+                  right: 10,
+                  child: Container(
+                    height: 8,
+                    width: 8,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF4D4F),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CatatanTone {
+  final String label;
+  final Color accentColor;
+  final Color badgeBackground;
+  final Color badgeForeground;
+
+  const _CatatanTone({
+    required this.label,
+    required this.accentColor,
+    required this.badgeBackground,
+    required this.badgeForeground,
+  });
+}
+
+_CatatanTone _resolveCatatanTone(Catatan item) {
+  final text = '${item.judul} ${item.listPreview}'.toLowerCase();
+
+  if (_containsAny(text, [
+    'belanja',
+    'uang',
+    'budget',
+    'makan',
+    'tagihan',
+    'beli',
+  ])) {
+    return const _CatatanTone(
+      label: 'BELANJA',
+      accentColor: Color(0xFF5A50E8),
+      badgeBackground: Color(0xFFF0EEFF),
+      badgeForeground: Color(0xFF5A50E8),
+    );
+  }
+
+  if (_containsAny(text, [
+    'kuliah',
+    'materi',
+    'kelas',
+    'dosen',
+    'tugas',
+    'uts',
+    'uas',
+    'praktikum',
+  ])) {
+    return const _CatatanTone(
+      label: 'KULIAH',
+      accentColor: Color(0xFFFF8A2A),
+      badgeBackground: Color(0xFFFFF1E5),
+      badgeForeground: Color(0xFFD46F18),
+    );
+  }
+
+  if (_containsAny(text, [
+    'ide',
+    'proyek',
+    'project',
+    'konsep',
+    'startup',
+    'riset',
+  ])) {
+    return const _CatatanTone(
+      label: 'IDE',
+      accentColor: Color(0xFFC15EFF),
+      badgeBackground: Color(0xFFF8ECFF),
+      badgeForeground: Color(0xFFB34BEF),
+    );
+  }
+
+  return const _CatatanTone(
+    label: 'UMUM',
+    accentColor: Color(0xFFD9E4F0),
+    badgeBackground: Color(0xFFF3F6F9),
+    badgeForeground: Color(0xFF7B8794),
+  );
+}
+
+bool _containsAny(String text, List<String> keywords) {
+  return keywords.any(text.contains);
+}
+
+String _catatanTimeLabel(Catatan item) {
+  final now = DateTime.now();
+  final noteDate = item.tanggalAsDate;
+  final dayLabel = _relativeDayLabel(noteDate, now);
+  final createdAt = item.createdAt;
+
+  if (createdAt != null) {
+    return '$dayLabel, ${DateFormat('HH:mm', 'id_ID').format(createdAt)}';
+  }
+
+  return dayLabel;
+}
+
+String _relativeDayLabel(DateTime value, DateTime now) {
+  final today = DateTime(now.year, now.month, now.day);
+  final target = DateTime(value.year, value.month, value.day);
+  final difference = today.difference(target).inDays;
+
+  if (difference == 0) {
+    return 'Hari ini';
+  }
+
+  if (difference == 1) {
+    return 'Kemarin';
+  }
+
+  return DateFormat('dd MMM yyyy', 'id_ID').format(value);
+}
+
+String _initialsFromName(String name) {
+  final parts = name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .where((part) => part.isNotEmpty)
+      .toList();
+
+  if (parts.isEmpty) {
+    return 'PL';
+  }
+
+  if (parts.length == 1) {
+    final chunk = parts.first;
+    return chunk.substring(0, chunk.length >= 2 ? 2 : 1).toUpperCase();
+  }
+
+  return (parts.first[0] + parts.last[0]).toUpperCase();
 }

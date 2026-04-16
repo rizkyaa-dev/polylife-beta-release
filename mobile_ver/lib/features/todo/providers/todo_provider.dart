@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mobile_ver/core/config/app_mode.dart';
 import 'package:mobile_ver/features/todo/models/todo_item.dart';
+import 'package:mobile_ver/features/todo/repositories/api_todo_repository.dart';
 import 'package:mobile_ver/features/todo/repositories/in_memory_todo_repository.dart';
 import 'package:mobile_ver/features/todo/repositories/todo_repository.dart';
 import 'package:mobile_ver/features/todo/services/todo_progress_service.dart';
@@ -114,24 +116,39 @@ class TodoNotifier extends StateNotifier<TodoState> {
       completed: false,
     );
 
-    await _repository.create(item);
-    final rows = await _repository.fetchAll();
-    _setItems(rows);
-
-    return const TodoActionResult(success: true);
+    try {
+      await _repository.create(item);
+      final rows = await _repository.fetchAll();
+      _setItems(rows);
+      return const TodoActionResult(success: true);
+    } catch (_) {
+      state = state.copyWith(errorMessage: 'Gagal menambah tugas.');
+      return const TodoActionResult(
+        success: false,
+        message: 'Gagal menambah tugas.',
+      );
+    }
   }
 
   Future<void> toggleCompleted(TodoItem item) async {
-    final updated = item.copyWith(completed: !item.completed);
-    await _repository.update(updated);
-    final rows = await _repository.fetchAll();
-    _setItems(rows);
+    try {
+      final updated = item.copyWith(completed: !item.completed);
+      await _repository.update(updated);
+      final rows = await _repository.fetchAll();
+      _setItems(rows);
+    } catch (_) {
+      state = state.copyWith(errorMessage: 'Gagal memperbarui status tugas.');
+    }
   }
 
   Future<void> deleteTask(int id) async {
-    await _repository.delete(id);
-    final rows = await _repository.fetchAll();
-    _setItems(rows);
+    try {
+      await _repository.delete(id);
+      final rows = await _repository.fetchAll();
+      _setItems(rows);
+    } catch (_) {
+      state = state.copyWith(errorMessage: 'Gagal menghapus tugas.');
+    }
   }
 
   void toggleOngoingExpanded() {
@@ -156,5 +173,7 @@ class TodoNotifier extends StateNotifier<TodoState> {
 }
 
 final todoProvider = StateNotifierProvider<TodoNotifier, TodoState>((ref) {
-  return TodoNotifier();
+  return TodoNotifier(
+    repository: AppMode.uiOnly ? InMemoryTodoRepository() : ApiTodoRepository(),
+  );
 });

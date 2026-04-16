@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\StoreCatatanRequest;
+use App\Http\Requests\Api\UpdateCatatanRequest;
+use App\Http\Resources\Api\CatatanResource;
 use App\Models\Catatan;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
@@ -15,16 +18,16 @@ class CatatanController extends Controller
         $user = $request->user();
         $perPage = $this->resolvePerPage($request->query('per_page'));
 
-        $query = Catatan::query()
+        $paginator = Catatan::query()
+            ->selectSummary()
             ->where('user_id', $user->id)
             ->where('status_sampah', false)
             ->orderByDesc('tanggal')
-            ->orderByDesc('id');
-
-        $paginator = $query->paginate($perPage);
+            ->orderByDesc('id')
+            ->paginate($perPage);
 
         return response()->json([
-            'data' => collect($paginator->items())->map(fn (Catatan $catatan) => $this->catatanPayload($catatan))->all(),
+            'data' => CatatanResource::collection(collect($paginator->items()))->resolve(),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -44,18 +47,16 @@ class CatatanController extends Controller
 
     public function trash(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $perPage = $this->resolvePerPage($request->query('per_page'));
-
         $paginator = Catatan::query()
-            ->where('user_id', $user->id)
+            ->selectSummary()
+            ->where('user_id', $request->user()->id)
             ->where('status_sampah', true)
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate($this->resolvePerPage($request->query('per_page')));
 
         return response()->json([
-            'data' => collect($paginator->items())->map(fn (Catatan $catatan) => $this->catatanPayload($catatan))->all(),
+            'data' => CatatanResource::collection(collect($paginator->items()))->resolve(),
             'meta' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -69,25 +70,22 @@ class CatatanController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreCatatanRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'judul' => ['required', 'string', 'max:180'],
-            'isi' => ['required', 'string'],
-            'tanggal' => ['required', 'date'],
-        ]);
+        $validated = $request->validated();
 
         $catatan = Catatan::query()->create([
             'user_id' => $request->user()->id,
             'judul' => trim((string) $validated['judul']),
             'isi' => (string) $validated['isi'],
+            'preview_isi' => Catatan::makePreviewIsi((string) $validated['isi']),
             'tanggal' => $validated['tanggal'],
             'status_sampah' => false,
         ]);
 
         return response()->json([
             'message' => 'Catatan berhasil ditambahkan.',
-            'data' => $this->catatanPayload($catatan),
+            'data' => (new CatatanResource($catatan))->resolve(),
         ], 201);
     }
 
@@ -96,36 +94,31 @@ class CatatanController extends Controller
         $item = $this->findOwnedCatatanOrFail($request, $catatan);
 
         return response()->json([
-            'data' => $this->catatanPayload($item),
+            'data' => (new CatatanResource($item))->resolve(),
         ]);
     }
 
-    public function update(Request $request, int $catatan): JsonResponse
+    public function update(UpdateCatatanRequest $request, int $catatan): JsonResponse
     {
         $item = $this->findOwnedCatatanOrFail($request, $catatan);
-
-        $validated = $request->validate([
-            'judul' => ['required', 'string', 'max:180'],
-            'isi' => ['required', 'string'],
-            'tanggal' => ['required', 'date'],
-        ]);
+        $validated = $request->validated();
 
         $item->update([
             'judul' => trim((string) $validated['judul']),
             'isi' => (string) $validated['isi'],
+            'preview_isi' => Catatan::makePreviewIsi((string) $validated['isi']),
             'tanggal' => $validated['tanggal'],
         ]);
 
         return response()->json([
             'message' => 'Catatan berhasil diperbarui.',
-            'data' => $this->catatanPayload($item->fresh()),
+            'data' => (new CatatanResource($item->fresh()))->resolve(),
         ]);
     }
 
     public function destroy(Request $request, int $catatan): JsonResponse
     {
         $item = $this->findOwnedCatatanOrFail($request, $catatan);
-
         $item->update(['status_sampah' => true]);
 
         return response()->json([
@@ -136,19 +129,17 @@ class CatatanController extends Controller
     public function restore(Request $request, int $catatan): JsonResponse
     {
         $item = $this->findOwnedCatatanOrFail($request, $catatan);
-
         $item->update(['status_sampah' => false]);
 
         return response()->json([
             'message' => 'Catatan berhasil dipulihkan.',
-            'data' => $this->catatanPayload($item->fresh()),
+            'data' => (new CatatanResource($item->fresh()))->resolve(),
         ]);
     }
 
     public function forceDelete(Request $request, int $catatan): JsonResponse
     {
         $item = $this->findOwnedCatatanOrFail($request, $catatan);
-
         $item->delete();
 
         return response()->json([
@@ -178,18 +169,5 @@ class CatatanController extends Controller
         }
 
         return min($perPage, 100);
-    }
-
-    private function catatanPayload(Catatan $catatan): array
-    {
-        return [
-            'id' => (int) $catatan->id,
-            'judul' => (string) ($catatan->judul ?? ''),
-            'isi' => (string) ($catatan->isi ?? ''),
-            'tanggal' => optional($catatan->tanggal)->toDateString() ?? (string) $catatan->tanggal,
-            'status_sampah' => (bool) $catatan->status_sampah,
-            'created_at' => optional($catatan->created_at)->toIso8601String(),
-            'updated_at' => optional($catatan->updated_at)->toIso8601String(),
-        ];
     }
 }

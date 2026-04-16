@@ -2,54 +2,56 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Kegiatan;
+use App\Actions\Kegiatan\SaveKegiatanAction;
+use App\Http\Requests\Kegiatan\StoreKegiatanRequest;
+use App\Http\Requests\Kegiatan\UpdateKegiatanRequest;
 use App\Models\Jadwal;
-use App\Models\Matkul;
-use Illuminate\Http\Request;
+use App\Models\Kegiatan;
+use App\Services\Jadwal\UserJadwalReferenceService;
 use Illuminate\Support\Facades\Auth;
 
 class KegiatanController extends Controller
 {
+    public function __construct(
+        private readonly SaveKegiatanAction $saveKegiatanAction,
+        private readonly UserJadwalReferenceService $userJadwalReferenceService
+    ) {
+    }
+
     public function index()
     {
-        $userId = Auth::id();
-        $jadwals = Jadwal::where('user_id', $userId)
+        $jadwals = Jadwal::query()
+            ->where('user_id', Auth::id())
             ->with(['kegiatans' => function ($query) {
                 $query->orderBy('waktu');
             }])
             ->orderBy('tanggal_mulai')
             ->get();
-        $this->appendMatkulNames($jadwals, $userId);
+
+        $this->userJadwalReferenceService->forUser(Auth::id())
+            ->keyBy('id')
+            ->each(function ($referenceJadwal, $id) use ($jadwals) {
+                $jadwal = $jadwals->firstWhere('id', $id);
+                if ($jadwal) {
+                    $jadwal->matkul_names = $referenceJadwal->matkul_names ?? [];
+                    $jadwal->primary_matkul = $referenceJadwal->primary_matkul ?? null;
+                    $jadwal->matkul_details = $referenceJadwal->matkul_details ?? collect();
+                }
+            });
+
         return view('kegiatan.index', compact('jadwals'));
     }
 
     public function create()
     {
-        $userId = Auth::id();
-        $jadwals = Jadwal::where('user_id', $userId)
-            ->orderBy('tanggal_mulai')
-            ->get();
-        $this->appendMatkulNames($jadwals, $userId);
+        $jadwals = $this->userJadwalReferenceService->forUser(Auth::id());
+
         return view('kegiatan.create', compact('jadwals'));
     }
 
-    public function store(Request $request)
+    public function store(StoreKegiatanRequest $request)
     {
-        $validated = $request->validate([
-            'jadwal_id' => 'required|exists:jadwals,id',
-            'nama_kegiatan' => 'required|string|max:100',
-            'lokasi' => 'nullable|string|max:100',
-            'tanggal_deadline' => 'required|date',
-            'waktu' => 'required|date_format:H:i',
-            'status' => 'required|string|max:50',
-        ]);
-
-        $jadwal = Jadwal::findOrFail($validated['jadwal_id']);
-        if ($jadwal->user_id !== Auth::id()) {
-            abort(403, 'Akses ditolak');
-        }
-
-        Kegiatan::create($validated);
+        ($this->saveKegiatanAction)(null, Auth::id(), $request->validated());
 
         return redirect()->route('kegiatan.index')->with('success', 'Kegiatan berhasil ditambahkan.');
     }
@@ -57,28 +59,15 @@ class KegiatanController extends Controller
     public function edit(Kegiatan $kegiatan)
     {
         $this->authorizeAccess($kegiatan);
-        $userId = Auth::id();
-        $jadwals = Jadwal::where('user_id', $userId)
-            ->orderBy('tanggal_mulai')
-            ->get();
-        $this->appendMatkulNames($jadwals, $userId);
+        $jadwals = $this->userJadwalReferenceService->forUser(Auth::id());
+
         return view('kegiatan.edit', compact('kegiatan', 'jadwals'));
     }
 
-    public function update(Request $request, Kegiatan $kegiatan)
+    public function update(UpdateKegiatanRequest $request, Kegiatan $kegiatan)
     {
         $this->authorizeAccess($kegiatan);
-
-        $validated = $request->validate([
-            'jadwal_id' => 'required|exists:jadwals,id',
-            'nama_kegiatan' => 'required|string|max:100',
-            'lokasi' => 'nullable|string|max:100',
-            'tanggal_deadline' => 'required|date',
-            'waktu' => 'required|date_format:H:i',
-            'status' => 'required|string|max:50',
-        ]);
-
-        $kegiatan->update($validated);
+        ($this->saveKegiatanAction)($kegiatan, Auth::id(), $request->validated());
 
         return redirect()->route('kegiatan.index')->with('success', 'Kegiatan berhasil diperbarui.');
     }
@@ -91,21 +80,10 @@ class KegiatanController extends Controller
         return redirect()->route('kegiatan.index')->with('success', 'Kegiatan berhasil dihapus.');
     }
 
-    private function authorizeAccess(Kegiatan $kegiatan)
+    private function authorizeAccess(Kegiatan $kegiatan): void
     {
-        if ($kegiatan->jadwal->user_id !== Auth::id()) {
+        if ((int) $kegiatan->jadwal->user_id !== (int) Auth::id()) {
             abort(403, 'Akses ditolak');
-        }
-    }
-
-    private function appendMatkulNames($jadwals, $userId): void
-    {
-        $matkulMap = Matkul::where('user_id', $userId)->get()->keyBy('id');
-        foreach ($jadwals as $jadwal) {
-            $ids = $jadwal->matkulIds();
-            $matkulMeta = $ids->map(fn ($id) => $matkulMap->get((int) $id))->filter();
-            $jadwal->matkul_names = $matkulMeta->pluck('nama')->filter()->values()->all();
-            $jadwal->primary_matkul = $matkulMeta->first();
         }
     }
 }

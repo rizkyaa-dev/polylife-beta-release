@@ -2,15 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Tugas\FindOwnedTugasAction;
+use App\Actions\Tugas\SaveTugasAction;
+use App\Http\Requests\Tugas\StoreTugasRequest;
+use App\Http\Requests\Tugas\UpdateTugasRequest;
 use App\Models\Tugas;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class TugasController extends Controller
 {
+    public function __construct(
+        private readonly FindOwnedTugasAction $findOwnedTugasAction,
+        private readonly SaveTugasAction $saveTugasAction
+    ) {
+    }
+
     public function index()
     {
-        $tugas = Tugas::where('user_id', Auth::id())->latest()->get();
+        $tugas = Tugas::query()->where('user_id', Auth::id())->latest()->get();
+
         return view('tugas.index', compact('tugas'));
     }
 
@@ -19,57 +29,33 @@ class TugasController extends Controller
         return view('tugas.create');
     }
 
-    public function store(Request $request)
+    public function store(StoreTugasRequest $request)
     {
-        $validated = $request->validate([
-            'nama_tugas' => 'required|string|max:100',
-            'deskripsi' => 'nullable|string|max:255',
-            'deadline' => 'required|date',
-            'status_selesai' => 'boolean',
-        ]);
-
-        $validated['user_id'] = Auth::id();
-        $validated['status_selesai'] = $request->has('status_selesai');
-
-        Tugas::create($validated);
+        ($this->saveTugasAction)(null, Auth::id(), $request->validated(), $request->boolean('status_selesai'));
 
         return redirect()->route('tugas.index')->with('success', 'Tugas berhasil ditambahkan.');
     }
 
     public function edit($id)
     {
-        $tugas = $this->findTugasForUser($id);
+        $tugas = ($this->findOwnedTugasAction)(Auth::id(), $id);
+
         return view('tugas.edit', compact('tugas'));
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateTugasRequest $request, $id)
     {
-        $tugas = $this->findTugasForUser($id);
-
-        $validated = $request->validate([
-            'nama_tugas' => 'required|string|max:100',
-            'deskripsi' => 'nullable|string|max:255',
-            'deadline' => 'required|date',
-            'status_selesai' => 'boolean',
-        ]);
-
-        $validated['status_selesai'] = $request->has('status_selesai');
-
-        $tugas->update($validated);
+        $tugas = ($this->findOwnedTugasAction)(Auth::id(), $id);
+        ($this->saveTugasAction)($tugas, Auth::id(), $request->validated(), $request->boolean('status_selesai'));
 
         return redirect()->route('tugas.index')->with('success', 'Tugas berhasil diperbarui.');
     }
 
     public function destroy($id)
     {
-        $tugas = $this->findTugasForUser($id);
+        $tugas = ($this->findOwnedTugasAction)(Auth::id(), $id);
         $tugas->delete();
 
         return redirect()->route('tugas.index')->with('success', 'Tugas berhasil dihapus.');
-    }
-
-    private function findTugasForUser($id): Tugas
-    {
-        return Tugas::where('user_id', Auth::id())->findOrFail($id);
     }
 }

@@ -2,15 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\Keuangan\SaveKeuanganAction;
+use App\Http\Requests\Keuangan\StoreKeuanganRequest;
+use App\Http\Requests\Keuangan\UpdateKeuanganRequest;
 use App\Models\Keuangan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class KeuanganController extends Controller
 {
+    public function __construct(
+        private readonly SaveKeuanganAction $saveKeuanganAction
+    ) {
+    }
+
     public function index()
     {
-        $keuangans = Keuangan::where('user_id', auth()->id())
+        $keuangans = Keuangan::query()
+            ->where('user_id', Auth::id())
             ->orderByDesc('created_at')
             ->get();
 
@@ -22,24 +31,9 @@ class KeuanganController extends Controller
         return view('keuangan.create', ['jenis' => $request->jenis]);
     }
 
-    public function store(Request $request)
+    public function store(StoreKeuanganRequest $request)
     {
-        $request->validate([
-            'jenis' => 'required|in:pemasukan,pengeluaran',
-            'kategori' => 'required|string|max:255',
-            'deskripsi' => 'nullable|string',
-            'nominal' => 'required|numeric|min:0',
-            'tanggal' => 'required|date',
-        ]);
-
-        Keuangan::create([
-            'user_id' => auth()->id(),
-            'jenis' => $request->jenis,
-            'kategori' => $request->kategori,
-            'deskripsi' => $request->deskripsi,
-            'nominal' => $request->nominal,
-            'tanggal' => $request->tanggal,
-        ]);
+        ($this->saveKeuanganAction)(null, Auth::id(), $request->validated());
 
         return redirect()->route('keuangan.index')->with('success', 'Data keuangan berhasil ditambahkan.');
     }
@@ -47,22 +41,14 @@ class KeuanganController extends Controller
     public function edit(Keuangan $keuangan)
     {
         $this->authorizeAccess($keuangan);
+
         return view('keuangan.edit', compact('keuangan'));
     }
 
-    public function update(Request $request, Keuangan $keuangan)
+    public function update(UpdateKeuanganRequest $request, Keuangan $keuangan)
     {
         $this->authorizeAccess($keuangan);
-
-        $validated = $request->validate([
-            'jenis' => 'required|in:pemasukan,pengeluaran',
-            'kategori' => 'required|string|max:255',
-            'nominal' => 'required|numeric|min:0',
-            'deskripsi' => 'nullable|string|max:255',
-            'tanggal' => 'required|date',
-        ]);
-
-        $keuangan->update($validated);
+        ($this->saveKeuanganAction)($keuangan, Auth::id(), $request->validated());
 
         return redirect()->route('keuangan.index')->with('success', 'Data keuangan berhasil diperbarui.');
     }
@@ -75,11 +61,10 @@ class KeuanganController extends Controller
         return redirect()->route('keuangan.index')->with('success', 'Data keuangan berhasil dihapus.');
     }
 
-    private function authorizeAccess(Keuangan $keuangan)
+    private function authorizeAccess(Keuangan $keuangan): void
     {
-        if ($keuangan->user_id !== Auth::id()) {
+        if ((int) $keuangan->user_id !== (int) Auth::id()) {
             abort(403, 'Unauthorized action.');
         }
     }
-
 }

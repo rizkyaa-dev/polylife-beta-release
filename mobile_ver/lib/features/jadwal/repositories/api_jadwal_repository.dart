@@ -22,15 +22,16 @@ class ApiJadwalRepository implements JadwalRepository {
       return const <JadwalItem>[];
     }
 
-    final rows = rawData
-        .whereType<Map>()
-        .map((row) => _fromApiJson(Map<String, dynamic>.from(row)))
-        .toList()
-      ..sort((a, b) {
-        final byDate = a.startAt.compareTo(b.startAt);
-        if (byDate != 0) return byDate;
-        return a.id.compareTo(b.id);
-      });
+    final rows =
+        rawData
+            .whereType<Map>()
+            .map((row) => _fromApiJson(Map<String, dynamic>.from(row)))
+            .toList()
+          ..sort((a, b) {
+            final byDate = a.startAt.compareTo(b.startAt);
+            if (byDate != 0) return byDate;
+            return a.id.compareTo(b.id);
+          });
 
     return rows;
   }
@@ -57,7 +58,10 @@ class ApiJadwalRepository implements JadwalRepository {
 
   @override
   Future<JadwalItem> update(JadwalItem item) async {
-    final response = await ApiClient.put('/jadwal/${item.id}', _toApiPayload(item));
+    final response = await ApiClient.put(
+      '/jadwal/${item.id}',
+      _toApiPayload(item),
+    );
     if (response.statusCode != 200) {
       throw Exception('Failed to update jadwal');
     }
@@ -96,14 +100,47 @@ class ApiJadwalRepository implements JadwalRepository {
   }
 
   JadwalItem _fromApiJson(Map<String, dynamic> json) {
-    final startAt = DateTime.tryParse((json['start_at'] ?? '').toString()) ?? DateTime.now();
-    var endAt = DateTime.tryParse((json['end_at'] ?? '').toString()) ?? startAt.add(const Duration(hours: 1));
+    final startAt =
+        DateTime.tryParse((json['start_at'] ?? '').toString()) ??
+        DateTime.now();
+    var endAt =
+        DateTime.tryParse((json['end_at'] ?? '').toString()) ??
+        startAt.add(const Duration(hours: 1));
     if (!endAt.isAfter(startAt)) {
       endAt = startAt.add(const Duration(hours: 1));
     }
 
     final rawCompleted = json['completed'];
-    final completed = rawCompleted == true || rawCompleted == 1 || rawCompleted == '1';
+    final completed =
+        rawCompleted == true || rawCompleted == 1 || rawCompleted == '1';
+    final rawMatkulNames = json['matkul_names'];
+    final matkulNames = rawMatkulNames is List
+        ? rawMatkulNames
+              .map((value) => value.toString().trim())
+              .where((value) => value.isNotEmpty)
+              .toList()
+        : const <String>[];
+
+    JadwalMatkulPreview? primaryMatkul;
+    final rawPrimaryMatkul = json['primary_matkul'];
+    if (rawPrimaryMatkul is Map) {
+      primaryMatkul = _parseMatkulPreview(
+        Map<String, dynamic>.from(rawPrimaryMatkul),
+      );
+    }
+
+    final rawMatkulPreviews = json['matkul_previews'];
+    final matkulPreviews = rawMatkulPreviews is List
+        ? rawMatkulPreviews
+              .whereType<Map>()
+              .map((row) => _parseMatkulPreview(Map<String, dynamic>.from(row)))
+              .whereType<JadwalMatkulPreview>()
+              .toList()
+        : const <JadwalMatkulPreview>[];
+
+    if (primaryMatkul == null && matkulPreviews.isNotEmpty) {
+      primaryMatkul = matkulPreviews.first;
+    }
 
     return JadwalItem(
       id: int.tryParse((json['id'] ?? '').toString()) ?? 0,
@@ -114,6 +151,9 @@ class ApiJadwalRepository implements JadwalRepository {
       location: (json['location'] ?? '').toString(),
       notes: (json['notes'] ?? '').toString(),
       completed: completed,
+      matkulNames: matkulNames,
+      primaryMatkul: primaryMatkul,
+      matkulPreviews: matkulPreviews,
     );
   }
 
@@ -145,5 +185,50 @@ class ApiJadwalRepository implements JadwalRepository {
       default:
         return JadwalType.personal;
     }
+  }
+
+  String? _nullableText(Object? value) {
+    final text = (value ?? '').toString().trim();
+    return text.isEmpty ? null : text;
+  }
+
+  JadwalMatkulPreview? _parseMatkulPreview(Map<String, dynamic> mapped) {
+    final name = (mapped['nama'] ?? '').toString().trim();
+    if (name.isEmpty) {
+      return null;
+    }
+
+    final rawScheduleDays = mapped['schedule_days'];
+    final scheduleDays = rawScheduleDays is List
+        ? rawScheduleDays
+              .map((value) => value.toString().trim().toLowerCase())
+              .where((value) => value.isNotEmpty)
+              .toList()
+        : const <String>[];
+
+    final rawScheduleEntries = mapped['schedule_entries'];
+    final scheduleEntries = rawScheduleEntries is List
+        ? rawScheduleEntries.whereType<Map>().map((row) {
+            final entry = Map<String, dynamic>.from(row);
+            return JadwalMatkulScheduleEntry(
+              hari: _nullableText(entry['hari']),
+              jamMulai: _nullableText(entry['jam_mulai']),
+              jamSelesai: _nullableText(entry['jam_selesai']),
+              ruangan: _nullableText(entry['ruangan']),
+              kelas: _nullableText(entry['kelas']),
+            );
+          }).toList()
+        : const <JadwalMatkulScheduleEntry>[];
+
+    return JadwalMatkulPreview(
+      id: int.tryParse((mapped['id'] ?? '').toString()),
+      name: name,
+      kelas: _nullableText(mapped['kelas']),
+      ruangan: _nullableText(mapped['ruangan']),
+      timeLabel: _nullableText(mapped['time_label']),
+      warnaLabel: _nullableText(mapped['warna_label']),
+      scheduleDays: scheduleDays,
+      scheduleEntries: scheduleEntries,
+    );
   }
 }

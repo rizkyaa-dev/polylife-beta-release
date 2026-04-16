@@ -3,34 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\AffiliationBroadcast;
+use App\Queries\Broadcast\VisiblePengumumanQuery;
 use Illuminate\Http\Request;
 
 class PengumumanController extends Controller
 {
+    public function __construct(
+        private readonly VisiblePengumumanQuery $visiblePengumumanQuery
+    ) {
+    }
+
     public function index(Request $request)
     {
-        $user = $request->user();
         $search = trim((string) $request->query('q', ''));
-
-        $broadcastsQuery = AffiliationBroadcast::query()
-            ->with(['creator:id,name,email', 'targets'])
-            ->visibleToUser($user);
-
-        if ($search !== '') {
-            $broadcastsQuery->where(function ($query) use ($search): void {
-                $query->where('title', 'like', '%'.$search.'%')
-                    ->orWhere('body', 'like', '%'.$search.'%')
-                    ->orWhereHas('creator', function ($creatorQuery) use ($search): void {
-                        $creatorQuery->where('name', 'like', '%'.$search.'%');
-                    });
-            });
-        }
-
-        $broadcasts = $broadcastsQuery
-            ->latest('published_at')
-            ->latest('id')
-            ->paginate(12)
-            ->withQueryString();
+        $broadcasts = $this->visiblePengumumanQuery->paginateForUser($request->user(), $search, 12);
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
@@ -53,30 +39,15 @@ class PengumumanController extends Controller
 
     public function show(Request $request, AffiliationBroadcast $broadcast)
     {
-        $user = $request->user();
+        $item = $this->visiblePengumumanQuery->findVisibleForUser($request->user(), (int) $broadcast->id);
 
-        $isVisible = AffiliationBroadcast::query()
-            ->whereKey($broadcast->id)
-            ->visibleToUser($user)
-            ->exists();
-
-        if (! $isVisible) {
+        if (! $item) {
             abort(404);
         }
 
-        $broadcast->load(['creator:id,name,email', 'targets']);
-
-        $relatedBroadcasts = AffiliationBroadcast::query()
-            ->visibleToUser($user)
-            ->where('id', '!=', $broadcast->id)
-            ->latest('published_at')
-            ->latest('id')
-            ->limit(4)
-            ->get(['id', 'title', 'published_at']);
-
         return view('pengumuman.show', [
-            'broadcast' => $broadcast,
-            'relatedBroadcasts' => $relatedBroadcasts,
+            'broadcast' => $item,
+            'relatedBroadcasts' => $this->visiblePengumumanQuery->relatedForUser($request->user(), (int) $item->id),
         ]);
     }
 }

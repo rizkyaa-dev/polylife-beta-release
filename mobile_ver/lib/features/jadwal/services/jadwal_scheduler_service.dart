@@ -19,6 +19,12 @@ class JadwalSchedulerService {
     return DateTime(value.year, value.month, value.day);
   }
 
+  bool isWeekendDate(DateTime value) {
+    final normalized = normalizeDate(value);
+    return normalized.weekday == DateTime.saturday ||
+        normalized.weekday == DateTime.sunday;
+  }
+
   List<DateTime> buildMonthGrid(DateTime monthAnchor) {
     final firstDay = DateTime(monthAnchor.year, monthAnchor.month, 1);
     // Monday-based grid: Monday=1 ... Sunday=7
@@ -38,6 +44,7 @@ class JadwalSchedulerService {
   }) {
     final dayStart = normalizeDate(date);
     final dayEnd = dayStart.add(const Duration(days: 1));
+    final isWeekend = isWeekendDate(dayStart);
 
     final rows =
         allItems
@@ -45,6 +52,7 @@ class JadwalSchedulerService {
               (item) =>
                   item.startAt.isBefore(dayEnd) && item.endAt.isAfter(dayStart),
             )
+            .where((item) => !isWeekend || item.type != JadwalType.kuliah)
             .toList()
           ..sort((a, b) {
             final byStart = a.startAt.compareTo(b.startAt);
@@ -114,13 +122,6 @@ class JadwalSchedulerService {
     required List<JadwalItem> allItems,
     required DateTime date,
   }) {
-    final dayStart = normalizeDate(date);
-    final dayEnd = dayStart.add(const Duration(days: 1));
-    return allItems
-        .where(
-          (item) =>
-              item.startAt.isBefore(dayEnd) && item.endAt.isAfter(dayStart),
-        )
-        .length;
+    return itemsForDate(allItems: allItems, date: date).length;
   }
 }

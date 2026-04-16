@@ -25,7 +25,7 @@ class _CatatanNoteCardState extends State<CatatanNoteCard> {
   @override
   Widget build(BuildContext context) {
     final dateLabel = DateFormat('dd MMM yyyy', 'id_ID').format(widget.item.tanggalAsDate);
-    final content = widget.item.isi.trim().isEmpty ? '(Tanpa isi)' : widget.item.isi.trim();
+    final content = widget.item.listPreview.isEmpty ? '(Tanpa isi)' : widget.item.listPreview;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),

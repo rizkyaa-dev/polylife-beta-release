@@ -5,34 +5,42 @@ use App\Http\Controllers\Api\CatatanController;
 use App\Http\Controllers\Api\JadwalController;
 use App\Http\Controllers\Api\KeuanganController;
 use App\Http\Controllers\Api\PengumumanController;
+use App\Http\Controllers\Api\ReminderController;
+use App\Http\Controllers\Api\TodolistController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->group(function () {
+$userWriteMiddleware = ['throttle:api-write', 'prevent-duplicate-write'];
+
+Route::prefix('v1')->group(function () use ($userWriteMiddleware) {
     Route::post('auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:10,1')
         ->name('api.v1.auth.login');
 
-    Route::middleware(['auth:sanctum', 'api-active', 'abilities:'.AuthController::MOBILE_API_ABILITY])->group(function () {
+    Route::middleware(['auth:sanctum', 'api-active', 'abilities:'.AuthController::MOBILE_API_ABILITY])->group(function () use ($userWriteMiddleware) {
         Route::get('auth/me', [AuthController::class, 'me'])->name('api.v1.auth.me');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('api.v1.auth.logout');
         Route::post('auth/logout-all', [AuthController::class, 'logoutAll'])->name('api.v1.auth.logout-all');
 
         Route::get('catatan', [CatatanController::class, 'index'])->name('api.v1.catatan.index');
-        Route::post('catatan', [CatatanController::class, 'store'])->name('api.v1.catatan.store');
+        Route::post('catatan', [CatatanController::class, 'store'])->middleware($userWriteMiddleware)->name('api.v1.catatan.store');
         Route::get('catatan/trash', [CatatanController::class, 'trash'])->name('api.v1.catatan.trash');
         Route::get('catatan/{catatan}', [CatatanController::class, 'show'])
             ->whereNumber('catatan')
             ->name('api.v1.catatan.show');
         Route::match(['put', 'patch'], 'catatan/{catatan}', [CatatanController::class, 'update'])
+            ->middleware($userWriteMiddleware)
             ->whereNumber('catatan')
             ->name('api.v1.catatan.update');
         Route::delete('catatan/{catatan}', [CatatanController::class, 'destroy'])
+            ->middleware($userWriteMiddleware)
             ->whereNumber('catatan')
             ->name('api.v1.catatan.destroy');
         Route::patch('catatan/{catatan}/restore', [CatatanController::class, 'restore'])
+            ->middleware($userWriteMiddleware)
             ->whereNumber('catatan')
             ->name('api.v1.catatan.restore');
         Route::delete('catatan/{catatan}/force-delete', [CatatanController::class, 'forceDelete'])
+            ->middleware($userWriteMiddleware)
             ->whereNumber('catatan')
             ->name('api.v1.catatan.force-delete');
 
@@ -40,28 +48,51 @@ Route::prefix('v1')->group(function () {
         Route::get('pengumuman/{broadcast}', [PengumumanController::class, 'show'])
             ->whereNumber('broadcast')
             ->name('api.v1.pengumuman.show');
+        Route::get('reminder', [ReminderController::class, 'index'])->name('api.v1.reminder.index');
+        Route::get('reminder/options', [ReminderController::class, 'options'])->name('api.v1.reminder.options');
+        Route::get('reminder/next', [ReminderController::class, 'next'])->name('api.v1.reminder.next');
+        Route::post('reminder', [ReminderController::class, 'store'])->middleware($userWriteMiddleware)->name('api.v1.reminder.store');
+        Route::delete('reminder/{reminder}', [ReminderController::class, 'destroy'])
+            ->middleware($userWriteMiddleware)
+            ->whereNumber('reminder')
+            ->name('api.v1.reminder.destroy');
+
+        Route::get('todolist', [TodolistController::class, 'index'])->name('api.v1.todolist.index');
+        Route::post('todolist', [TodolistController::class, 'store'])->middleware($userWriteMiddleware)->name('api.v1.todolist.store');
+        Route::match(['put', 'patch'], 'todolist/{todolist}', [TodolistController::class, 'update'])
+            ->middleware($userWriteMiddleware)
+            ->whereNumber('todolist')
+            ->name('api.v1.todolist.update');
+        Route::delete('todolist/{todolist}', [TodolistController::class, 'destroy'])
+            ->middleware($userWriteMiddleware)
+            ->whereNumber('todolist')
+            ->name('api.v1.todolist.destroy');
 
         Route::get('keuangan', [KeuanganController::class, 'index'])->name('api.v1.keuangan.index');
-        Route::post('keuangan', [KeuanganController::class, 'store'])->name('api.v1.keuangan.store');
+        Route::post('keuangan', [KeuanganController::class, 'store'])->middleware($userWriteMiddleware)->name('api.v1.keuangan.store');
         Route::get('keuangan/{keuangan}', [KeuanganController::class, 'show'])
             ->whereNumber('keuangan')
             ->name('api.v1.keuangan.show');
         Route::match(['put', 'patch'], 'keuangan/{keuangan}', [KeuanganController::class, 'update'])
+            ->middleware($userWriteMiddleware)
             ->whereNumber('keuangan')
             ->name('api.v1.keuangan.update');
         Route::delete('keuangan/{keuangan}', [KeuanganController::class, 'destroy'])
+            ->middleware($userWriteMiddleware)
             ->whereNumber('keuangan')
             ->name('api.v1.keuangan.destroy');
 
         Route::get('jadwal', [JadwalController::class, 'index'])->name('api.v1.jadwal.index');
-        Route::post('jadwal', [JadwalController::class, 'store'])->name('api.v1.jadwal.store');
+        Route::post('jadwal', [JadwalController::class, 'store'])->middleware($userWriteMiddleware)->name('api.v1.jadwal.store');
         Route::get('jadwal/{jadwal}', [JadwalController::class, 'show'])
             ->whereNumber('jadwal')
             ->name('api.v1.jadwal.show');
         Route::match(['put', 'patch'], 'jadwal/{jadwal}', [JadwalController::class, 'update'])
+            ->middleware($userWriteMiddleware)
             ->whereNumber('jadwal')
             ->name('api.v1.jadwal.update');
         Route::delete('jadwal/{jadwal}', [JadwalController::class, 'destroy'])
+            ->middleware($userWriteMiddleware)
             ->whereNumber('jadwal')
             ->name('api.v1.jadwal.destroy');
     });

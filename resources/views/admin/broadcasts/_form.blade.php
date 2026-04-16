@@ -42,8 +42,11 @@
         <input type="file"
                name="image"
                id="image"
-               accept="image/png,image/jpeg,image/webp,image/gif"
+               accept="image/*,.bmp,.avif"
                class="mt-1 form-input">
+        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            Format didukung: {{ \App\Services\BroadcastImageService::supportedFormatsLabel() }}.
+        </p>
         @error('image')
             <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
         @enderror

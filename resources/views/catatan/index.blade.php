@@ -14,6 +14,13 @@
                 <p class="mt-1 text-xs text-gray-500">Semua catatan terenkripsi</p>
             </div>
             <div class="flex flex-wrap items-center gap-3">
+                <a @if($guestMode) aria-disabled="true" @else href="{{ route('catatan.manage') }}" @endif
+                   class="inline-flex items-center gap-2 rounded-xl border border-indigo-200 px-4 py-2 text-sm font-semibold {{ $guestMode ? 'text-gray-400 cursor-not-allowed bg-gray-50' : 'text-indigo-700 bg-indigo-50 hover:border-indigo-300 hover:bg-indigo-100' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 {{ $guestMode ? 'text-gray-400' : 'text-indigo-500' }}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5m-13.5 5.25h10.5m-7.5 5.25h4.5" />
+                    </svg>
+                    Manage
+                </a>
                 <a @if($guestMode) aria-disabled="true" @else href="{{ route('catatan.sampah') }}" @endif
                    class="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold {{ $guestMode ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:border-gray-300' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -35,14 +42,14 @@
             </div>
         @endif
 
-        @if ($catatans->isEmpty())
+        @if ($catatans->count() === 0)
             <div class="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center text-gray-500">
                 Belum ada catatan. Mulai tulis hal penting dengan klik tombol <span class="font-semibold">+ Catatan Baru</span>.
             </div>
         @else
             <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 items-start">
                 @foreach ($catatans as $catatan)
-                    <article data-catatan-card tabindex="0"
+                    <article data-catatan-card tabindex="0" data-catatan-url="{{ route('catatan.show', $catatan) }}" data-catatan-loaded="false"
                              class="flex flex-col rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition hover:shadow-lg focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:outline-none">
                         <div class="flex items-center justify-between text-xs text-gray-500">
                             <span class="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-indigo-600 font-semibold">
@@ -65,11 +72,9 @@
                         <h3 class="mt-4 text-lg font-semibold text-gray-900 line-clamp-2 catatan-title">{{ $catatan->judul }}</h3>
                         <div class="mt-2 space-y-2 text-sm text-gray-600">
                             <p class="line-clamp-3 catatan-preview">
-                                {{ \Illuminate\Support\Str::limit(strip_tags($catatan->isi), 180) }}
+                                {{ $catatan->preview_isi !== '' ? $catatan->preview_isi : '(Tanpa isi)' }}
                             </p>
-                            <div class="hidden catatan-full whitespace-pre-line leading-relaxed text-gray-700">
-                                {{ $catatan->isi }}
-                            </div>
+                            <div class="hidden catatan-full whitespace-pre-line leading-relaxed text-gray-700">Memuat isi catatan...</div>
                         </div>
                         @unless($guestMode)
                             <div class="mt-4 flex items-center justify-between text-sm">
@@ -91,6 +96,9 @@
                         @endunless
                     </article>
                 @endforeach
+            </div>
+            <div class="mt-6">
+                {{ $catatans->links() }}
             </div>
         @endif
     </div>
@@ -157,6 +165,37 @@
                 }
             };
 
+            const loadFullContent = async (card) => {
+                if (card.dataset.catatanLoaded === 'true') {
+                    return;
+                }
+
+                const target = card.querySelector('.catatan-full');
+                if (!target) return;
+
+                target.textContent = 'Memuat isi catatan...';
+
+                try {
+                    const response = await fetch(card.dataset.catatanUrl, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to load note');
+                    }
+
+                    const payload = await response.json();
+                    const fullContent = String(payload?.data?.isi ?? '').trim();
+                    target.textContent = fullContent !== '' ? fullContent : '(Tanpa isi)';
+                    card.dataset.catatanLoaded = 'true';
+                } catch (error) {
+                    target.textContent = 'Gagal memuat isi catatan.';
+                }
+            };
+
             const collapse = (card, button) => {
                 card.classList.remove('is-expanded');
                 if (button) {
@@ -168,7 +207,7 @@
                 }
             };
 
-            const toggle = (card, button) => {
+            const toggle = async (card, button) => {
                 const willExpand = !card.classList.contains('is-expanded');
 
                 if (willExpand) {
@@ -178,6 +217,7 @@
                         collapse(other, otherBtn);
                     });
                     expand(card, button);
+                    await loadFullContent(card);
                 } else {
                     collapse(card, button);
                 }

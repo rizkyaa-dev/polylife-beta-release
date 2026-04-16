@@ -1,9 +1,41 @@
-enum JadwalType {
-  kuliah,
-  tugas,
-  ujian,
-  rapat,
-  personal,
+enum JadwalType { kuliah, tugas, ujian, rapat, personal }
+
+class JadwalMatkulPreview {
+  final int? id;
+  final String name;
+  final String? kelas;
+  final String? ruangan;
+  final String? timeLabel;
+  final String? warnaLabel;
+  final List<String> scheduleDays;
+  final List<JadwalMatkulScheduleEntry> scheduleEntries;
+
+  const JadwalMatkulPreview({
+    this.id,
+    required this.name,
+    this.kelas,
+    this.ruangan,
+    this.timeLabel,
+    this.warnaLabel,
+    this.scheduleDays = const <String>[],
+    this.scheduleEntries = const <JadwalMatkulScheduleEntry>[],
+  });
+}
+
+class JadwalMatkulScheduleEntry {
+  final String? hari;
+  final String? jamMulai;
+  final String? jamSelesai;
+  final String? ruangan;
+  final String? kelas;
+
+  const JadwalMatkulScheduleEntry({
+    this.hari,
+    this.jamMulai,
+    this.jamSelesai,
+    this.ruangan,
+    this.kelas,
+  });
 }
 
 extension JadwalTypeLabel on JadwalType {
@@ -32,6 +64,9 @@ class JadwalItem {
   final String location;
   final String notes;
   final bool completed;
+  final List<String> matkulNames;
+  final JadwalMatkulPreview? primaryMatkul;
+  final List<JadwalMatkulPreview> matkulPreviews;
 
   const JadwalItem({
     required this.id,
@@ -42,6 +77,9 @@ class JadwalItem {
     required this.location,
     required this.notes,
     required this.completed,
+    this.matkulNames = const <String>[],
+    this.primaryMatkul,
+    this.matkulPreviews = const <JadwalMatkulPreview>[],
   });
 
   JadwalItem copyWith({
@@ -53,6 +91,9 @@ class JadwalItem {
     String? location,
     String? notes,
     bool? completed,
+    List<String>? matkulNames,
+    JadwalMatkulPreview? primaryMatkul,
+    List<JadwalMatkulPreview>? matkulPreviews,
   }) {
     return JadwalItem(
       id: id ?? this.id,
@@ -63,6 +104,9 @@ class JadwalItem {
       location: location ?? this.location,
       notes: notes ?? this.notes,
       completed: completed ?? this.completed,
+      matkulNames: matkulNames ?? this.matkulNames,
+      primaryMatkul: primaryMatkul ?? this.primaryMatkul,
+      matkulPreviews: matkulPreviews ?? this.matkulPreviews,
     );
   }
 }

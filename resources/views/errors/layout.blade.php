@@ -78,6 +78,12 @@
                         </p>
                     </div>
 
+                    @hasSection('details')
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            @yield('details')
+                        </div>
+                    @endif
+
                     <div class="flex flex-wrap gap-3">
                         <a href="{{ $backUrl }}"
                             class="px-5 py-3 rounded-[18px] border-2 border-[#2B2250] bg-[#8181FF] text-white text-sm font-semibold uppercase tracking-wide shadow-[6px_6px_0_0_#2B2250] transition hover:-translate-y-0.5 hover:-translate-x-0.5 hover:shadow-[8px_8px_0_0_#2B2250] dark:border-[#0B0718] dark:bg-[#6A5BFF] dark:shadow-[6px_6px_0_0_rgba(7,4,19,0.9)]">

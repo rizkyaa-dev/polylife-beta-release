@@ -238,12 +238,12 @@
                         <button type="button"
                                 class="inline-flex items-center gap-2 rounded-2xl bg-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-500 shadow cursor-not-allowed"
                                 aria-disabled="true">
-                            <span class="text-lg leading-none">+</span> Tambah Jadwal
+                            Manage Jadwal
                         </button>
                     @else
-                        <a href="{{ route('jadwal.create') }}"
+                        <a href="{{ route('jadwal.manage') }}"
                            class="inline-flex items-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-indigo-500">
-                            <span class="text-lg leading-none">+</span> Tambah Jadwal
+                            Manage Jadwal
                         </a>
                     @endif
                     <a href="{{ $todayRoute }}"
@@ -651,7 +651,7 @@
                             Kelola Kegiatan (login)
                         </span>
                         <span class="rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-500 cursor-not-allowed" aria-disabled="true">
-                            Tambah Jadwal (nonaktif)
+                            Manage Jadwal (nonaktif)
                         </span>
                         <a href="{{ route('guest.home') }}"
                            class="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:border-gray-300">
@@ -666,9 +666,9 @@
                            class="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:border-gray-300">
                             Kelola Kegiatan
                         </a>
-                        <a href="{{ route('jadwal.create') }}"
+                        <a href="{{ route('jadwal.manage') }}"
                            class="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:border-gray-300">
-                            Tambah Jadwal
+                            Manage Jadwal
                         </a>
                         <a href="{{ route('dashboard') }}"
                            class="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:border-gray-300">

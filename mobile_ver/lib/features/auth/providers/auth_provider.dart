@@ -42,6 +42,10 @@ class AuthController extends StateNotifier<bool> {
         } else {
           await logout();
         }
+      } on StateError {
+        await LocalStorage.removeToken();
+        ref.read(userProvider.notifier).state = null;
+        state = false;
       } catch (_) {
         // Keep local session on transient network/startup failure.
         // Invalid token is still handled by non-200 response above.
@@ -86,6 +90,8 @@ class AuthController extends StateNotifier<bool> {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         return body['message']?.toString() ?? 'Login failed';
       }
+    } on StateError catch (e) {
+      return e.message;
     } catch (e) {
       return 'Network error occurred';
     }

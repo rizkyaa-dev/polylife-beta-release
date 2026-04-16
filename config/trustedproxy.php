@@ -13,4 +13,5 @@ return [
     |
     */
     'proxies' => ProxyTrustSettings::trustedProxies(),
+    'headers' => ProxyTrustSettings::trustedHeaders(),
 ];
