@@ -34,19 +34,9 @@ jobs:
       - name: Generate app key
         run: php artisan key:generate
 
-      # Membuat file database fisik untuk testing agar tidak error
-      - name: Create SQLite Database
+      - name: Clear Config Config
         run: |
-          mkdir -p database
-          touch database/database.sqlite
-
-      # Menyuntikkan konfigurasi testing ke dalam file .env dan clear cache
-      - name: Configure .env for testing
-        run: |
-          sed -i 's/DB_CONNECTION=mysql/DB_CONNECTION=sqlite/' .env
-          sed -i 's/DB_DATABASE=polylife/DB_DATABASE=database\/database.sqlite/' .env
           php artisan config:clear
-          php artisan cache:clear
 
       - name: Run PHPUnit tests
         run: php artisan test
