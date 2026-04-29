@@ -69,7 +69,7 @@ final class ProxyTrustSettings
         $trustedProxies ??= self::trustedProxies();
 
         foreach ($trustedProxies as $trustedProxy) {
-            if (IpUtils::checkIp($candidate, $trustedProxy)) {
+            if ($trustedProxy === '*' || $trustedProxy === '**' || IpUtils::checkIp($candidate, $trustedProxy)) {
                 return true;
             }
         }
@@ -99,7 +99,7 @@ final class ProxyTrustSettings
 
         return array_values(array_filter(
             array_unique(array_map('trim', $items)),
-            static fn (string $proxy): bool => $proxy !== '' && ! in_array($proxy, ['*', '**', 'REMOTE_ADDR'], true)
+            static fn (string $proxy): bool => $proxy !== '' && ! in_array($proxy, ['REMOTE_ADDR'], true)
         ));
     }
 
