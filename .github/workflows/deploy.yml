@@ -125,6 +125,10 @@ jobs:
               sleep 2
             done
 
+            # TAMBAHKAN BARIS INI: Beri jeda agar MySQL selesai restart final (Prank MySQL)
+            echo "Database terdeteksi, menunggu pemanasan final..."
+            sleep 15
+
             # Jalankan migrasi database
             docker-compose exec -T app php artisan migrate --force --no-interaction
 
