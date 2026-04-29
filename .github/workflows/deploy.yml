@@ -118,9 +118,12 @@ jobs:
             # Update container tanpa downtime besar
             docker-compose up -d --remove-orphans
 
-            # Tunggu container siap
-            echo "⏳ Menunggu container ready..."
-            sleep 20
+            # Tunggu container siap dengan cerdas
+            echo "⏳ Menunggu database ready..."
+            until docker-compose exec -T db mysqladmin ping -h "localhost" --silent; do
+              echo "Database belum siap, menunggu 2 detik..."
+              sleep 2
+            done
 
             # Jalankan migrasi database
             docker-compose exec -T app php artisan migrate --force --no-interaction
