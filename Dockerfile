@@ -30,6 +30,12 @@ COPY . .
 # Install dependencies Laravel
 RUN composer install --optimize-autoloader --no-dev
 
+# ─── TAMBAHKAN DUA BARIS INI ───
+# Install module frontend dan compile assets menggunakan Vite
+RUN npm install
+RUN npm run build
+# ───────────────────────────────
+
 # Set permission
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
