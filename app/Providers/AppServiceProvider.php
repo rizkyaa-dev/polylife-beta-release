@@ -62,8 +62,7 @@ class AppServiceProvider extends ServiceProvider
                 Vite::useHotFile(storage_path('app/vite.hot'));
             }
 
-            $appUrlScheme = strtolower((string) parse_url((string) config('app.url'), PHP_URL_SCHEME));
-            if (! $isLocalHost && $appUrlScheme === 'https') {
+            if (! app()->environment('local')) {
                 URL::forceScheme('https');
             }
         }
