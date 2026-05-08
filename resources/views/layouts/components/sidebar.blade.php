@@ -131,6 +131,9 @@
                    class="sidebar-user-avatar grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl bg-indigo-500 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-white dark:bg-indigo-400/30 dark:text-indigo-100 dark:focus:ring-indigo-300 dark:focus:ring-offset-slate-950 {{ request()->routeIs('profile') ? 'ring-2 ring-indigo-300 dark:ring-indigo-400/70' : '' }}"
                    title="Buka profil"
                    aria-label="Buka profil"
+                   data-profile-avatar-frame
+                   data-profile-avatar-initial="{{ $userInitial }}"
+                   data-profile-avatar-alt=""
                    data-sidebar-profile-link>
                     @if ($userAvatarUrl)
                         <img src="{{ $userAvatarUrl }}" alt="" class="h-full w-full object-cover">
@@ -153,7 +156,7 @@
         @auth
             <div class="w-full space-y-1">
                 <p class="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Masuk sebagai</p>
-                <div class="text-sm font-semibold text-slate-800 dark:text-slate-100 break-all">
+                <div class="text-sm font-semibold text-slate-800 dark:text-slate-100 break-all" data-profile-display-name>
                     {{ $sidebarBottomLabel }}
                 </div>
                 <form method="POST" action="{{ route('logout') }}" class="mt-2">

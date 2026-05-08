@@ -76,9 +76,16 @@ test('profile avatar is resized compressed and stored in the database', function
 
     $this->actingAs($user);
 
+    $image = imagecreatetruecolor(256, 256);
+    $path = tempnam(sys_get_temp_dir(), 'avatar_');
+    imagewebp($image, $path, 75);
+    imagedestroy($image);
+
     $component = Volt::test('profile.update-profile-details-form')
-        ->set('avatar', UploadedFile::fake()->image('avatar.jpg', 800, 400))
+        ->set('avatar', UploadedFile::fake()->createWithContent('avatar.webp', file_get_contents($path)))
         ->call('updateProfileDetails');
+
+    @unlink($path);
 
     $component
         ->assertHasNoErrors()
@@ -115,6 +122,15 @@ test('profile avatar can be removed from the database', function () {
         ->call('removeAvatar');
 
     $component
+        ->assertHasNoErrors()
+        ->assertDispatched('profile-details-updated')
+        ->assertSet('remove_avatar', true);
+
+    $this->assertDatabaseHas('user_profile_avatars', [
+        'user_id' => $user->id,
+    ]);
+
+    $component->call('updateProfileDetails')
         ->assertHasNoErrors()
         ->assertDispatched('profile-details-updated');
 

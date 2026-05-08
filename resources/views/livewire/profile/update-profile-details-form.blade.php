@@ -1,8 +1,8 @@
 <?php
 
-use App\Services\ProfileAvatarImageService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
@@ -21,6 +21,7 @@ new class extends Component
     public string $timezone = 'Asia/Jakarta';
     public string $locale = 'id';
     public ?string $avatarUrl = null;
+    public bool $remove_avatar = false;
     public $avatar = null;
 
     public function mount(): void
@@ -41,8 +42,10 @@ new class extends Component
 
     public function updatedAvatar(): void
     {
+        $this->remove_avatar = false;
+
         $this->validateOnly('avatar', [
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'avatar' => ['nullable', 'file', 'mimetypes:image/webp', 'max:512'],
         ]);
     }
 
@@ -58,25 +61,46 @@ new class extends Component
             'theme_preference' => ['required', Rule::in(['system', 'light', 'dark'])],
             'timezone' => ['nullable', 'string', 'max:64'],
             'locale' => ['nullable', Rule::in(['id', 'en'])],
-            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'avatar' => ['nullable', 'file', 'mimetypes:image/webp', 'max:512'],
         ]);
 
         $user = Auth::user();
         $profile = $user->profile()->firstOrNew(['user_id' => $user->id]);
 
         if ($this->avatar) {
-            try {
-                $optimizedAvatar = app(ProfileAvatarImageService::class)->optimize($this->avatar);
-            } catch (\RuntimeException $exception) {
-                $this->addError('avatar', $exception->getMessage());
+            $path = $this->avatar->getRealPath();
+            $binary = $path ? file_get_contents($path) : false;
 
+            if ($binary === false || $binary === '') {
+                $this->addError('avatar', 'Foto profil tidak bisa dibaca.');
+                return;
+            }
+
+            [$width, $height] = getimagesizefromstring($binary) ?: [0, 0];
+            if ($width < 64 || $height < 64 || $width > 256 || $height > 256) {
+                $this->addError('avatar', 'Foto profil harus sudah dikompres ke ukuran 64 sampai 256 px.');
                 return;
             }
 
             $user->profileAvatar()->updateOrCreate(
                 ['user_id' => $user->id],
-                $optimizedAvatar
+                [
+                    'image' => $binary,
+                    'mime_type' => 'image/webp',
+                    'width' => $width,
+                    'height' => $height,
+                    'size' => strlen($binary),
+                ]
             );
+
+            if ($profile->avatar_path) {
+                Storage::disk('public')->delete($profile->avatar_path);
+                $profile->avatar_path = null;
+            }
+
+            $this->remove_avatar = false;
+        } elseif ($this->remove_avatar) {
+            $user->profileAvatar()->delete();
 
             if ($profile->avatar_path) {
                 Storage::disk('public')->delete($profile->avatar_path);
@@ -100,9 +124,20 @@ new class extends Component
         $profile->save();
 
         $this->reset('avatar');
-        $this->avatarUrl = $profile->avatar_url;
+        $this->remove_avatar = false;
+        $this->avatarUrl = $user->profileAvatar()->exists()
+            ? route('profile.avatar.show', ['user' => $user->id, 'v' => Str::uuid()->toString()], false)
+            : $profile->avatar_url;
 
-        $this->dispatch('profile-details-updated');
+        $displayName = trim((string) ($profile->display_name ?: $user->name));
+        $displayName = $displayName !== '' ? $displayName : 'Pengguna';
+
+        $this->dispatch(
+            'profile-details-updated',
+            avatarUrl: $this->avatarUrl,
+            displayName: $displayName,
+            initial: mb_strtoupper(mb_substr($displayName, 0, 1)),
+        );
         $this->dispatch('profile-theme-updated', theme: $profile->theme_preference);
     }
 
@@ -110,23 +145,20 @@ new class extends Component
     {
         $user = Auth::user();
         $profile = $user->profile;
-        $user->profileAvatar()->delete();
-
-        if (! $profile || ! $profile->avatar_path) {
-            $this->reset('avatar');
-            $this->avatarUrl = null;
-            $this->dispatch('profile-details-updated');
-
-            return;
-        }
-
-        Storage::disk('public')->delete($profile->avatar_path);
-        $profile->forceFill(['avatar_path' => null])->save();
 
         $this->reset('avatar');
+        $this->remove_avatar = true;
         $this->avatarUrl = null;
 
-        $this->dispatch('profile-details-updated');
+        $displayName = trim((string) ($profile?->display_name ?: $user->name));
+        $displayName = $displayName !== '' ? $displayName : 'Pengguna';
+
+        $this->dispatch(
+            'profile-details-updated',
+            avatarUrl: null,
+            displayName: $displayName,
+            initial: mb_strtoupper(mb_substr($displayName, 0, 1)),
+        );
     }
 
     private function nullableString(?string $value): ?string
@@ -162,14 +194,14 @@ new class extends Component
             <div class="flex-1 space-y-3">
                 <div>
                     <p class="text-sm font-semibold text-gray-900 dark:text-slate-100">Foto profil</p>
-                    <p class="text-xs text-gray-500 dark:text-slate-400">PNG, JPG, atau WebP. Maksimal 2 MB.</p>
+                    <p class="text-xs text-gray-500 dark:text-slate-400">PNG, JPG, atau WebP. Dipotong dan dikompres sebelum diunggah.</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <label for="profile_avatar"
                            class="inline-flex cursor-pointer items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400">
                         Pilih foto
                     </label>
-                    <input id="profile_avatar" type="file" wire:model="avatar" accept="image/png,image/jpeg,image/webp" class="sr-only">
+                    <input id="profile_avatar" type="file" wire:model="avatar" accept="image/png,image/jpeg,image/webp" class="sr-only" data-profile-avatar-input>
                     @if ($avatarUrl)
                         <button type="button"
                                 wire:click="removeAvatar"
@@ -179,6 +211,11 @@ new class extends Component
                     @endif
                 </div>
                 <x-input-error class="mt-2" :messages="$errors->get('avatar')" />
+                @if ($remove_avatar)
+                    <p class="text-xs font-medium text-amber-600 dark:text-amber-300">
+                        Foto akan dihapus setelah profil disimpan.
+                    </p>
+                @endif
                 <div wire:loading wire:target="avatar" class="text-xs font-medium text-indigo-500 dark:text-indigo-300">
                     Mengunggah preview...
                 </div>
@@ -269,4 +306,380 @@ new class extends Component
             </x-action-message>
         </div>
     </form>
+
+    <div wire:ignore
+         data-profile-avatar-cropper
+         class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 px-4 py-6">
+        <div class="w-full max-w-md rounded-2xl border border-white/10 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900 dark:text-slate-100">Edit foto profil</h3>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Geser dan perbesar foto sebelum disimpan.</p>
+                </div>
+                <button type="button"
+                        data-avatar-crop-cancel
+                        class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                        aria-label="Tutup editor foto">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <div class="mt-5 flex justify-center">
+                <div data-avatar-crop-stage
+                     class="relative h-72 w-72 max-w-full touch-none overflow-hidden rounded-3xl bg-slate-100 shadow-inner dark:bg-slate-800">
+                    <img data-avatar-crop-image alt="" class="absolute max-w-none select-none" draggable="false">
+                    <div class="pointer-events-none absolute inset-0 ring-2 ring-inset ring-white/90 dark:ring-slate-100/80"></div>
+                </div>
+            </div>
+
+            <div class="mt-5 space-y-2">
+                <label for="profile_avatar_zoom" class="text-sm font-medium text-gray-700 dark:text-slate-200">Zoom</label>
+                <input id="profile_avatar_zoom"
+                       data-avatar-crop-zoom
+                       type="range"
+                       min="1"
+                       max="6"
+                       step="0.01"
+                       value="1"
+                       class="w-full accent-indigo-600">
+            </div>
+
+            <div class="mt-5 flex flex-wrap justify-end gap-2">
+                <button type="button"
+                        data-avatar-crop-cancel
+                        class="inline-flex items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+                    Batal
+                </button>
+                <button type="button"
+                        data-avatar-crop-apply
+                        class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400">
+                    Gunakan foto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const AVATAR_OUTPUT_SIZE = 256;
+            const AVATAR_OUTPUT_QUALITY = 0.75;
+            const AVATAR_MAX_ZOOM = 6;
+
+            const bindProfileDetailsUpdates = () => {
+                if (window.__profileDetailsDomBound === true) {
+                    return;
+                }
+
+                window.__profileDetailsDomBound = true;
+
+                window.addEventListener('profile-details-updated', (event) => {
+                    const detail = event.detail || {};
+                    const avatarUrl = detail.avatarUrl || null;
+                    const initial = detail.initial || 'P';
+                    const displayName = detail.displayName || '';
+
+                    document.querySelectorAll('[data-profile-avatar-frame]').forEach((frame) => {
+                        frame.dataset.profileAvatarInitial = initial;
+                        frame.innerHTML = '';
+
+                        if (avatarUrl) {
+                            const image = document.createElement('img');
+                            image.src = avatarUrl;
+                            image.alt = frame.dataset.profileAvatarAlt || '';
+                            image.className = 'h-full w-full object-cover';
+                            frame.appendChild(image);
+                            return;
+                        }
+
+                        frame.textContent = initial;
+                    });
+
+                    if (displayName !== '') {
+                        document.querySelectorAll('[data-profile-display-name]').forEach((element) => {
+                            element.textContent = displayName;
+                        });
+                    }
+                });
+            };
+
+            const initProfileAvatarOptimizer = () => {
+                document.querySelectorAll('[data-profile-avatar-input]').forEach((input) => {
+                    if (input.dataset.optimizerBound === 'true') {
+                        return;
+                    }
+
+                    input.dataset.optimizerBound = 'true';
+
+                    input.addEventListener('change', async (event) => {
+                        if (input.dataset.optimized === 'true') {
+                            delete input.dataset.optimized;
+                            return;
+                        }
+
+                        const file = input.files && input.files[0];
+                        if (! file) {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+
+                        try {
+                            await openProfileAvatarCropper(file, input);
+                        } catch (error) {
+                            input.value = '';
+                            alert(error.message || 'Foto profil tidak bisa dikompres di browser ini.');
+                        }
+                    }, true);
+                });
+            };
+
+            const openProfileAvatarCropper = async (file, input) => {
+                if (! /^image\/(jpeg|png|webp)$/.test(file.type)) {
+                    throw new Error('Format foto harus PNG, JPG, atau WebP.');
+                }
+
+                const modal = document.querySelector('[data-profile-avatar-cropper]');
+                const stage = modal?.querySelector('[data-avatar-crop-stage]');
+                const imageElement = modal?.querySelector('[data-avatar-crop-image]');
+                const zoomInput = modal?.querySelector('[data-avatar-crop-zoom]');
+                const applyButton = modal?.querySelector('[data-avatar-crop-apply]');
+                const cancelButtons = modal ? modal.querySelectorAll('[data-avatar-crop-cancel]') : [];
+
+                if (! modal || ! stage || ! imageElement || ! zoomInput || ! applyButton) {
+                    throw new Error('Editor foto profil tidak tersedia.');
+                }
+
+                const image = await loadImage(file);
+                const sourceUrl = image.src;
+                const state = {
+                    file,
+                    input,
+                    image,
+                    imageElement,
+                    stage,
+                    zoomInput,
+                    zoom: 1,
+                    offsetX: 0,
+                    offsetY: 0,
+                    dragging: false,
+                    lastX: 0,
+                    lastY: 0,
+                };
+
+                imageElement.src = sourceUrl;
+                zoomInput.value = '1';
+                modal.__avatarCropState = state;
+
+                const close = () => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    imageElement.removeAttribute('src');
+                    delete modal.__avatarCropState;
+                    URL.revokeObjectURL(sourceUrl);
+                };
+
+                const cancel = () => {
+                    input.value = '';
+                    close();
+                };
+
+                const apply = async () => {
+                    try {
+                        const optimized = await renderCroppedAvatar(state);
+                        const transfer = new DataTransfer();
+                        transfer.items.add(optimized);
+                        input.files = transfer.files;
+                        input.dataset.optimized = 'true';
+                        close();
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    } catch (error) {
+                        alert(error.message || 'Foto profil tidak bisa dikompres di browser ini.');
+                    }
+                };
+
+                modal.__avatarCropCancel = cancel;
+                modal.__avatarCropApply = apply;
+
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                requestAnimationFrame(() => applyCropState(state));
+            };
+
+            const bindProfileAvatarCropper = () => {
+                const modal = document.querySelector('[data-profile-avatar-cropper]');
+                if (! modal || modal.dataset.cropperBound === 'true') {
+                    return;
+                }
+
+                modal.dataset.cropperBound = 'true';
+
+                const stage = modal.querySelector('[data-avatar-crop-stage]');
+                const zoomInput = modal.querySelector('[data-avatar-crop-zoom]');
+                const applyButton = modal.querySelector('[data-avatar-crop-apply]');
+                const cancelButtons = modal.querySelectorAll('[data-avatar-crop-cancel]');
+
+                zoomInput.addEventListener('input', () => {
+                    const state = modal.__avatarCropState;
+                    if (! state) {
+                        return;
+                    }
+
+                    state.zoom = Number.parseFloat(zoomInput.value) || 1;
+                    state.zoom = Math.min(AVATAR_MAX_ZOOM, Math.max(1, state.zoom));
+                    applyCropState(state);
+                });
+
+                stage.addEventListener('pointerdown', (event) => {
+                    const state = modal.__avatarCropState;
+                    if (! state) {
+                        return;
+                    }
+
+                    state.dragging = true;
+                    state.lastX = event.clientX;
+                    state.lastY = event.clientY;
+                    stage.setPointerCapture(event.pointerId);
+                });
+
+                stage.addEventListener('pointermove', (event) => {
+                    const state = modal.__avatarCropState;
+                    if (! state || ! state.dragging) {
+                        return;
+                    }
+
+                    state.offsetX += event.clientX - state.lastX;
+                    state.offsetY += event.clientY - state.lastY;
+                    state.lastX = event.clientX;
+                    state.lastY = event.clientY;
+                    applyCropState(state);
+                });
+
+                stage.addEventListener('pointerup', (event) => {
+                    const state = modal.__avatarCropState;
+                    if (! state) {
+                        return;
+                    }
+
+                    state.dragging = false;
+                    stage.releasePointerCapture(event.pointerId);
+                });
+
+                stage.addEventListener('pointercancel', () => {
+                    const state = modal.__avatarCropState;
+                    if (state) {
+                        state.dragging = false;
+                    }
+                });
+
+                applyButton.addEventListener('click', () => {
+                    modal.__avatarCropApply?.();
+                });
+
+                cancelButtons.forEach((button) => {
+                    button.addEventListener('click', () => {
+                        modal.__avatarCropCancel?.();
+                    });
+                });
+
+                document.addEventListener('keydown', (event) => {
+                    if (event.key === 'Escape' && ! modal.classList.contains('hidden')) {
+                        modal.__avatarCropCancel?.();
+                    }
+                });
+            };
+
+            const applyCropState = (state) => {
+                const rect = state.stage.getBoundingClientRect();
+                const baseScale = Math.max(rect.width / state.image.naturalWidth, rect.height / state.image.naturalHeight);
+                const width = state.image.naturalWidth * baseScale * state.zoom;
+                const height = state.image.naturalHeight * baseScale * state.zoom;
+                const minX = Math.min(0, rect.width - width);
+                const minY = Math.min(0, rect.height - height);
+
+                state.offsetX = Math.max(minX / 2, Math.min(-minX / 2, state.offsetX));
+                state.offsetY = Math.max(minY / 2, Math.min(-minY / 2, state.offsetY));
+
+                state.render = {
+                    width,
+                    height,
+                    left: (rect.width - width) / 2 + state.offsetX,
+                    top: (rect.height - height) / 2 + state.offsetY,
+                    stageWidth: rect.width,
+                    stageHeight: rect.height,
+                };
+
+                state.imageElement.style.width = `${width}px`;
+                state.imageElement.style.height = `${height}px`;
+                state.imageElement.style.maxWidth = 'none';
+                state.imageElement.style.maxHeight = 'none';
+                state.imageElement.style.left = `${state.render.left}px`;
+                state.imageElement.style.top = `${state.render.top}px`;
+            };
+
+            const renderCroppedAvatar = async (state) => {
+                applyCropState(state);
+
+                const render = state.render;
+                const canvas = document.createElement('canvas');
+                canvas.width = AVATAR_OUTPUT_SIZE;
+                canvas.height = AVATAR_OUTPUT_SIZE;
+
+                const context = canvas.getContext('2d');
+                const sourceX = Math.max(0, -render.left / render.width * state.image.naturalWidth);
+                const sourceY = Math.max(0, -render.top / render.height * state.image.naturalHeight);
+                const sourceWidth = render.stageWidth / render.width * state.image.naturalWidth;
+                const sourceHeight = render.stageHeight / render.height * state.image.naturalHeight;
+
+                context.drawImage(
+                    state.image,
+                    sourceX,
+                    sourceY,
+                    sourceWidth,
+                    sourceHeight,
+                    0,
+                    0,
+                    AVATAR_OUTPUT_SIZE,
+                    AVATAR_OUTPUT_SIZE
+                );
+
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', AVATAR_OUTPUT_QUALITY));
+                if (! blob) {
+                    throw new Error('Browser ini belum mendukung kompresi WebP.');
+                }
+
+                const name = state.file.name.replace(/\.[^.]+$/, '') || 'avatar';
+                return new File([blob], `${name}.webp`, {
+                    type: 'image/webp',
+                    lastModified: Date.now(),
+                });
+            };
+
+            const loadImage = (file) => new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const image = new Image();
+
+                image.onload = () => {
+                    resolve(image);
+                };
+
+                image.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Foto profil tidak bisa dibaca.'));
+                };
+
+                image.src = url;
+            });
+
+            const init = () => {
+                bindProfileDetailsUpdates();
+                bindProfileAvatarCropper();
+                initProfileAvatarOptimizer();
+            };
+
+            document.addEventListener('DOMContentLoaded', init);
+            document.addEventListener('livewire:navigated', init);
+            init();
+        })();
+    </script>
 </section>
