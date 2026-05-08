@@ -117,6 +117,9 @@
                     </div>
                 @endforeach
             </div>
+            <div class="mt-4">
+                {{ $reminders->links() }}
+            </div>
         @endif
     </div>
 @endsection

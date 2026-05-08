@@ -66,17 +66,24 @@
 
     if (! $guestMode && $user) {
         $lastSeenAtRaw = session('pengumuman_last_seen_at');
-        $announcementQuery = \App\Models\AffiliationBroadcast::query()->visibleToUser($user);
+        $lastSeenCacheKey = is_scalar($lastSeenAtRaw) ? sha1((string) $lastSeenAtRaw) : 'all';
+        $announcementUnreadCount = \Illuminate\Support\Facades\Cache::remember(
+            "sidebar:announcement-unread:{$user->id}:{$lastSeenCacheKey}",
+            now()->addSeconds(60),
+            function () use ($user, $lastSeenAtRaw): int {
+                $announcementQuery = \App\Models\AffiliationBroadcast::query()->visibleToUser($user);
 
-        if (is_string($lastSeenAtRaw) && trim($lastSeenAtRaw) !== '') {
-            try {
-                $announcementQuery->where('published_at', '>', \Illuminate\Support\Carbon::parse($lastSeenAtRaw));
-            } catch (\Throwable $e) {
-                // Ignore malformed session value and treat all visible broadcasts as unread.
+                if (is_string($lastSeenAtRaw) && trim($lastSeenAtRaw) !== '') {
+                    try {
+                        $announcementQuery->where('published_at', '>', \Illuminate\Support\Carbon::parse($lastSeenAtRaw));
+                    } catch (\Throwable $e) {
+                        // Ignore malformed session value and treat all visible broadcasts as unread.
+                    }
+                }
+
+                return $announcementQuery->count();
             }
-        }
-
-        $announcementUnreadCount = $announcementQuery->count();
+        );
     }
 
     $announcementBadgeLabel = $announcementUnreadCount > 99 ? '99+' : (string) $announcementUnreadCount;

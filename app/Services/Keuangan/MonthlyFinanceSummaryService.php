@@ -16,28 +16,38 @@ class MonthlyFinanceSummaryService
         $startMonth = $selectedMonth->copy()->startOfMonth();
         $endMonth = $selectedMonth->copy()->endOfMonth();
 
-        $normalized = collect($records)
-            ->map(function (mixed $record) {
-                $tanggal = data_get($record, 'tanggal');
+        $totalPemasukan = 0.0;
+        $totalPengeluaran = 0.0;
+        $dailyTotals = [];
 
-                try {
-                    $tanggal = Carbon::parse($tanggal);
-                } catch (\Throwable $e) {
-                    $tanggal = null;
-                }
+        foreach ($records as $record) {
+            $tanggal = data_get($record, 'tanggal');
 
-                return [
-                    'jenis' => trim((string) data_get($record, 'jenis', '')),
-                    'nominal' => (float) data_get($record, 'nominal', 0),
-                    'tanggal' => $tanggal,
-                ];
-            })
-            ->filter(fn (array $record) => $record['tanggal'] instanceof Carbon)
-            ->filter(fn (array $record) => $record['tanggal']->betweenIncluded($startMonth, $endMonth))
-            ->values();
+            try {
+                $tanggal = Carbon::parse($tanggal);
+            } catch (\Throwable $e) {
+                continue;
+            }
 
-        $totalPemasukan = (float) $normalized->where('jenis', 'pemasukan')->sum('nominal');
-        $totalPengeluaran = (float) $normalized->where('jenis', 'pengeluaran')->sum('nominal');
+            if (! $tanggal->betweenIncluded($startMonth, $endMonth)) {
+                continue;
+            }
+
+            $jenis = trim((string) data_get($record, 'jenis', ''));
+            if (! in_array($jenis, ['pemasukan', 'pengeluaran'], true)) {
+                continue;
+            }
+
+            $nominal = (float) data_get($record, 'nominal', 0);
+            $dateKey = $tanggal->toDateString();
+            $dailyTotals[$dateKey][$jenis] = ($dailyTotals[$dateKey][$jenis] ?? 0.0) + $nominal;
+
+            if ($jenis === 'pemasukan') {
+                $totalPemasukan += $nominal;
+            } else {
+                $totalPengeluaran += $nominal;
+            }
+        }
 
         $labels = [];
         $seriesPemasukan = [];
@@ -47,15 +57,8 @@ class MonthlyFinanceSummaryService
             $labels[] = $date->format('d M');
             $dateKey = $date->toDateString();
 
-            $seriesPemasukan[] = (float) $normalized
-                ->where('jenis', 'pemasukan')
-                ->filter(fn (array $record) => $record['tanggal']->toDateString() === $dateKey)
-                ->sum('nominal');
-
-            $seriesPengeluaran[] = (float) $normalized
-                ->where('jenis', 'pengeluaran')
-                ->filter(fn (array $record) => $record['tanggal']->toDateString() === $dateKey)
-                ->sum('nominal');
+            $seriesPemasukan[] = (float) ($dailyTotals[$dateKey]['pemasukan'] ?? 0);
+            $seriesPengeluaran[] = (float) ($dailyTotals[$dateKey]['pengeluaran'] ?? 0);
         }
 
         return [

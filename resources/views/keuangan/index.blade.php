@@ -6,8 +6,9 @@
 @section('content')
 @php
     $guestMode = $guestMode ?? false;
-    $totalPemasukan = $keuangans->where('jenis','pemasukan')->sum('nominal');
-    $totalPengeluaran = $keuangans->where('jenis','pengeluaran')->sum('nominal');
+    $keuanganItems = $keuangans instanceof \Illuminate\Contracts\Pagination\Paginator ? collect($keuangans->items()) : $keuangans;
+    $totalPemasukan = (float) data_get($summary ?? [], 'total_pemasukan', $keuanganItems->where('jenis','pemasukan')->sum('nominal'));
+    $totalPengeluaran = (float) data_get($summary ?? [], 'total_pengeluaran', $keuanganItems->where('jenis','pengeluaran')->sum('nominal'));
     $saldo = $totalPemasukan - $totalPengeluaran;
     $statistikRoute = $guestMode ? route('guest.keuangan.statistik') : route('keuangan.statistik');
 @endphp
@@ -110,6 +111,12 @@
                 </tbody>
             </table>
         </div>
+
+        @if($keuangans instanceof \Illuminate\Contracts\Pagination\Paginator)
+            <div class="mt-4">
+                {{ $keuangans->links() }}
+            </div>
+        @endif
 
         @if($guestMode)
             <div class="mt-4 rounded-xl border border-dashed border-indigo-200 bg-indigo-50 px-4 py-3 text-xs text-indigo-900">

@@ -16,10 +16,15 @@ class EndminDashboardQuery
     public function build(): array
     {
         $activeSince = now()->subMinutes(self::ACTIVE_WINDOW_MINUTES)->timestamp;
-        $roleDistribution = User::query()
-            ->select('is_admin', DB::raw('COUNT(*) as total'))
-            ->groupBy('is_admin')
-            ->pluck('total', 'is_admin');
+        $userStats = User::query()
+            ->selectRaw('COUNT(*) as total_users')
+            ->selectRaw('SUM(CASE WHEN is_admin = ? THEN 1 ELSE 0 END) as super_admins', [User::ADMIN_LEVEL_SUPER_ADMIN])
+            ->selectRaw('SUM(CASE WHEN is_admin = ? THEN 1 ELSE 0 END) as admins', [User::ADMIN_LEVEL_ADMIN])
+            ->selectRaw('SUM(CASE WHEN is_admin = ? THEN 1 ELSE 0 END) as regular_users', [User::ADMIN_LEVEL_USER])
+            ->selectRaw("SUM(CASE WHEN account_status = 'banned' THEN 1 ELSE 0 END) as banned_users")
+            ->selectRaw("SUM(CASE WHEN affiliation_status = 'pending' THEN 1 ELSE 0 END) as pending_affiliations")
+            ->selectRaw('SUM(CASE WHEN email_verified_at IS NULL THEN 1 ELSE 0 END) as unverified_emails')
+            ->first();
 
         $activeSessions = fn () => DB::table('sessions')
             ->select('user_id', DB::raw('MAX(last_activity) as last_activity'))
@@ -29,21 +34,21 @@ class EndminDashboardQuery
 
         return [
             'stats' => [
-                'total_users' => User::count(),
+                'total_users' => (int) ($userStats->total_users ?? 0),
                 'active_users' => DB::query()
                     ->fromSub($activeSessions(), 'active_sessions')
                     ->count(),
-                'super_admins' => User::where('is_admin', User::ADMIN_LEVEL_SUPER_ADMIN)->count(),
-                'admins' => User::where('is_admin', User::ADMIN_LEVEL_ADMIN)->count(),
-                'regular_users' => User::where('is_admin', User::ADMIN_LEVEL_USER)->count(),
-                'banned_users' => User::where('account_status', 'banned')->count(),
-                'pending_affiliations' => User::where('affiliation_status', 'pending')->count(),
-                'unverified_emails' => User::whereNull('email_verified_at')->count(),
+                'super_admins' => (int) ($userStats->super_admins ?? 0),
+                'admins' => (int) ($userStats->admins ?? 0),
+                'regular_users' => (int) ($userStats->regular_users ?? 0),
+                'banned_users' => (int) ($userStats->banned_users ?? 0),
+                'pending_affiliations' => (int) ($userStats->pending_affiliations ?? 0),
+                'unverified_emails' => (int) ($userStats->unverified_emails ?? 0),
             ],
             'roleDistribution' => [
-                'super_admin' => (int) ($roleDistribution[User::ADMIN_LEVEL_SUPER_ADMIN] ?? 0),
-                'admin' => (int) ($roleDistribution[User::ADMIN_LEVEL_ADMIN] ?? 0),
-                'user' => (int) ($roleDistribution[User::ADMIN_LEVEL_USER] ?? 0),
+                'super_admin' => (int) ($userStats->super_admins ?? 0),
+                'admin' => (int) ($userStats->admins ?? 0),
+                'user' => (int) ($userStats->regular_users ?? 0),
             ],
             'recentLogs' => EndminAuditLog::query()
                 ->with(['actor:id,name,email', 'targetUser:id,name,email'])

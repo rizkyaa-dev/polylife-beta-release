@@ -13,17 +13,30 @@ class KeuanganController extends Controller
 {
     public function __construct(
         private readonly SaveKeuanganAction $saveKeuanganAction
-    ) {
-    }
+    ) {}
 
     public function index()
     {
-        $keuangans = Keuangan::query()
-            ->where('user_id', Auth::id())
-            ->orderByDesc('created_at')
-            ->get();
+        $userId = Auth::id();
+        $summaryRow = Keuangan::query()
+            ->where('user_id', $userId)
+            ->selectRaw("SUM(CASE WHEN jenis = 'pemasukan' THEN nominal ELSE 0 END) as total_pemasukan")
+            ->selectRaw("SUM(CASE WHEN jenis = 'pengeluaran' THEN nominal ELSE 0 END) as total_pengeluaran")
+            ->first();
 
-        return view('keuangan.index', compact('keuangans'));
+        $summary = [
+            'total_pemasukan' => (float) ($summaryRow->total_pemasukan ?? 0),
+            'total_pengeluaran' => (float) ($summaryRow->total_pengeluaran ?? 0),
+        ];
+
+        $keuangans = Keuangan::query()
+            ->where('user_id', $userId)
+            ->orderByDesc('tanggal')
+            ->orderByDesc('id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('keuangan.index', compact('keuangans', 'summary'));
     }
 
     public function create(Request $request)

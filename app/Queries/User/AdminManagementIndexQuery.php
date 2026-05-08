@@ -11,6 +11,13 @@ class AdminManagementIndexQuery
      */
     public function build(string $roleFilter, string $statusFilter, string $search): array
     {
+        $summary = User::query()
+            ->selectRaw('SUM(CASE WHEN is_admin = ? THEN 1 ELSE 0 END) as admins', [User::ADMIN_LEVEL_ADMIN])
+            ->selectRaw("SUM(CASE WHEN is_admin = ? AND account_status = 'active' THEN 1 ELSE 0 END) as active_admins", [User::ADMIN_LEVEL_ADMIN])
+            ->selectRaw("SUM(CASE WHEN is_admin = ? AND account_status = 'banned' THEN 1 ELSE 0 END) as suspended_admins", [User::ADMIN_LEVEL_ADMIN])
+            ->selectRaw('SUM(CASE WHEN is_admin = ? THEN 1 ELSE 0 END) as candidate_users', [User::ADMIN_LEVEL_USER])
+            ->first();
+
         $query = User::query()
             ->where('is_admin', '!=', User::ADMIN_LEVEL_SUPER_ADMIN);
 
@@ -26,9 +33,9 @@ class AdminManagementIndexQuery
 
         if ($search !== '') {
             $query->where(function ($subQuery) use ($search) {
-                $subQuery->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('email', 'like', '%' . $search . '%')
-                    ->orWhere('affiliation_name', 'like', '%' . $search . '%');
+                $subQuery->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('affiliation_name', 'like', '%'.$search.'%');
             });
         }
 
@@ -39,10 +46,10 @@ class AdminManagementIndexQuery
                 ->paginate(20)
                 ->withQueryString(),
             'summary' => [
-                'admins' => User::where('is_admin', User::ADMIN_LEVEL_ADMIN)->count(),
-                'active_admins' => User::where('is_admin', User::ADMIN_LEVEL_ADMIN)->where('account_status', 'active')->count(),
-                'suspended_admins' => User::where('is_admin', User::ADMIN_LEVEL_ADMIN)->where('account_status', 'banned')->count(),
-                'candidate_users' => User::where('is_admin', User::ADMIN_LEVEL_USER)->count(),
+                'admins' => (int) ($summary->admins ?? 0),
+                'active_admins' => (int) ($summary->active_admins ?? 0),
+                'suspended_admins' => (int) ($summary->suspended_admins ?? 0),
+                'candidate_users' => (int) ($summary->candidate_users ?? 0),
             ],
         ];
     }

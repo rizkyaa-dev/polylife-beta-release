@@ -14,12 +14,15 @@ class TugasController extends Controller
     public function __construct(
         private readonly FindOwnedTugasAction $findOwnedTugasAction,
         private readonly SaveTugasAction $saveTugasAction
-    ) {
-    }
+    ) {}
 
     public function index()
     {
-        $tugas = Tugas::query()->where('user_id', Auth::id())->latest()->get();
+        $tugas = Tugas::query()
+            ->where('user_id', Auth::id())
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
 
         return view('tugas.index', compact('tugas'));
     }

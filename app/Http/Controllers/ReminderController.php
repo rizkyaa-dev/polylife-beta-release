@@ -9,8 +9,8 @@ use App\Http\Requests\Reminder\UpdateReminderRequest;
 use App\Models\Reminder;
 use App\Services\Reminder\ReminderPayloadService;
 use App\Services\Reminder\ReminderReferenceDataService;
-use Illuminate\Support\Facades\Auth;
 use App\ViewModels\ReminderFormViewModel;
+use Illuminate\Support\Facades\Auth;
 
 class ReminderController extends Controller
 {
@@ -19,15 +19,15 @@ class ReminderController extends Controller
         private readonly ReminderPayloadService $reminderPayloadService,
         private readonly StoreReminderAction $storeReminderAction,
         private readonly UpdateReminderAction $updateReminderAction
-    ) {
-    }
+    ) {}
 
     public function index()
     {
         $reminders = Reminder::where('user_id', Auth::id())
             ->with(['todolist', 'tugas', 'jadwal', 'kegiatan'])
             ->orderByDesc('waktu_reminder')
-            ->get();
+            ->paginate(20)
+            ->withQueryString();
 
         return view('reminder.index', compact('reminders'));
     }

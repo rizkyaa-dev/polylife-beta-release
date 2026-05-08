@@ -61,6 +61,9 @@
                         </div>
                     @endforeach
                 </div>
+                <div class="mt-4">
+                    {{ $tugas->links() }}
+                </div>
             @else
                 <div class="py-12 text-center space-y-2">
                     <p class="text-lg font-semibold text-gray-900">Belum ada tugas tersimpan</p>

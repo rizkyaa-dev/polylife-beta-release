@@ -13,8 +13,7 @@ class JadwalCalendarQuery
     public function __construct(
         private readonly KuliahScheduleService $kuliahScheduleService,
         private readonly KegiatanCalendarService $kegiatanCalendarService
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -39,7 +38,7 @@ class JadwalCalendarQuery
 
         $this->kuliahScheduleService->appendMatkulDetails($jadwals, $matkuls);
         $jadwalsByDate = $this->kuliahScheduleService->deduplicateKuliahByDate(
-            $this->kuliahScheduleService->mapJadwalsByDate($jadwals)
+            $this->kuliahScheduleService->mapJadwalsByDate($jadwals, $startCalendar, $endCalendar)
         );
 
         $calendarDays = [];
