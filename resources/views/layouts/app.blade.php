@@ -9,10 +9,11 @@
     <title>PolyLife</title>
     @php
         $profileThemePreference = auth()->user()?->profile?->theme_preference;
+        $themeStorageKey = auth()->check() ? 'theme:user:'.auth()->id() : 'theme';
     @endphp
     <script>
         (function () {
-            const storageKey = 'theme';
+            const storageKey = @json($themeStorageKey);
             const serverPreference = @json($profileThemePreference);
             const root = document.documentElement;
             try {
@@ -559,12 +560,9 @@
 
     <script>
         (() => {
-            const storageKey = 'theme';
+            const storageKey = @json($themeStorageKey);
             const root = document.documentElement;
-            const preferenceUrl = @json(auth()->check() ? route('profile.theme.update') : null);
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-            let themeSyncTimer;
 
             const initThemeToggle = () => {
                 const toggles = document.querySelectorAll('[data-theme-toggle]');
@@ -598,27 +596,7 @@
                     }
                 };
 
-                const persistThemePreference = (preference) => {
-                    if (!preferenceUrl) {
-                        return;
-                    }
-
-                    clearTimeout(themeSyncTimer);
-                    themeSyncTimer = setTimeout(() => {
-                        fetch(preferenceUrl, {
-                            method: 'PATCH',
-                            headers: {
-                                'Accept': 'application/json',
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                                'X-Requested-With': 'XMLHttpRequest',
-                            },
-                            body: JSON.stringify({ theme_preference: preference }),
-                        }).catch((err) => console.warn('Theme sync issue', err));
-                    }, 700);
-                };
-
-                const applyThemePreference = (mode, { persistRemote = false, dim = false } = {}) => {
+                const applyThemePreference = (mode, { dim = false, localChange = false } = {}) => {
                     const preference = normalizePreference(mode);
                     const resolvedMode = preference === 'system'
                         ? (mediaQuery.matches ? 'dark' : 'light')
@@ -633,14 +611,13 @@
                     root.dataset.theme = resolvedMode;
                     root.dataset.themePreference = preference;
                     rememberLocalTheme(preference);
+                    if (localChange) {
+                        root.dataset.themeChangedLocally = 'true';
+                    }
 
                     toggles.forEach((btn) =>
                         btn.setAttribute('aria-pressed', isDark ? 'true' : 'false')
                     );
-
-                    if (persistRemote) {
-                        persistThemePreference(preference);
-                    }
                 };
 
                 const currentMode = root.classList.contains('dark') ? 'dark' : 'light';
@@ -651,13 +628,14 @@
                 toggles.forEach((btn) => {
                     btn.addEventListener('click', () => {
                         const nextMode = root.classList.contains('dark') ? 'light' : 'dark';
-                        applyThemePreference(nextMode, { persistRemote: true, dim: true });
+                        applyThemePreference(nextMode, { dim: true, localChange: true });
                     });
                 });
 
                 window.addEventListener('profile-theme-updated', (event) => {
                     const preference = event.detail?.theme;
-                    applyThemePreference(preference, { persistRemote: false, dim: true });
+                    delete root.dataset.themeChangedLocally;
+                    applyThemePreference(preference, { dim: true });
                 });
 
                 const handleSystemThemeChange = () => {
@@ -678,6 +656,44 @@
             } else {
                 initThemeToggle();
             }
+        })();
+    </script>
+    <script>
+        (() => {
+            const bindThemeLogoutForms = () => {
+                document.querySelectorAll('[data-theme-logout-form]').forEach((form) => {
+                    if (form.dataset.themeLogoutBound === 'true') {
+                        return;
+                    }
+
+                    form.dataset.themeLogoutBound = 'true';
+                    form.addEventListener('submit', () => {
+                        const input = form.querySelector('[data-theme-logout-input]');
+                        if (! input) {
+                            return;
+                        }
+
+                        const root = document.documentElement;
+                        const theme = root.dataset.theme;
+                        if (root.dataset.themeChangedLocally === 'true' && (theme === 'light' || theme === 'dark')) {
+                            input.disabled = false;
+                            input.value = theme;
+                            return;
+                        }
+
+                        input.disabled = true;
+                        input.value = '';
+                    });
+                });
+            };
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', bindThemeLogoutForms);
+            } else {
+                bindThemeLogoutForms();
+            }
+
+            document.addEventListener('livewire:navigated', bindThemeLogoutForms);
         })();
     </script>
     <script>

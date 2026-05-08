@@ -159,8 +159,9 @@
                 <div class="text-sm font-semibold text-slate-800 dark:text-slate-100 break-all" data-profile-display-name>
                     {{ $sidebarBottomLabel }}
                 </div>
-                <form method="POST" action="{{ route('logout') }}" class="mt-2">
+                <form method="POST" action="{{ route('logout') }}" class="mt-2" data-theme-logout-form>
                     @csrf
+                    <input type="hidden" name="theme_preference" value="" disabled data-theme-logout-input>
                     <button type="submit"
                         class="w-full inline-flex items-center justify-center rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:text-white">
                         Logout

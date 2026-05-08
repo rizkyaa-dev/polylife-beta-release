@@ -3,7 +3,7 @@
 use App\Http\Controllers\Auth\AccountBannedController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\ProfileAvatarController;
-use App\Http\Controllers\ProfileThemePreferenceController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -31,7 +31,6 @@ Route::middleware('auth')->group(function () {
     Route::middleware('active-account')->group(function () {
         Route::view('profile', 'profile')->name('profile');
         Route::get('profile/avatar/{user}', ProfileAvatarController::class)->name('profile.avatar.show');
-        Route::patch('profile/theme', ProfileThemePreferenceController::class)->name('profile.theme.update');
 
         Volt::route('verify-email', 'pages.auth.verify-email')
             ->name('verification.notice');
@@ -45,10 +44,19 @@ Route::middleware('auth')->group(function () {
     });
 
     // Logout route
-    Route::post('logout', function () {
+    Route::post('logout', function (Request $request) {
+        $user = $request->user();
+        $themePreference = $request->input('theme_preference');
+
+        if ($user && in_array($themePreference, ['light', 'dark'], true)) {
+            $profile = $user->profile()->firstOrNew(['user_id' => $user->id]);
+            $profile->theme_preference = $themePreference;
+            $profile->save();
+        }
+
         auth()->logout();
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return redirect('/login');
     })->name('logout');

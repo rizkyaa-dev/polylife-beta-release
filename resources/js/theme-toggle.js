@@ -25,6 +25,12 @@ if (isBrowser) {
     };
 
     const normalizeTheme = (value) => (value === 'dark' ? 'dark' : 'light');
+    const hasServerThemePreference = () => {
+        const preference = root.dataset?.themePreference;
+
+        return preference === 'light' || preference === 'dark' || preference === 'system';
+    };
+
     const getStoredTheme = () => {
         const stored = safeStorage.get();
         return stored === 'dark' || stored === 'light' ? stored : null;
@@ -68,14 +74,14 @@ if (isBrowser) {
     };
 
     const resolveInitialTheme = () => {
-        const storedTheme = getStoredTheme();
-        if (storedTheme) {
-            return storedTheme;
-        }
-
         const datasetTheme = root.dataset?.theme;
         if (datasetTheme === 'dark' || datasetTheme === 'light') {
             return datasetTheme;
+        }
+
+        const storedTheme = getStoredTheme();
+        if (storedTheme && ! hasServerThemePreference()) {
+            return storedTheme;
         }
 
         return mediaQuery.matches ? 'dark' : 'light';
@@ -113,7 +119,7 @@ if (isBrowser) {
     }
 
     const handleMediaChange = (event) => {
-        if (!hasStoredTheme()) {
+        if (root.dataset?.themePreference === 'system' || (! hasServerThemePreference() && !hasStoredTheme())) {
             applyTheme(event.matches ? 'dark' : 'light');
         }
     };

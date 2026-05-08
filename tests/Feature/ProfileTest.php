@@ -48,23 +48,45 @@ test('profile details can be updated', function () {
     ]);
 });
 
-test('theme preference can be updated from the sidebar toggle endpoint', function () {
+test('sidebar theme endpoint is not available', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user);
 
-    $this->patchJson(route('profile.theme.update'), [
+    $this->patchJson('/profile/theme', [
         'theme_preference' => 'dark',
-    ])
-        ->assertOk()
-        ->assertJson([
-            'theme_preference' => 'dark',
-        ]);
+    ])->assertNotFound();
 
+    $this->assertDatabaseMissing('user_profiles', ['user_id' => $user->id]);
+});
+
+test('theme preference can be saved on logout', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user);
+
+    $this->post(route('logout'), [
+        'theme_preference' => 'dark',
+    ])->assertRedirect('/login');
+
+    $this->assertGuest();
     $this->assertDatabaseHas('user_profiles', [
         'user_id' => $user->id,
         'theme_preference' => 'dark',
     ]);
+});
+
+test('invalid logout theme preference is ignored', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user);
+
+    $this->post(route('logout'), [
+        'theme_preference' => 'evil',
+    ])->assertRedirect('/login');
+
+    $this->assertGuest();
+    $this->assertDatabaseMissing('user_profiles', ['user_id' => $user->id]);
 });
 
 test('profile avatar is resized compressed and stored in the database', function () {
