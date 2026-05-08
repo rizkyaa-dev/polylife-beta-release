@@ -116,11 +116,11 @@ jobs:
             docker pull ghcr.io/${{ github.repository }}:latest
 
             # Update container tanpa downtime besar
-            docker-compose up -d --remove-orphans
+            docker compose up -d --remove-orphans
 
             # Tunggu container siap dengan cerdas
             echo "⏳ Menunggu database ready..."
-            until docker-compose exec -T db mysqladmin ping -h "localhost" --silent; do
+            until docker compose exec -T db mysqladmin ping -h "localhost" --silent; do
               echo "Database belum siap, menunggu 2 detik..."
               sleep 2
             done
@@ -130,6 +130,7 @@ jobs:
             sleep 15
 
             # Jalankan migrasi database
-            docker-compose exec -T app php artisan migrate --force --no-interaction
+            docker compose exec -T app php artisan migrate --force --no-interaction
+            docker compose exec -T app php artisan optimize
 
             echo "✅ Deployment selesai!"
