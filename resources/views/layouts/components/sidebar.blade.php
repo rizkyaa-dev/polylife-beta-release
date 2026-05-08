@@ -171,6 +171,20 @@
         @endauth
 
         <div class="sidebar-footer-controls flex items-center flex-shrink-0 gap-2">
+            @if ($guestMode)
+                <a href="{{ route('landing') }}"
+                   class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200/70 text-slate-500 transition hover:border-rose-200 hover:text-rose-600 dark:border-slate-800 dark:text-slate-300 dark:hover:border-rose-500/50 dark:hover:text-rose-300"
+                   title="Keluar dari mode tamu"
+                   aria-label="Keluar dari mode tamu">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M10 6H6.75A1.75 1.75 0 005 7.75v8.5A1.75 1.75 0 006.75 18H10" />
+                        <path d="M14 8l4 4-4 4" />
+                        <path d="M18 12H9" />
+                    </svg>
+                </a>
+            @endif
+
             @if (! $guestMode && $user)
                 <a href="{{ route('pengumuman.index') }}"
                     class="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl border text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600 dark:border-slate-800 dark:text-slate-300 {{ $announcementIsActive ? 'border-indigo-300 text-indigo-600 dark:border-indigo-500/50 dark:text-indigo-300' : 'border-slate-200/70' }}"

@@ -9,6 +9,10 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
+concurrency:
+  group: production-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # ─── JOB 1: TESTING ───────────────────────────────────────
   test:
@@ -132,5 +136,9 @@ jobs:
             # Jalankan migrasi database
             docker compose exec -T app php artisan migrate --force --no-interaction
             docker compose exec -T app php artisan optimize
+
+            # Bersihkan image Docker lama yang tidak lagi dipakai setelah deploy berhasil.
+            docker image prune -f
+            docker system df
 
             echo "✅ Deployment selesai!"
