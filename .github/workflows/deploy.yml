@@ -110,7 +110,7 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             # Masuk ke folder project (pastikan folder ini sudah ada di server)
-            cd /home/${{ secrets.SERVER_USER }}/RPL2D-kelompok-6
+            cd /opt/polylife
 
             # Pull image terbaru
             docker pull ghcr.io/${{ github.repository }}:latest
