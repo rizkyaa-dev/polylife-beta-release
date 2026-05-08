@@ -22,6 +22,13 @@ new #[Layout('layouts.guest')] class extends Component
         Session::regenerate();
 
         $user = Auth::user();
+
+        if ($user && ! $user->isActiveAccount()) {
+            $this->redirect(route('account.banned', absolute: false), navigate: true);
+
+            return;
+        }
+
         $defaultRouteName = $user ? $user->defaultDashboardRouteName() : 'workspace.home';
         $defaultRoute = route($defaultRouteName, absolute: false);
 

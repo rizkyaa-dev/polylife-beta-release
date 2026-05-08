@@ -25,8 +25,7 @@ class UserController extends Controller
         private readonly UpdateManagedUserAction $updateManagedUserAction,
         private readonly DeleteUserAction $deleteUserAction,
         private readonly VerifyUserEmailAction $verifyUserEmailAction
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -49,10 +48,10 @@ class UserController extends Controller
 
         if ($search !== '') {
             $usersQuery->where(function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('email', 'like', '%' . $search . '%')
-                    ->orWhere('affiliation_name', 'like', '%' . $search . '%')
-                    ->orWhere('student_id_number', 'like', '%' . $search . '%');
+                $query->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('affiliation_name', 'like', '%'.$search.'%')
+                    ->orWhere('student_id_number', 'like', '%'.$search.'%');
             });
         }
 
@@ -83,7 +82,7 @@ class UserController extends Controller
 
         $stats = User::query()
             ->selectRaw('COUNT(*) as total_users')
-            ->selectRaw('SUM(CASE WHEN is_admin = ' . User::ADMIN_LEVEL_SUPER_ADMIN . ' THEN 1 ELSE 0 END) as super_admins')
+            ->selectRaw('SUM(CASE WHEN is_admin = '.User::ADMIN_LEVEL_SUPER_ADMIN.' THEN 1 ELSE 0 END) as super_admins')
             ->selectRaw('SUM(CASE WHEN email_verified_at IS NULL THEN 1 ELSE 0 END) as unverified_users')
             ->first();
 
@@ -152,10 +151,10 @@ class UserController extends Controller
 
         if ($search !== '') {
             $usersQuery->where(function ($query) use ($search) {
-                $query->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('email', 'like', '%' . $search . '%')
-                    ->orWhere('affiliation_name', 'like', '%' . $search . '%')
-                    ->orWhere('student_id_number', 'like', '%' . $search . '%');
+                $query->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%')
+                    ->orWhere('affiliation_name', 'like', '%'.$search.'%')
+                    ->orWhere('student_id_number', 'like', '%'.$search.'%');
             });
         }
 

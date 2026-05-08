@@ -12,6 +12,14 @@ use Illuminate\Support\Facades\Route;
 $userWriteMiddleware = ['throttle:api-write', 'prevent-duplicate-write'];
 
 Route::prefix('v1')->group(function () use ($userWriteMiddleware) {
+    Route::post('auth/register', [AuthController::class, 'register'])
+        ->middleware('throttle:5,1')
+        ->name('api.v1.auth.register');
+
+    Route::post('auth/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware('throttle:5,1')
+        ->name('api.v1.auth.forgot-password');
+
     Route::post('auth/login', [AuthController::class, 'login'])
         ->middleware('throttle:10,1')
         ->name('api.v1.auth.login');

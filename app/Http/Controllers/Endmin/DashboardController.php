@@ -9,8 +9,7 @@ class DashboardController extends Controller
 {
     public function __construct(
         private readonly EndminDashboardQuery $endminDashboardQuery
-    ) {
-    }
+    ) {}
 
     public function index()
     {
@@ -21,6 +20,8 @@ class DashboardController extends Controller
             'roleDistribution' => $payload['roleDistribution'],
             'recentLogs' => $payload['recentLogs'],
             'pendingQueue' => $payload['pendingQueue'],
+            'activeUsers' => $payload['activeUsers'],
+            'activeWindowMinutes' => $payload['activeWindowMinutes'],
             'sidebarView' => 'layouts.components.endmin-sidebar',
         ]);
     }

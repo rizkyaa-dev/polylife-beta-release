@@ -5,7 +5,9 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'core/config/app_mode.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_provider.dart';
+import 'features/auth/views/forgot_password_screen.dart';
 import 'features/auth/views/login_screen.dart';
+import 'features/auth/views/register_screen.dart';
 import 'features/dashboard/views/main_layout.dart';
 import 'features/dashboard/views/home_screen.dart';
 import 'features/catatan/views/catatan_list_screen.dart';
@@ -61,20 +63,25 @@ class _MyAppState extends ConsumerState<MyApp> {
         final isLoading = ref.read(authLoadingProvider);
         final authState = ref.read(authProvider);
 
+        final isGuestAuthRoute = {
+          '/login',
+          '/register',
+          '/forgot-password',
+        }.contains(state.matchedLocation);
+
         if (AppMode.uiOnly) {
-          if (state.matchedLocation == '/login') {
+          if (isGuestAuthRoute) {
             return '/';
           }
           return null;
         }
 
         if (isLoading) return null; // wait for check to finish
-        final isAuthRoute = state.matchedLocation == '/login';
 
-        if (!authState && !isAuthRoute) {
+        if (!authState && !isGuestAuthRoute) {
           return '/login';
         }
-        if (authState && isAuthRoute) {
+        if (authState && isGuestAuthRoute) {
           return '/';
         }
         return null;
@@ -83,6 +90,14 @@ class _MyAppState extends ConsumerState<MyApp> {
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/register',
+          builder: (context, state) => const RegisterScreen(),
+        ),
+        GoRoute(
+          path: '/forgot-password',
+          builder: (context, state) => const ForgotPasswordScreen(),
         ),
         GoRoute(
           path: '/reminder',

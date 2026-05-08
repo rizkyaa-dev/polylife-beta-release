@@ -6,21 +6,21 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class WorkspaceAccessMiddleware
+class EnsureWebUserIsActive
 {
     /**
-     * Restrict super admin from accessing workspace routes directly.
+     * Keep blocked accounts contained to the banned notice and logout routes.
      */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
 
         if ($user && ! $user->isActiveAccount()) {
-            return redirect()->route('account.banned');
-        }
+            if ($request->routeIs('account.banned', 'logout')) {
+                return $next($request);
+            }
 
-        if ($user && $user->isSuperAdmin()) {
-            return redirect()->route('endmin.dashboard');
+            return redirect()->route('account.banned');
         }
 
         return $next($request);

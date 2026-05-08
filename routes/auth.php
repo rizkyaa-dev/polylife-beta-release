@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\Auth\AccountBannedController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\ProfileAvatarController;
+use App\Http\Controllers\ProfileThemePreferenceController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -23,23 +26,30 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
-    Route::view('profile', 'profile')->name('profile');
+    Route::get('account/banned', AccountBannedController::class)->name('account.banned');
 
-    Volt::route('verify-email', 'pages.auth.verify-email')
-        ->name('verification.notice');
+    Route::middleware('active-account')->group(function () {
+        Route::view('profile', 'profile')->name('profile');
+        Route::get('profile/avatar/{user}', ProfileAvatarController::class)->name('profile.avatar.show');
+        Route::patch('profile/theme', ProfileThemePreferenceController::class)->name('profile.theme.update');
 
-    Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['signed', 'throttle:6,1'])
-        ->name('verification.verify');
+        Volt::route('verify-email', 'pages.auth.verify-email')
+            ->name('verification.notice');
 
-    Volt::route('confirm-password', 'pages.auth.confirm-password')
-        ->name('password.confirm');
-        
+        Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
+            ->middleware(['signed', 'throttle:6,1'])
+            ->name('verification.verify');
+
+        Volt::route('confirm-password', 'pages.auth.confirm-password')
+            ->name('password.confirm');
+    });
+
     // Logout route
     Route::post('logout', function () {
         auth()->logout();
         request()->session()->invalidate();
         request()->session()->regenerateToken();
+
         return redirect('/login');
     })->name('logout');
 });

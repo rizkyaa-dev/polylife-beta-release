@@ -1,9 +1,24 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_ver/core/config/app_mode.dart';
 import 'package:mobile_ver/core/network/api_client.dart';
 import 'package:mobile_ver/core/storage/local_storage.dart';
-import 'dart:convert';
+
 import '../models/user_model.dart';
+
+class AuthActionResult {
+  const AuthActionResult._({required this.isSuccess, required this.message});
+
+  const AuthActionResult.success(String message)
+    : this._(isSuccess: true, message: message);
+
+  const AuthActionResult.failure(String message)
+    : this._(isSuccess: false, message: message);
+
+  final bool isSuccess;
+  final String message;
+}
 
 final userProvider = StateProvider<User?>((ref) => null);
 final authLoadingProvider = StateProvider<bool>((ref) => true);
@@ -69,12 +84,13 @@ class AuthController extends StateNotifier<bool> {
       final response = await ApiClient.post('/auth/login', {
         'email': email,
         'password': password,
-        'device_name': 'flutter-app'
+        'device_name': 'flutter-app',
       });
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
-        final data = body['data'] as Map<String, dynamic>? ?? <String, dynamic>{};
+        final data =
+            body['data'] as Map<String, dynamic>? ?? <String, dynamic>{};
         final token = data['access_token']?.toString() ?? '';
         final userData = data['user'];
 
@@ -87,13 +103,78 @@ class AuthController extends StateNotifier<bool> {
         state = true;
         return null; // success
       } else {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        return body['message']?.toString() ?? 'Login failed';
+        return _messageFromResponse(response.body, 'Login gagal.');
       }
     } on StateError catch (e) {
       return e.message;
     } catch (e) {
       return 'Network error occurred';
+    }
+  }
+
+  Future<AuthActionResult> register({
+    required String name,
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    if (AppMode.uiOnly) {
+      return const AuthActionResult.success(
+        'Akun berhasil dibuat. Silakan login kembali.',
+      );
+    }
+
+    try {
+      final response = await ApiClient.post('/auth/register', {
+        'name': name,
+        'email': email,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      });
+
+      final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+      final message = _messageFromResponse(
+        response.body,
+        isSuccess ? 'Akun berhasil dibuat.' : 'Registrasi gagal.',
+      );
+
+      return isSuccess
+          ? AuthActionResult.success(message)
+          : AuthActionResult.failure(message);
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure('Network error occurred');
+    }
+  }
+
+  Future<AuthActionResult> requestPasswordReset(String email) async {
+    if (AppMode.uiOnly) {
+      return const AuthActionResult.success(
+        'Jika email terdaftar, link reset password akan dikirim.',
+      );
+    }
+
+    try {
+      final response = await ApiClient.post('/auth/forgot-password', {
+        'email': email,
+      });
+
+      final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+      final message = _messageFromResponse(
+        response.body,
+        isSuccess
+            ? 'Jika email terdaftar, link reset password akan dikirim.'
+            : 'Permintaan reset password gagal.',
+      );
+
+      return isSuccess
+          ? AuthActionResult.success(message)
+          : AuthActionResult.failure(message);
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure('Network error occurred');
     }
   }
 
@@ -112,6 +193,25 @@ class AuthController extends StateNotifier<bool> {
     await LocalStorage.removeToken();
     ref.read(userProvider.notifier).state = null;
     state = false;
+  }
+
+  String _messageFromResponse(String responseBody, String fallback) {
+    try {
+      final body = jsonDecode(responseBody) as Map<String, dynamic>;
+      final errors = body['errors'];
+
+      if (errors is Map<String, dynamic> && errors.isNotEmpty) {
+        final firstError = errors.values.first;
+        if (firstError is List && firstError.isNotEmpty) {
+          return firstError.first.toString();
+        }
+        return firstError.toString();
+      }
+
+      return body['message']?.toString() ?? fallback;
+    } catch (_) {
+      return fallback;
+    }
   }
 }
 

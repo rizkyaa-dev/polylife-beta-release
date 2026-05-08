@@ -6,11 +6,16 @@
 
 @section('content')
 <div class="space-y-6">
-    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <div class="rounded-2xl border border-indigo-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
             <p class="text-xs font-semibold uppercase tracking-wide text-indigo-500">Total User</p>
             <p class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{{ $stats['total_users'] }}</p>
             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Semua akun terdaftar</p>
+        </div>
+        <div class="rounded-2xl border border-sky-100 bg-sky-50/70 p-4 dark:border-sky-500/20 dark:bg-sky-500/10">
+            <p class="text-xs font-semibold uppercase tracking-wide text-sky-600 dark:text-sky-200">Aktif {{ $activeWindowMinutes }} Menit</p>
+            <p class="mt-2 text-3xl font-bold text-sky-800 dark:text-sky-100">{{ $stats['active_users'] }}</p>
+            <p class="mt-1 text-xs text-sky-700/80 dark:text-sky-100/80">Session user terbaru</p>
         </div>
         <div class="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 dark:border-amber-500/20 dark:bg-amber-500/10">
             <p class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-200">Pending Verifikasi</p>
@@ -26,6 +31,71 @@
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">Belum Verifikasi Email</p>
             <p class="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{{ $stats['unverified_emails'] }}</p>
             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Akun dengan email belum valid</p>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-700 dark:text-slate-200">User Aktif Terbaru</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Berdasarkan session yang aktif dalam {{ $activeWindowMinutes }} menit terakhir.</p>
+            </div>
+            <span class="inline-flex w-fit items-center rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 dark:bg-sky-500/10 dark:text-sky-100">
+                {{ $activeUsers->count() }} ditampilkan
+            </span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-100 text-left dark:border-slate-800">
+                        <th class="py-2 pr-3">User</th>
+                        <th class="py-2 pr-3">Role</th>
+                        <th class="py-2 pr-3">Afiliasi</th>
+                        <th class="py-2 pr-3">Status</th>
+                        <th class="py-2 pr-3">Terakhir Aktif</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
+                    @forelse ($activeUsers as $activeUser)
+                        @php
+                            $lastActiveAt = \Illuminate\Support\Carbon::createFromTimestamp((int) $activeUser->last_activity);
+                        @endphp
+                        <tr>
+                            <td class="py-2 pr-3">
+                                <p class="font-medium text-slate-800 dark:text-slate-100">{{ $activeUser->name ?: '-' }}</p>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 break-all">{{ $activeUser->email }}</p>
+                            </td>
+                            <td class="py-2 pr-3">
+                                @if ($activeUser->isSuperAdmin())
+                                    <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-100">Super Admin</span>
+                                @elseif ($activeUser->isAdminOnly())
+                                    <span class="rounded-full bg-sky-50 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:bg-sky-500/10 dark:text-sky-100">Admin</span>
+                                @else
+                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-200">Pengguna</span>
+                                @endif
+                            </td>
+                            <td class="py-2 pr-3 text-slate-500 dark:text-slate-300">{{ $activeUser->affiliation_name ?: '-' }}</td>
+                            <td class="py-2 pr-3">
+                                @if (($activeUser->account_status ?? 'active') === 'banned')
+                                    <span class="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-500/10 dark:text-rose-100">Banned</span>
+                                @else
+                                    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-100">Aktif</span>
+                                @endif
+                            </td>
+                            <td class="py-2 pr-3 text-slate-500 dark:text-slate-300">
+                                <p>{{ $lastActiveAt->diffForHumans() }}</p>
+                                <p class="text-xs">{{ $lastActiveAt->format('Y-m-d H:i') }}</p>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="py-6 text-center text-slate-500 dark:text-slate-400">
+                                Belum ada user aktif dalam {{ $activeWindowMinutes }} menit terakhir.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
 

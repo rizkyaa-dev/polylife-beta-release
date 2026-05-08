@@ -7,19 +7,36 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="vapid-public-key" content="{{ config('services.webpush.public_key') }}">
     <title>PolyLife</title>
+    @php
+        $profileThemePreference = auth()->user()?->profile?->theme_preference;
+    @endphp
     <script>
         (function () {
             const storageKey = 'theme';
+            const serverPreference = @json($profileThemePreference);
             const root = document.documentElement;
             try {
                 const stored = localStorage.getItem(storageKey);
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (stored === 'dark' || (!stored && prefersDark)) {
+                let resolvedTheme;
+
+                if (serverPreference === 'dark' || serverPreference === 'light') {
+                    resolvedTheme = serverPreference;
+                } else if (serverPreference === 'system') {
+                    resolvedTheme = prefersDark ? 'dark' : 'light';
+                } else {
+                    resolvedTheme = stored === 'dark' || stored === 'light'
+                        ? stored
+                        : (prefersDark ? 'dark' : 'light');
+                }
+
+                if (resolvedTheme === 'dark') {
                     root.classList.add('dark');
                 } else {
                     root.classList.remove('dark');
                 }
-                root.dataset.theme = root.classList.contains('dark') ? 'dark' : 'light';
+                root.dataset.theme = resolvedTheme;
+                root.dataset.themePreference = serverPreference || 'local';
             } catch (err) {
                 console.warn('Theme init issue', err);
             }
@@ -544,6 +561,10 @@
         (() => {
             const storageKey = 'theme';
             const root = document.documentElement;
+            const preferenceUrl = @json(auth()->check() ? route('profile.theme.update') : null);
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            let themeSyncTimer;
 
             const initThemeToggle = () => {
                 const toggles = document.querySelectorAll('[data-theme-toggle]');
@@ -563,19 +584,63 @@
                     dimTimer = setTimeout(() => body.classList.remove('theme-switching'), 400);
                 };
 
-                const setTheme = (mode) => {
-                    triggerDim();
-                    const isDark = mode === 'dark';
-                    root.classList.toggle('dark', isDark);
-                    root.dataset.theme = isDark ? 'dark' : 'light';
+                const normalizePreference = (mode) => ['system', 'light', 'dark'].includes(mode) ? mode : 'system';
+
+                const rememberLocalTheme = (preference) => {
                     try {
-                        localStorage.setItem(storageKey, mode);
+                        if (preference === 'system') {
+                            localStorage.removeItem(storageKey);
+                        } else {
+                            localStorage.setItem(storageKey, preference);
+                        }
                     } catch (err) {
                         console.warn('Theme persistence issue', err);
                     }
+                };
+
+                const persistThemePreference = (preference) => {
+                    if (!preferenceUrl) {
+                        return;
+                    }
+
+                    clearTimeout(themeSyncTimer);
+                    themeSyncTimer = setTimeout(() => {
+                        fetch(preferenceUrl, {
+                            method: 'PATCH',
+                            headers: {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            body: JSON.stringify({ theme_preference: preference }),
+                        }).catch((err) => console.warn('Theme sync issue', err));
+                    }, 700);
+                };
+
+                const applyThemePreference = (mode, { persistRemote = false, dim = false } = {}) => {
+                    const preference = normalizePreference(mode);
+                    const resolvedMode = preference === 'system'
+                        ? (mediaQuery.matches ? 'dark' : 'light')
+                        : preference;
+                    const isDark = resolvedMode === 'dark';
+
+                    if (dim) {
+                        triggerDim();
+                    }
+
+                    root.classList.toggle('dark', isDark);
+                    root.dataset.theme = resolvedMode;
+                    root.dataset.themePreference = preference;
+                    rememberLocalTheme(preference);
+
                     toggles.forEach((btn) =>
                         btn.setAttribute('aria-pressed', isDark ? 'true' : 'false')
                     );
+
+                    if (persistRemote) {
+                        persistThemePreference(preference);
+                    }
                 };
 
                 const currentMode = root.classList.contains('dark') ? 'dark' : 'light';
@@ -586,9 +651,26 @@
                 toggles.forEach((btn) => {
                     btn.addEventListener('click', () => {
                         const nextMode = root.classList.contains('dark') ? 'light' : 'dark';
-                        setTheme(nextMode);
+                        applyThemePreference(nextMode, { persistRemote: true, dim: true });
                     });
                 });
+
+                window.addEventListener('profile-theme-updated', (event) => {
+                    const preference = event.detail?.theme;
+                    applyThemePreference(preference, { persistRemote: false, dim: true });
+                });
+
+                const handleSystemThemeChange = () => {
+                    if (root.dataset.themePreference === 'system') {
+                        applyThemePreference('system');
+                    }
+                };
+
+                if (typeof mediaQuery.addEventListener === 'function') {
+                    mediaQuery.addEventListener('change', handleSystemThemeChange);
+                } else if (typeof mediaQuery.addListener === 'function') {
+                    mediaQuery.addListener(handleSystemThemeChange);
+                }
             };
 
             if (document.readyState === 'loading') {

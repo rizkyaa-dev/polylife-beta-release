@@ -4,17 +4,17 @@ namespace App\Providers;
 
 use App\Events\Security\UntrustedProxyHeadersDetected;
 use App\Listeners\Security\LogUntrustedProxyHeaders;
-use InvalidArgumentException;
-use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use InvalidArgumentException;
 use Symfony\Component\Mailer\Transport;
 
 class AppServiceProvider extends ServiceProvider
@@ -40,6 +40,10 @@ class AppServiceProvider extends ServiceProvider
             $user = $request->user();
 
             if ($user) {
+                if (! $user->isActiveAccount()) {
+                    return route('account.banned');
+                }
+
                 return route($user->defaultDashboardRouteName());
             }
 

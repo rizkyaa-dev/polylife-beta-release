@@ -11,8 +11,7 @@ class UpdateManagedUserAction
 {
     public function __construct(
         private readonly CaptureUserSnapshotAction $captureUserSnapshotAction
-    ) {
-    }
+    ) {}
 
     /**
      * @param  array<string, mixed>  $validated

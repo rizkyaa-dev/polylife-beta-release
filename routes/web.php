@@ -1,33 +1,31 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Auth;
-use App\Http\Controllers\BroadcastImageController;
 use App\Http\Controllers\Admin\AffiliationBroadcastController as AdminAffiliationBroadcastController;
+use App\Http\Controllers\BroadcastImageController;
+use App\Http\Controllers\CatatanController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Endmin\AdminManagementController as EndminAdminManagementController;
 use App\Http\Controllers\Endmin\AffiliationController as EndminAffiliationController;
 use App\Http\Controllers\Endmin\AuditLogController as EndminAuditLogController;
 use App\Http\Controllers\Endmin\BroadcastVerificationController as EndminBroadcastVerificationController;
 use App\Http\Controllers\Endmin\DashboardController as EndminDashboardController;
 use App\Http\Controllers\Endmin\UserController as EndminUserController;
-use App\Http\Controllers\{
-    DashboardController,
-    GuestDashboardController,
-    GuestWorkspaceController,
-    PengumumanController,
-    PushSubscriptionController,
-    KeuanganController,
-    KeuanganStatistikController,
-    JadwalController,
-    MatkulController,
-    KegiatanController,
-    TugasController,
-    CatatanController,
-    IpkController,
-    TodolistController,
-    ReminderController,
-    NilaiMutuController
-};
+use App\Http\Controllers\GuestDashboardController;
+use App\Http\Controllers\GuestWorkspaceController;
+use App\Http\Controllers\IpkController;
+use App\Http\Controllers\JadwalController;
+use App\Http\Controllers\KegiatanController;
+use App\Http\Controllers\KeuanganController;
+use App\Http\Controllers\KeuanganStatistikController;
+use App\Http\Controllers\MatkulController;
+use App\Http\Controllers\NilaiMutuController;
+use App\Http\Controllers\PengumumanController;
+use App\Http\Controllers\PushSubscriptionController;
+use App\Http\Controllers\ReminderController;
+use App\Http\Controllers\TodolistController;
+use App\Http\Controllers\TugasController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 $userWriteMiddleware = ['throttle:workspace-write', 'prevent-duplicate-write'];
 $bulkWriteMiddleware = ['throttle:bulk-write', 'prevent-duplicate-write'];
@@ -36,7 +34,7 @@ Route::get('media/broadcasts/{path}', BroadcastImageController::class)
     ->where('path', '.*')
     ->name('broadcast-images.show');
 
-Route::prefix('workspace')->middleware(['auth', 'workspace-access', 'verified', 'prevent-back-history'])->group(function () use ($userWriteMiddleware, $bulkWriteMiddleware) {
+Route::prefix('workspace')->middleware(['auth', 'active-account', 'workspace-access', 'verified', 'prevent-back-history'])->group(function () use ($userWriteMiddleware, $bulkWriteMiddleware) {
     // Beranda workspace sekarang di /workspace/dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('workspace.home');
     // Alias legacy untuk kompatibilitas route('dashboard') dan akses /workspace
@@ -105,7 +103,7 @@ Route::prefix('guest')->name('guest.')->group(function () {
 
 Route::prefix('admin')
     ->name('admin.')
-    ->middleware(['auth', 'admin', 'prevent-back-history'])
+    ->middleware(['auth', 'active-account', 'admin', 'prevent-back-history'])
     ->group(function () use ($userWriteMiddleware) {
         Route::get('/', fn () => redirect()->route('admin.broadcasts.index'))->name('dashboard');
         Route::resource('broadcasts', AdminAffiliationBroadcastController::class)
@@ -124,7 +122,7 @@ Route::prefix('admin')
 
 Route::prefix('endmin')
     ->name('endmin.')
-    ->middleware(['auth', 'super-admin', 'prevent-back-history'])
+    ->middleware(['auth', 'active-account', 'super-admin', 'prevent-back-history'])
     ->group(function () use ($userWriteMiddleware, $bulkWriteMiddleware) {
         Route::get('/', [EndminDashboardController::class, 'index'])->name('dashboard');
 
@@ -160,6 +158,10 @@ Route::get('/', function () {
     }
 
     $user = Auth::user();
+
+    if (! $user->isActiveAccount()) {
+        return redirect()->route('account.banned');
+    }
 
     return redirect()->route($user->defaultDashboardRouteName());
 })->name('landing');

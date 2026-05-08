@@ -6,8 +6,9 @@ use App\Notifications\ResetPasswordNotification;
 use App\Notifications\VerifyEmailNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -16,7 +17,9 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasApiTokens, HasFactory, Notifiable;
 
     public const ADMIN_LEVEL_USER = 0;
+
     public const ADMIN_LEVEL_SUPER_ADMIN = 1;
+
     public const ADMIN_LEVEL_ADMIN = 2;
 
     protected $fillable = [
@@ -144,7 +147,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function sendEmailVerificationNotification(): void
     {
-        $this->notify(new VerifyEmailNotification());
+        $this->notify(new VerifyEmailNotification);
     }
 
     public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
@@ -190,6 +193,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function pushSubscriptions()
     {
         return $this->hasMany(PushSubscription::class);
+    }
+
+    public function profile(): HasOne
+    {
+        return $this->hasOne(UserProfile::class);
+    }
+
+    public function profileAvatar(): HasOne
+    {
+        return $this->hasOne(UserProfileAvatar::class);
     }
 
     public function adminAssignments(): HasMany

@@ -16,7 +16,7 @@
         $isSelf = auth()->id() === $user->id;
         $targetIsSuperAdmin = $user->isSuperAdmin();
         $canEditPassword = !($targetIsSuperAdmin && !$isSelf);
-        $canBanTarget = !($targetIsSuperAdmin && !$isSelf);
+        $canBanTarget = ! $isSelf && ! $targetIsSuperAdmin;
     @endphp
 
     <div class="max-w-3xl mx-auto space-y-6">
@@ -98,7 +98,7 @@
 
                 <div class="rounded-xl border border-slate-200/80 p-4 dark:border-slate-700">
                     <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Status Akun</h3>
-                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Hanya super admin yang bisa mengubah status ini.</p>
+                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Akun sendiri dan sesama super admin tidak dapat dibanned.</p>
 
                     <div class="mt-3">
                         <label for="account_status" class="form-label">Status account</label>
@@ -111,7 +111,7 @@
                         @enderror
                         @if (! $canBanTarget)
                             <p class="text-xs text-slate-500 mt-1 dark:text-slate-400">
-                                Sesama super admin tidak dapat saling membanned.
+                                {{ $isSelf ? 'Tidak bisa memblokir akun yang sedang digunakan.' : 'Sesama super admin tidak dapat saling membanned.' }}
                             </p>
                         @endif
                     </div>

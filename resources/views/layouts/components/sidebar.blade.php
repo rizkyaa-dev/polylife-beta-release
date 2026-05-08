@@ -53,12 +53,15 @@
     ];
 
     $user = Auth::user();
+    $userProfile = $user ? $user->profile : null;
     $userName = $user ? trim((string) ($user->name ?? '')) : '';
     $userEmail = $user ? trim((string) ($user->email ?? '')) : '';
-    $userDisplayName = $userName !== '' ? $userName : ($userEmail !== '' ? $userEmail : 'Pengguna');
+    $userProfileName = $userProfile ? trim((string) ($userProfile->display_name ?? '')) : '';
+    $userDisplayName = $userProfileName !== '' ? $userProfileName : ($userName !== '' ? $userName : ($userEmail !== '' ? $userEmail : 'Pengguna'));
     $userInitial = $user ? mb_strtoupper(mb_substr($userDisplayName, 0, 1)) : 'P';
+    $userAvatarUrl = $userProfile?->avatar_url;
     $sidebarTopLabel = $userEmail !== '' ? $userEmail : ($userName !== '' ? $userName : 'Pengguna');
-    $sidebarBottomLabel = $userName !== '' ? $userName : ($userEmail !== '' ? $userEmail : 'Pengguna');
+    $sidebarBottomLabel = $userDisplayName;
     $announcementUnreadCount = 0;
 
     if (! $guestMode && $user) {
@@ -116,9 +119,23 @@
 
     <div class="sidebar-footer mt-auto border-t border-slate-100/60 dark:border-slate-900/60 pt-5 flex flex-col gap-4">
         <div class="flex items-center gap-3 min-w-0 sidebar-user">
-            <div class="sidebar-user-avatar h-10 w-10 rounded-2xl bg-indigo-500 text-white font-semibold grid place-items-center dark:bg-indigo-400/30 dark:text-indigo-100">
-                {{ $userInitial }}
-            </div>
+            @auth
+                <a href="{{ route('profile') }}"
+                   class="sidebar-user-avatar grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl bg-indigo-500 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-white dark:bg-indigo-400/30 dark:text-indigo-100 dark:focus:ring-indigo-300 dark:focus:ring-offset-slate-950 {{ request()->routeIs('profile') ? 'ring-2 ring-indigo-300 dark:ring-indigo-400/70' : '' }}"
+                   title="Buka profil"
+                   aria-label="Buka profil"
+                   data-sidebar-profile-link>
+                    @if ($userAvatarUrl)
+                        <img src="{{ $userAvatarUrl }}" alt="" class="h-full w-full object-cover">
+                    @else
+                        {{ $userInitial }}
+                    @endif
+                </a>
+            @else
+                <div class="sidebar-user-avatar h-10 w-10 rounded-2xl bg-indigo-500 text-white font-semibold grid place-items-center dark:bg-indigo-400/30 dark:text-indigo-100">
+                    {{ $userInitial }}
+                </div>
+            @endauth
             <div class="min-w-0 flex-1 sidebar-user-text">
                 <p class="text-sm leading-tight font-medium text-slate-700 dark:text-slate-100 break-all">
                     @auth {{ $sidebarTopLabel }} @else Mode tamu @endauth

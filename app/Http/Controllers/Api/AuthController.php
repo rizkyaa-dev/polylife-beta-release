@@ -2,25 +2,77 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Requests\Api\LoginRequest;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\ForgotPasswordRequest;
+use App\Http\Requests\Api\LoginRequest;
+use App\Http\Requests\Api\RegisterRequest;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Throwable;
 
 class AuthController extends Controller
 {
     public const MOBILE_API_ABILITY = 'mobile:access';
+
     private const ACCOUNT_ATTEMPT_DECAY_SECONDS = 300;
+
     private const ACCOUNT_ATTEMPT_LIMIT = 10;
+
     private const LOGIN_ATTEMPT_LIMIT = 5;
+
     private const LOGIN_ATTEMPT_DECAY_SECONDS = 60;
+
     private const MAX_DEVICE_NAME_LENGTH = 120;
+
     private const MOBILE_API_TOKEN_TTL_DAYS = 30;
+
+    public function register(RegisterRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $user = User::query()->create([
+            'name' => trim((string) $validated['name']),
+            'email' => strtolower(trim((string) $validated['email'])),
+            'password' => Hash::make((string) $validated['password']),
+        ]);
+
+        try {
+            event(new Registered($user));
+            $message = 'Akun berhasil dibuat. Silakan cek email untuk verifikasi, lalu login kembali.';
+        } catch (Throwable $exception) {
+            report($exception);
+            $message = 'Akun berhasil dibuat. Email verifikasi belum dapat dikirim. Silakan login dan kirim ulang verifikasi.';
+        }
+
+        return response()->json([
+            'message' => $message,
+            'data' => [
+                'user' => $this->userPayload($user),
+            ],
+        ], 201);
+    }
+
+    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    {
+        $email = strtolower(trim((string) $request->validated('email')));
+
+        try {
+            Password::sendResetLink(['email' => $email]);
+        } catch (Throwable $exception) {
+            report($exception);
+        }
+
+        return response()->json([
+            'message' => 'Jika email terdaftar, link reset password akan dikirim ke email tersebut.',
+        ]);
+    }
 
     public function login(LoginRequest $request): JsonResponse
     {
