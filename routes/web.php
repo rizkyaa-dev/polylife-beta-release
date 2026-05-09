@@ -9,6 +9,7 @@ use App\Http\Controllers\Endmin\AffiliationController as EndminAffiliationContro
 use App\Http\Controllers\Endmin\AuditLogController as EndminAuditLogController;
 use App\Http\Controllers\Endmin\BroadcastVerificationController as EndminBroadcastVerificationController;
 use App\Http\Controllers\Endmin\DashboardController as EndminDashboardController;
+use App\Http\Controllers\Endmin\MailingController as EndminMailingController;
 use App\Http\Controllers\Endmin\UserController as EndminUserController;
 use App\Http\Controllers\GuestDashboardController;
 use App\Http\Controllers\GuestWorkspaceController;
@@ -133,6 +134,8 @@ Route::prefix('endmin')
         Route::patch('admins/{user}/demote', [EndminAdminManagementController::class, 'demote'])->middleware($userWriteMiddleware)->name('admins.demote');
 
         Route::get('affiliations', [EndminAffiliationController::class, 'index'])->name('affiliations.index');
+        Route::get('mailing', [EndminMailingController::class, 'index'])->name('mailing.index');
+        Route::post('mailing/{user}/send', [EndminMailingController::class, 'send'])->middleware($userWriteMiddleware)->name('mailing.send');
         Route::get('users/audit-logs', [EndminAuditLogController::class, 'index'])->name('audit-logs.index');
         Route::get('audit-logs', fn () => redirect()->route('endmin.audit-logs.index'));
         Route::get('verifikasi-broadcasts', [EndminBroadcastVerificationController::class, 'index'])->name('broadcast-verifications.index');
