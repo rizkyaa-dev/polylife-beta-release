@@ -284,7 +284,7 @@
                     </div>
                 </div>
                 <div class="-mx-1 overflow-x-auto overscroll-x-contain px-1 pb-2 [scrollbar-gutter:stable] sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
-                    <div class="min-w-[34rem] sm:min-w-0">
+                    <div class="min-w-[44rem] sm:min-w-0">
                 <div class="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-gray-500">
                     @foreach(['Sen','Sel','Rab','Kam','Jum','Sab','Min'] as $hari)
                         <div class="py-2">{{ $hari }}</div>
