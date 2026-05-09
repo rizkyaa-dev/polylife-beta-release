@@ -332,7 +332,7 @@
                             $hasKegiatan = !empty($kegiatanDays[$dayKey] ?? false);
                         @endphp
                         <a href="{{ route($jadwalRouteName, array_merge(request()->except(['tanggal','bulan']), ['tanggal' => $dayKey, 'bulan' => $day->format('Y-m')])) }}"
-                           class="relative flex min-h-[90px] flex-col rounded-2xl border px-3 pb-3 pt-2 {{ $textColor }} {{ $isSelected ? 'ring-2 ring-indigo-400 bg-indigo-50' : 'bg-white hover:bg-gray-50' }}">
+                           class="relative flex min-h-[90px] flex-col rounded-2xl border px-3 pb-3 pt-2 {{ $textColor }} {{ $isSelected ? 'ring-2 ring-inset ring-indigo-400 bg-indigo-50' : 'bg-white hover:bg-gray-50' }}">
                             <div class="flex items-center justify-between text-xs font-semibold">
                                 <span>{{ $day->format('d') }}</span>
                                 <div class="flex gap-1">
