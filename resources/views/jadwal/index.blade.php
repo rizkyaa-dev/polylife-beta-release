@@ -265,7 +265,7 @@
         </section>
 
         <section class="grid min-w-0 gap-6 xl:grid-cols-[2fr_1.1fr]">
-            <div class="min-w-0 overflow-hidden rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+            <div class="min-w-0 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
                 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 class="text-lg font-semibold text-gray-900">Kalender interaktif</h2>
                     <div class="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-wider text-gray-500">
