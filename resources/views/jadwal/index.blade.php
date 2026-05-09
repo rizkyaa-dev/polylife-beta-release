@@ -264,7 +264,7 @@
             </div>
         </section>
 
-        <section class="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)]">
+        <section class="grid min-w-0 gap-6 xl:grid-cols-[2fr_1.1fr]">
             <div class="min-w-0 overflow-hidden rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
                 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 class="text-lg font-semibold text-gray-900">Kalender interaktif</h2>
@@ -603,7 +603,7 @@
             </div>
         </section>
 
-        <section class="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <section class="grid min-w-0 gap-6 lg:grid-cols-2">
             <div class="min-w-0 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
                 <div class="flex items-center justify-between mb-4">
                     <div>
