@@ -223,8 +223,8 @@
         ]));
     @endphp
 
-    <div class="space-y-8">
-        <section class="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-white p-6 shadow-sm dark:border-slate-800 dark:from-[#111827] dark:via-[#0f172a] dark:to-[#0f172a] dark:shadow-none">
+    <div class="min-w-0 space-y-8 overflow-x-hidden">
+        <section class="min-w-0 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-white p-6 shadow-sm dark:border-slate-800 dark:from-[#111827] dark:via-[#0f172a] dark:to-[#0f172a] dark:shadow-none">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <p class="text-sm uppercase tracking-wide text-indigo-500 font-semibold dark:text-indigo-300">Agenda akademik</p>
@@ -264,11 +264,11 @@
             </div>
         </section>
 
-        <section class="grid gap-6 xl:grid-cols-[2fr_1.1fr]">
-            <div class="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
-                <div class="flex items-center justify-between mb-4">
+        <section class="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1.1fr)]">
+            <div class="min-w-0 overflow-hidden rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <h2 class="text-lg font-semibold text-gray-900">Kalender interaktif</h2>
-                    <div class="flex items-center gap-3 text-[11px] uppercase tracking-wider text-gray-500">
+                    <div class="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-wider text-gray-500">
                         <span class="inline-flex items-center gap-1">
                             <span class="h-1.5 w-5 rounded-full bg-emerald-500"></span> Kuliah
                         </span>
@@ -283,6 +283,8 @@
                         </span>
                     </div>
                 </div>
+                <div class="-mx-1 overflow-x-auto overscroll-x-contain px-1 pb-2 [scrollbar-gutter:stable] sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
+                    <div class="min-w-[34rem] sm:min-w-0">
                 <div class="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-gray-500">
                     @foreach(['Sen','Sel','Rab','Kam','Jum','Sab','Min'] as $hari)
                         <div class="py-2">{{ $hari }}</div>
@@ -378,9 +380,11 @@
                         </a>
                     @endforeach
                 </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
+            <div class="min-w-0 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-300">Agenda tanggal</p>
@@ -599,8 +603,8 @@
             </div>
         </section>
 
-        <section class="grid gap-6 lg:grid-cols-2">
-            <div class="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+        <section class="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div class="min-w-0 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Agenda mendatang</p>
@@ -635,7 +639,7 @@
                 @endif
             </div>
 
-            <div class="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div class="min-w-0 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500">Navigasi cepat</p>
