@@ -48,14 +48,31 @@ test('profile details can be updated', function () {
     ]);
 });
 
-test('sidebar theme endpoint is not available', function () {
+test('sidebar theme preference can be saved', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user);
 
-    $this->patchJson('/profile/theme', [
+    $this->patchJson(route('profile.theme-preference.update'), [
         'theme_preference' => 'dark',
-    ])->assertNotFound();
+    ])
+        ->assertOk()
+        ->assertJsonPath('theme_preference', 'dark');
+
+    $this->assertDatabaseHas('user_profiles', [
+        'user_id' => $user->id,
+        'theme_preference' => 'dark',
+    ]);
+});
+
+test('invalid sidebar theme preference is rejected', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user);
+
+    $this->patchJson(route('profile.theme-preference.update'), [
+        'theme_preference' => 'evil',
+    ])->assertUnprocessable();
 
     $this->assertDatabaseMissing('user_profiles', ['user_id' => $user->id]);
 });

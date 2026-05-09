@@ -10,6 +10,7 @@
     @php
         $profileThemePreference = auth()->user()?->profile?->theme_preference;
         $themeStorageKey = auth()->check() ? 'theme:user:'.auth()->id() : 'theme';
+        $themePreferenceUpdateUrl = auth()->check() ? route('profile.theme-preference.update') : null;
     @endphp
     <script>
         (function () {
@@ -561,6 +562,7 @@
     <script>
         (() => {
             const storageKey = @json($themeStorageKey);
+            const themePreferenceUpdateUrl = @json($themePreferenceUpdateUrl);
             const root = document.documentElement;
             const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
@@ -571,7 +573,10 @@
                 }
 
                 let dimTimer;
+                let pendingPreference = null;
+                let persistenceInFlight = false;
                 const body = document.body;
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
                 const triggerDim = () => {
                     if (!body) {
@@ -583,6 +588,8 @@
                 };
 
                 const normalizePreference = (mode) => ['system', 'light', 'dark'].includes(mode) ? mode : 'system';
+
+                const canPersistPreference = () => Boolean(themePreferenceUpdateUrl && csrfToken);
 
                 const rememberLocalTheme = (preference) => {
                     try {
@@ -620,6 +627,72 @@
                     );
                 };
 
+                const persistThemePreference = async (preference) => {
+                    if (! canPersistPreference()) {
+                        return;
+                    }
+
+                    pendingPreference = normalizePreference(preference);
+                    if (persistenceInFlight) {
+                        return;
+                    }
+
+                    persistenceInFlight = true;
+
+                    while (pendingPreference) {
+                        const preferenceToSave = pendingPreference;
+                        pendingPreference = null;
+
+                        try {
+                            const response = await fetch(themePreferenceUpdateUrl, {
+                                method: 'PATCH',
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': csrfToken,
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: JSON.stringify({ theme_preference: preferenceToSave }),
+                            });
+
+                            if (! response.ok) {
+                                throw new Error(`Theme preference update failed: ${response.status}`);
+                            }
+
+                            const data = await response.json().catch(() => ({}));
+                            const savedPreference = normalizePreference(data.theme_preference || preferenceToSave);
+                            if (root.dataset.themePreference === savedPreference) {
+                                delete root.dataset.themeChangedLocally;
+                            }
+                        } catch (err) {
+                            root.dataset.themeChangedLocally = 'true';
+                            console.warn('Theme preference sync issue', err);
+                            if (pendingPreference) {
+                                continue;
+                            }
+                            break;
+                        }
+                    }
+
+                    persistenceInFlight = false;
+                };
+
+                const flushThemePreference = () => {
+                    if (! canPersistPreference() || root.dataset.themeChangedLocally !== 'true') {
+                        return;
+                    }
+
+                    const preference = normalizePreference(root.dataset.themePreference);
+                    if (navigator.sendBeacon) {
+                        const payload = new FormData();
+                        payload.append('_token', csrfToken);
+                        payload.append('_method', 'PATCH');
+                        payload.append('theme_preference', preference);
+                        navigator.sendBeacon(themePreferenceUpdateUrl, payload);
+                    }
+                };
+
                 const currentMode = root.classList.contains('dark') ? 'dark' : 'light';
                 toggles.forEach((btn) =>
                     btn.setAttribute('aria-pressed', currentMode === 'dark' ? 'true' : 'false')
@@ -629,6 +702,7 @@
                     btn.addEventListener('click', () => {
                         const nextMode = root.classList.contains('dark') ? 'light' : 'dark';
                         applyThemePreference(nextMode, { dim: true, localChange: true });
+                        persistThemePreference(nextMode);
                     });
                 });
 
@@ -649,6 +723,8 @@
                 } else if (typeof mediaQuery.addListener === 'function') {
                     mediaQuery.addListener(handleSystemThemeChange);
                 }
+
+                window.addEventListener('pagehide', flushThemePreference);
             };
 
             if (document.readyState === 'loading') {

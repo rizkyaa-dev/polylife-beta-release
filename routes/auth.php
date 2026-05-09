@@ -32,6 +32,21 @@ Route::middleware('auth')->group(function () {
         Route::view('profile', 'profile')->name('profile');
         Route::get('profile/avatar/{user}', ProfileAvatarController::class)->name('profile.avatar.show');
 
+        Route::patch('profile/theme-preference', function (Request $request) {
+            $validated = $request->validate([
+                'theme_preference' => ['required', 'in:system,light,dark'],
+            ]);
+
+            $user = $request->user();
+            $profile = $user->profile()->firstOrNew(['user_id' => $user->id]);
+            $profile->theme_preference = $validated['theme_preference'];
+            $profile->save();
+
+            return response()->json([
+                'theme_preference' => $profile->theme_preference,
+            ]);
+        })->name('profile.theme-preference.update')->middleware('throttle:30,1');
+
         Volt::route('verify-email', 'pages.auth.verify-email')
             ->name('verification.notice');
 
