@@ -32,12 +32,6 @@
             'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10.5l9-6 9 6M4.5 10.5V18A2.25 2.25 0 006.75 20.25h10.5A2.25 2.25 0 0019.5 18v-7.5M8.25 20.25V15h7.5v5.25" />',
         ],
         [
-            'label' => 'Mailing',
-            'route' => 'endmin.mailing.index',
-            'active' => ['endmin.mailing.*'],
-            'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 6.75h16.5v10.5A2.25 2.25 0 0118 19.5H6a2.25 2.25 0 01-2.25-2.25V6.75z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.5 7.5l6.16 5.04a2.1 2.1 0 002.68 0L19.5 7.5" />',
-        ],
-        [
             'label' => 'Afiliasi',
             'route' => 'endmin.affiliations.index',
             'active' => ['endmin.affiliations.*'],
