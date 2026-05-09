@@ -2,8 +2,8 @@
 
 use App\Events\Security\UntrustedProxyHeadersDetected;
 use App\Support\Security\ProxyTrustSettings;
-use Illuminate\Http\Request;
 use Illuminate\Http\Middleware\TrustProxies;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Route;
 
@@ -85,4 +85,18 @@ it('preserves proxy headers for explicitly trusted proxies', function () {
         ]);
 
     Event::assertNotDispatched(UntrustedProxyHeadersDetected::class);
+});
+
+it('does not treat wildcard proxy values as trusted proxies', function () {
+    expect(ProxyTrustSettings::isTrustedProxy('203.0.113.10', ['*', '**']))
+        ->toBeFalse();
+});
+
+it('only trusts valid explicit proxy ip values', function () {
+    expect(ProxyTrustSettings::isTrustedProxy('10.10.10.12', ['invalid-proxy', '10.10.10.0/24']))
+        ->toBeTrue()
+        ->and(ProxyTrustSettings::isTrustedProxy('10.10.11.12', ['invalid-proxy', '10.10.10.0/24']))
+        ->toBeFalse()
+        ->and(ProxyTrustSettings::isTrustedProxy('2001:db8::1', ['2001:db8::/32']))
+        ->toBeTrue();
 });

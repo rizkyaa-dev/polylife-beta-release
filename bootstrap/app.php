@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\ReminderPushService;
+use App\Support\Security\ProxyTrustSettings;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -28,7 +29,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\EnsureWebUserIsActive::class,
         ]);
-        $middleware->trustProxies(at: '*');
+        $middleware->trustProxies(
+            at: ProxyTrustSettings::trustedProxies(),
+            headers: ProxyTrustSettings::trustedHeaders()
+        );
         $middleware->prepend(\App\Http\Middleware\SanitizeForwardedHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

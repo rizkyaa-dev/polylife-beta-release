@@ -69,7 +69,11 @@ final class ProxyTrustSettings
         $trustedProxies ??= self::trustedProxies();
 
         foreach ($trustedProxies as $trustedProxy) {
-            if ($trustedProxy === '*' || $trustedProxy === '**' || IpUtils::checkIp($candidate, $trustedProxy)) {
+            if (! self::isAllowedProxyValue($trustedProxy)) {
+                continue;
+            }
+
+            if (IpUtils::checkIp($candidate, $trustedProxy)) {
                 return true;
             }
         }
@@ -99,8 +103,34 @@ final class ProxyTrustSettings
 
         return array_values(array_filter(
             array_unique(array_map('trim', $items)),
-            static fn (string $proxy): bool => $proxy !== '' && ! in_array($proxy, ['REMOTE_ADDR'], true)
+            static fn (string $proxy): bool => self::isAllowedProxyValue($proxy)
         ));
+    }
+
+    private static function isAllowedProxyValue(string $proxy): bool
+    {
+        $normalizedProxy = trim($proxy);
+        if ($normalizedProxy === '' || in_array($normalizedProxy, ['*', '**', 'REMOTE_ADDR'], true)) {
+            return false;
+        }
+
+        [$ipAddress, $prefix] = array_pad(explode('/', $normalizedProxy, 2), 2, null);
+        if (! filter_var($ipAddress, FILTER_VALIDATE_IP)) {
+            return false;
+        }
+
+        if ($prefix === null) {
+            return true;
+        }
+
+        if ($prefix === '' || ! ctype_digit($prefix)) {
+            return false;
+        }
+
+        $prefixLength = (int) $prefix;
+        $maxPrefixLength = filter_var($ipAddress, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? 128 : 32;
+
+        return $prefixLength >= 0 && $prefixLength <= $maxPrefixLength;
     }
 
     private static function nullableStringEnv(string $key): ?string
