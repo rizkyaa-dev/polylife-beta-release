@@ -2,15 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSyncMetadata;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Jadwal extends Model
 {
     use HasFactory;
+    use HasSyncMetadata;
+    use SoftDeletes;
 
     protected $fillable = [
         'user_id',
+        'sync_uuid',
+        'server_version',
         'matkul_id_list',
         'jenis',
         'tanggal_mulai',
@@ -28,6 +34,7 @@ class Jadwal extends Model
         'tanggal_mulai' => 'date',
         'tanggal_selesai' => 'date',
         'is_completed' => 'boolean',
+        'deleted_at' => 'datetime',
     ];
 
     public function user()
@@ -49,5 +56,10 @@ class Jadwal extends Model
     public function kegiatans()
     {
         return $this->hasMany(Kegiatan::class);
+    }
+
+    public function reminders()
+    {
+        return $this->hasMany(Reminder::class);
     }
 }

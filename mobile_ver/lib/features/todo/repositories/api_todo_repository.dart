@@ -26,26 +26,27 @@ class ApiTodoRepository implements TodoRepository {
       return const <TodoItem>[];
     }
 
-    final rows = rawData
-        .whereType<Map>()
-        .map((row) => _fromApiJson(Map<String, dynamic>.from(row)))
-        .toList()
-      ..sort((a, b) {
-        if (a.completed != b.completed) {
-          return a.completed ? 1 : -1;
-        }
+    final rows =
+        rawData
+            .whereType<Map>()
+            .map((row) => _fromApiJson(Map<String, dynamic>.from(row)))
+            .toList()
+          ..sort((a, b) {
+            if (a.completed != b.completed) {
+              return a.completed ? 1 : -1;
+            }
 
-        final dueA = a.dueDate;
-        final dueB = b.dueDate;
-        if (dueA == null && dueB != null) return 1;
-        if (dueA != null && dueB == null) return -1;
-        if (dueA != null && dueB != null) {
-          final byDue = dueA.compareTo(dueB);
-          if (byDue != 0) return byDue;
-        }
+            final dueA = a.dueDate;
+            final dueB = b.dueDate;
+            if (dueA == null && dueB != null) return 1;
+            if (dueA != null && dueB == null) return -1;
+            if (dueA != null && dueB != null) {
+              final byDue = dueA.compareTo(dueB);
+              if (byDue != 0) return byDue;
+            }
 
-        return b.createdAt.compareTo(a.createdAt);
-      });
+            return b.createdAt.compareTo(a.createdAt);
+          });
 
     return rows;
   }
@@ -62,7 +63,10 @@ class ApiTodoRepository implements TodoRepository {
 
   @override
   Future<TodoItem> update(TodoItem item) async {
-    final response = await ApiClient.put('/todolist/${item.id}', _toApiPayload(item));
+    final response = await ApiClient.put(
+      '/todolist/${item.id}',
+      _toApiPayload(item),
+    );
     if (response.statusCode != 200) {
       throw Exception('Failed to update todo');
     }
@@ -106,18 +110,24 @@ class ApiTodoRepository implements TodoRepository {
 
   TodoItem _fromApiJson(Map<String, dynamic> json) {
     final dueDate = DateTime.tryParse((json['reminder_at'] ?? '').toString());
-    final reminderEnabled = json['reminder_enabled'] == true ||
+    final reminderEnabled =
+        json['reminder_enabled'] == true ||
         json['reminder_enabled'] == 1 ||
         json['reminder_enabled'] == '1';
-    final completed = json['status'] == true || json['status'] == 1 || json['status'] == '1';
+    final completed =
+        json['status'] == true || json['status'] == 1 || json['status'] == '1';
 
     return TodoItem(
       id: int.tryParse((json['id'] ?? '').toString()) ?? 0,
       title: (json['nama_item'] ?? '').toString(),
       description: '',
-      createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()) ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse((json['created_at'] ?? '').toString()) ??
+          DateTime.now(),
       dueDate: dueDate,
-      priority: reminderEnabled || dueDate != null ? TodoPriority.high : TodoPriority.normal,
+      priority: reminderEnabled || dueDate != null
+          ? TodoPriority.high
+          : TodoPriority.normal,
       completed: completed,
     );
   }

@@ -133,6 +133,7 @@ class JadwalController extends Controller
     public function destroy(Request $request, int $jadwal): JsonResponse
     {
         $item = $this->findOwnedJadwalOrFail($request, $jadwal);
+        $item->reminders()->delete();
         $item->delete();
 
         return response()->json([

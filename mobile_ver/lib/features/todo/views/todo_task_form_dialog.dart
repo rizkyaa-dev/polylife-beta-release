@@ -70,8 +70,9 @@ class _TodoTaskFormDialogState extends State<_TodoTaskFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final dueLabel =
-        _dueDate == null ? 'Atur deadline (opsional)' : DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(_dueDate!);
+    final dueLabel = _dueDate == null
+        ? 'Atur deadline (opsional)'
+        : DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(_dueDate!);
 
     return AlertDialog(
       title: const Text('To-Do Baru'),
@@ -112,10 +113,7 @@ class _TodoTaskFormDialogState extends State<_TodoTaskFormDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Batal'),
         ),
-        FilledButton(
-          onPressed: _submit,
-          child: const Text('Simpan'),
-        ),
+        FilledButton(onPressed: _submit, child: const Text('Simpan')),
       ],
     );
   }

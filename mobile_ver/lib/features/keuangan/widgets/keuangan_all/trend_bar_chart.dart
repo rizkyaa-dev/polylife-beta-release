@@ -8,10 +8,7 @@ class TrendBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: TrendBarPainter(values),
-      child: Container(),
-    );
+    return CustomPaint(painter: TrendBarPainter(values), child: Container());
   }
 }
 
@@ -44,7 +41,10 @@ class TrendBarPainter extends CustomPainter {
     }
 
     final spacing = 3.0;
-    final barWidth = math.max(2.0, (size.width - (values.length - 1) * spacing) / values.length);
+    final barWidth = math.max(
+      2.0,
+      (size.width - (values.length - 1) * spacing) / values.length,
+    );
 
     for (var i = 0; i < values.length; i++) {
       final value = values[i];

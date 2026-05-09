@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
+import 'package:mobile_ver/features/auth/models/user_model.dart';
 import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/catatan/providers/catatan_provider.dart';
 import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
@@ -12,6 +13,7 @@ import 'package:mobile_ver/features/jadwal/providers/jadwal_provider.dart';
 import 'package:mobile_ver/features/keuangan/providers/keuangan_provider.dart';
 import 'package:mobile_ver/features/pengumuman/models/pengumuman_model.dart';
 import 'package:mobile_ver/features/pengumuman/providers/pengumuman_provider.dart';
+import 'package:mobile_ver/features/profile/widgets/profile_avatar.dart';
 import 'package:mobile_ver/features/reminder/models/upcoming_reminder.dart';
 import 'package:mobile_ver/features/reminder/providers/upcoming_reminder_provider.dart';
 import 'package:mobile_ver/features/todo/models/todo_item.dart';
@@ -90,7 +92,9 @@ class HomeScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
             children: [
               _DashboardTopBar(
-                userName: user?.name ?? 'Pengguna',
+                user: user,
+                userName: user?.displayName ?? 'Pengguna',
+                onOpenProfile: () => context.push('/profile'),
                 onOpenNotifications: () => context.go('/pengumuman'),
                 onLogout: () => ref.read(authProvider.notifier).logout(),
               ),
@@ -196,12 +200,16 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _DashboardTopBar extends StatelessWidget {
+  final User? user;
   final String userName;
+  final VoidCallback onOpenProfile;
   final VoidCallback onOpenNotifications;
   final VoidCallback onLogout;
 
   const _DashboardTopBar({
+    required this.user,
     required this.userName,
+    required this.onOpenProfile,
     required this.onOpenNotifications,
     required this.onLogout,
   });
@@ -210,61 +218,69 @@ class _DashboardTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          height: 46,
-          width: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE3E8FF), Color(0xFFB9C6FF)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x140F172A),
-                blurRadius: 14,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              _initialsFromName(userName),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF3440C8),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                userName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF3542D4),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: onOpenProfile,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  children: [
+                    ProfileAvatar(
+                      user: user,
+                      fallbackName: userName,
+                      size: 46,
+                      borderWidth: 2,
+                      gradientColors: const [
+                        Color(0xFFE3E8FF),
+                        Color(0xFFB9C6FF),
+                      ],
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x140F172A),
+                          blurRadius: 14,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                      initialsStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF3440C8),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            userName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF3542D4),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _greetingLabel(),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF7A7F9A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                _greetingLabel(),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF7A7F9A),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
         _IconCapsuleButton(
@@ -555,10 +571,7 @@ class _TodayAgendaListCard extends StatelessWidget {
     return Column(
       children: [
         for (var i = 0; i < entries.length; i++) ...[
-          _TodayScheduleEntryCard(
-            entry: entries[i],
-            onTap: onTapItem,
-          ),
+          _TodayScheduleEntryCard(entry: entries[i], onTap: onTapItem),
           if (i != entries.length - 1) const SizedBox(height: 12),
         ],
       ],
@@ -570,10 +583,7 @@ class _TodayScheduleEntryCard extends StatelessWidget {
   final _HomeScheduleEntry entry;
   final VoidCallback onTap;
 
-  const _TodayScheduleEntryCard({
-    required this.entry,
-    required this.onTap,
-  });
+  const _TodayScheduleEntryCard({required this.entry, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -694,7 +704,8 @@ class _AnimatedScheduleStatusBadge extends StatefulWidget {
       _AnimatedScheduleStatusBadgeState();
 }
 
-class _AnimatedScheduleStatusBadgeState extends State<_AnimatedScheduleStatusBadge> {
+class _AnimatedScheduleStatusBadgeState
+    extends State<_AnimatedScheduleStatusBadge> {
   Timer? _timer;
   bool _showCountdown = false;
 
@@ -1260,12 +1271,13 @@ List<_HomeScheduleEntry> _buildHomeScheduleEntries(
           fallbackStart: item.startAt,
           fallbackEnd: item.endAt,
         );
-        final trailingLabel = ((preview.ruangan ?? '').trim().isNotEmpty
-                ? preview.ruangan!.trim()
-                : (preview.kelas ?? '').trim().isNotEmpty
-                ? 'Kelas ${preview.kelas!.trim()}'
-                : item.location.trim())
-            .trim();
+        final trailingLabel =
+            ((preview.ruangan ?? '').trim().isNotEmpty
+                    ? preview.ruangan!.trim()
+                    : (preview.kelas ?? '').trim().isNotEmpty
+                    ? 'Kelas ${preview.kelas!.trim()}'
+                    : item.location.trim())
+                .trim();
 
         entries.add(
           _HomeScheduleEntry(
@@ -1281,7 +1293,10 @@ List<_HomeScheduleEntry> _buildHomeScheduleEntries(
             effectiveEndAt: range.$2,
             icon: visualStyle.icon,
             iconBackground: visualStyle.iconBackground,
-            iconColor: _parseHomeAccent(preview.warnaLabel, visualStyle.iconColor),
+            iconColor: _parseHomeAccent(
+              preview.warnaLabel,
+              visualStyle.iconColor,
+            ),
           ),
         );
       }
@@ -1446,20 +1461,8 @@ String _fallbackHomeScheduleTimeLabel(JadwalItem item) {
     return (fallbackStart, fallbackEnd);
   }
 
-  final startAt = DateTime(
-    date.year,
-    date.month,
-    date.day,
-    start.$1,
-    start.$2,
-  );
-  var endAt = DateTime(
-    date.year,
-    date.month,
-    date.day,
-    end.$1,
-    end.$2,
-  );
+  final startAt = DateTime(date.year, date.month, date.day, start.$1, start.$2);
+  var endAt = DateTime(date.year, date.month, date.day, end.$1, end.$2);
 
   if (!endAt.isAfter(startAt)) {
     endAt = endAt.add(const Duration(days: 1));
@@ -1779,25 +1782,6 @@ _TodoUrgencyData _todoUrgency(TodoItem item, DateTime now) {
     label: 'Reminder: ${formatter.format(dueDate)}',
     color: const Color(0xFF22C55E),
   );
-}
-
-String _initialsFromName(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-
-  if (parts.isEmpty) {
-    return 'PL';
-  }
-
-  if (parts.length == 1) {
-    final chunk = parts.first;
-    return chunk.substring(0, chunk.length >= 2 ? 2 : 1).toUpperCase();
-  }
-
-  return (parts.first[0] + parts.last[0]).toUpperCase();
 }
 
 String _greetingLabel() {

@@ -1,11 +1,25 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_ver/core/config/app_mode.dart';
+import 'package:mobile_ver/core/database/app_database.dart';
 import 'package:mobile_ver/core/network/api_client.dart';
-import 'dart:convert';
+import 'package:mobile_ver/core/sync/sync_models.dart';
+import 'package:mobile_ver/core/sync/sync_service.dart';
+import 'package:mobile_ver/core/sync/sync_uuid.dart';
+import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
+import 'package:sqflite/sqflite.dart';
 
 import '../models/catatan_model.dart';
 
 class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
+  CatatanNotifier({required this.userId}) : super(const AsyncValue.loading()) {
+    fetchCatatan();
+  }
+
+  final int userId;
+
   static final List<Catatan> _mockSeed = [
     Catatan(
       id: 1,
@@ -27,14 +41,29 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     ),
   ];
 
-  CatatanNotifier() : super(const AsyncValue.loading()) {
-    fetchCatatan();
-  }
-
   Future<bool> fetchCatatan({bool showLoader = true}) async {
     if (AppMode.uiOnly) {
       state = AsyncValue.data(List<Catatan>.from(_mockSeed));
       return true;
+    }
+
+    if (userId > 0) {
+      final previous = state.valueOrNull;
+      if (showLoader || previous == null) {
+        state = const AsyncValue.loading();
+      }
+
+      try {
+        unawaited(const SyncService().syncNow(userId));
+        state = AsyncValue.data(await _readLocalCatatan());
+        return true;
+      } catch (e, st) {
+        if (previous != null && !showLoader) {
+          return false;
+        }
+        state = AsyncValue.error(e, st);
+        return false;
+      }
     }
 
     final previous = state.valueOrNull;
@@ -83,7 +112,9 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
   Future<bool> createCatatan(String judul, String isi, String tanggal) async {
     if (AppMode.uiOnly) {
       final current = state.value ?? <Catatan>[];
-      final nextId = current.isEmpty ? 1 : current.map((e) => e.id).reduce((a, b) => a > b ? a : b) + 1;
+      final nextId = current.isEmpty
+          ? 1
+          : current.map((e) => e.id).reduce((a, b) => a > b ? a : b) + 1;
       final newItem = Catatan(
         id: nextId,
         judul: judul,
@@ -98,6 +129,19 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     }
 
     try {
+      if (userId > 0) {
+        await _upsertLocalCatatan(
+          id: null,
+          judul: judul,
+          isi: isi,
+          tanggal: tanggal,
+          statusSampah: false,
+          action: 'create',
+        );
+        await fetchCatatan(showLoader: false);
+        return true;
+      }
+
       final response = await ApiClient.post('/catatan', {
         'judul': judul,
         'isi': isi,
@@ -112,27 +156,47 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     }
   }
 
-  Future<bool> updateCatatan(int id, String judul, String isi, String tanggal) async {
+  Future<bool> updateCatatan(
+    int id,
+    String judul,
+    String isi,
+    String tanggal,
+  ) async {
     if (AppMode.uiOnly) {
       final current = state.value ?? <Catatan>[];
       final updated = current
-          .map((item) => item.id == id
-              ? Catatan(
-                  id: item.id,
-                  judul: judul,
-                  isi: isi,
-                  previewIsi: isi,
-                  hasFullIsi: true,
-                  tanggal: tanggal,
-                  statusSampah: item.statusSampah,
-                )
-              : item)
+          .map(
+            (item) => item.id == id
+                ? Catatan(
+                    id: item.id,
+                    judul: judul,
+                    isi: isi,
+                    previewIsi: isi,
+                    hasFullIsi: true,
+                    tanggal: tanggal,
+                    statusSampah: item.statusSampah,
+                  )
+                : item,
+          )
           .toList();
       state = AsyncValue.data(updated);
       return true;
     }
 
     try {
+      if (userId > 0) {
+        await _upsertLocalCatatan(
+          id: id,
+          judul: judul,
+          isi: isi,
+          tanggal: tanggal,
+          statusSampah: null,
+          action: 'update',
+        );
+        await fetchCatatan(showLoader: false);
+        return true;
+      }
+
       final response = await ApiClient.put('/catatan/$id', {
         'judul': judul,
         'isi': isi,
@@ -151,13 +215,23 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     if (AppMode.uiOnly) {
       final current = state.value ?? <Catatan>[];
       final next = current
-          .map((item) => item.id == id ? item.copyWith(statusSampah: true) : item)
+          .map(
+            (item) => item.id == id ? item.copyWith(statusSampah: true) : item,
+          )
           .toList();
       state = AsyncValue.data(next);
       return true;
     }
 
     try {
+      if (userId > 0) {
+        final row = await _findLocalRow(id);
+        if (row == null) return false;
+        await _markTrashState(row, true);
+        await fetchCatatan(showLoader: false);
+        return true;
+      }
+
       final response = await ApiClient.delete('/catatan/$id');
       if (response.statusCode == 200) {
         return fetchCatatan(showLoader: false);
@@ -172,13 +246,23 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     if (AppMode.uiOnly) {
       final current = state.value ?? <Catatan>[];
       final next = current
-          .map((item) => item.id == id ? item.copyWith(statusSampah: false) : item)
+          .map(
+            (item) => item.id == id ? item.copyWith(statusSampah: false) : item,
+          )
           .toList();
       state = AsyncValue.data(next);
       return true;
     }
 
     try {
+      if (userId > 0) {
+        final row = await _findLocalRow(id);
+        if (row == null) return false;
+        await _markTrashState(row, false);
+        await fetchCatatan(showLoader: false);
+        return true;
+      }
+
       final response = await ApiClient.patch('/catatan/$id/restore', {});
       if (response.statusCode == 200) {
         return fetchCatatan(showLoader: false);
@@ -197,6 +281,14 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     }
 
     try {
+      if (userId > 0) {
+        final row = await _findLocalRow(id);
+        if (row == null) return false;
+        await _deleteLocal(row);
+        await fetchCatatan(showLoader: false);
+        return true;
+      }
+
       final response = await ApiClient.delete('/catatan/$id/force-delete');
       if (response.statusCode == 200) {
         return fetchCatatan(showLoader: false);
@@ -215,6 +307,15 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
         return current?.firstWhere((item) => item.id == id);
       } catch (_) {
         return null;
+      }
+    }
+
+    if (userId > 0) {
+      try {
+        return current?.firstWhere((item) => item.id == id);
+      } catch (_) {
+        final row = await _findLocalRow(id);
+        return row == null ? null : _fromLocalRow(row);
       }
     }
 
@@ -264,8 +365,222 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
 
     return Catatan.fromJson(Map<String, dynamic>.from(rawData));
   }
+
+  Future<List<Catatan>> _readLocalCatatan() async {
+    final db = await AppDatabase.instance.database;
+    final rows = await db.query(
+      'catatan_local',
+      where: 'user_id = ? AND deleted_locally = 0',
+      whereArgs: [userId],
+      orderBy: 'tanggal DESC, local_int_id DESC',
+    );
+
+    return rows.map(_fromLocalRow).toList();
+  }
+
+  Future<void> _upsertLocalCatatan({
+    required int? id,
+    required String judul,
+    required String isi,
+    required String tanggal,
+    required bool? statusSampah,
+    required String action,
+  }) async {
+    final existing = id == null ? null : await _findLocalRow(id);
+    final localUuid = existing?['local_uuid']?.toString() ?? SyncUuid.v4();
+    final localIntId = existing == null
+        ? _localId(localUuid)
+        : (existing['local_int_id'] as num?)?.toInt() ?? _localId(localUuid);
+    final serverId = (existing?['server_id'] as num?)?.toInt();
+    final serverVersion = (existing?['server_version'] as num?)?.toInt() ?? 0;
+    final currentStatus =
+        existing?['sync_status']?.toString() ?? SyncStatus.synced.wireName;
+    final nextStatus =
+        currentStatus == SyncStatus.pendingCreate.wireName || action == 'create'
+        ? SyncStatus.pendingCreate.wireName
+        : SyncStatus.pendingUpdate.wireName;
+    final now = DateTime.now().toIso8601String();
+    final nextTrash =
+        statusSampah ?? ((existing?['status_sampah'] as num?)?.toInt() == 1);
+    final payload = {
+      'judul': judul.trim(),
+      'isi': isi,
+      'tanggal': tanggal,
+      'status_sampah': nextTrash,
+    };
+
+    await AppDatabase.instance.transaction((txn) async {
+      await txn.insert('catatan_local', {
+        'local_uuid': localUuid,
+        'local_int_id': localIntId,
+        'user_id': userId,
+        'server_id': serverId,
+        'judul': judul.trim(),
+        'isi': isi,
+        'preview_isi': _preview(isi),
+        'has_full_isi': 1,
+        'tanggal': tanggal,
+        'status_sampah': nextTrash ? 1 : 0,
+        'server_version': serverVersion,
+        'sync_status': nextStatus,
+        'deleted_locally': 0,
+        'created_at': existing?['created_at']?.toString() ?? now,
+        'updated_at': now,
+        'dirty_at': now,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+      if (currentStatus == SyncStatus.pendingCreate.wireName &&
+          action != 'create') {
+        await txn.update(
+          'sync_outbox',
+          {
+            'payload_json': jsonEncode(payload),
+            'updated_at': now,
+            'status': 'pending',
+          },
+          where: 'entity_local_uuid = ? AND entity_type = ? AND action = ?',
+          whereArgs: [localUuid, 'catatan', 'create'],
+        );
+      } else {
+        await SyncService.enqueue(
+          txn,
+          operationId: SyncUuid.v4(),
+          userId: userId,
+          entityType: 'catatan',
+          entityLocalUuid: localUuid,
+          entityServerId: serverId,
+          action:
+              currentStatus == SyncStatus.pendingCreate.wireName ||
+                  action == 'create'
+              ? 'create'
+              : 'update',
+          payload: payload,
+          baseServerVersion: serverId == null ? null : serverVersion,
+        );
+      }
+    });
+
+    unawaited(const SyncService().pushPending(userId));
+  }
+
+  Future<void> _markTrashState(
+    Map<String, Object?> row,
+    bool statusSampah,
+  ) async {
+    await _upsertLocalCatatan(
+      id:
+          (row['server_id'] as num?)?.toInt() ??
+          (row['local_int_id'] as num?)?.toInt(),
+      judul: row['judul']?.toString() ?? '',
+      isi: row['isi']?.toString() ?? '',
+      tanggal: row['tanggal']?.toString() ?? '',
+      statusSampah: statusSampah,
+      action: 'update',
+    );
+  }
+
+  Future<void> _deleteLocal(Map<String, Object?> row) async {
+    final localUuid = row['local_uuid']?.toString() ?? '';
+    final serverId = (row['server_id'] as num?)?.toInt();
+    final serverVersion = (row['server_version'] as num?)?.toInt() ?? 0;
+    final currentStatus =
+        row['sync_status']?.toString() ?? SyncStatus.synced.wireName;
+    final now = DateTime.now().toIso8601String();
+
+    await AppDatabase.instance.transaction((txn) async {
+      if (currentStatus == SyncStatus.pendingCreate.wireName) {
+        await txn.delete(
+          'catatan_local',
+          where: 'local_uuid = ?',
+          whereArgs: [localUuid],
+        );
+        await txn.delete(
+          'sync_outbox',
+          where: 'entity_local_uuid = ? AND entity_type = ?',
+          whereArgs: [localUuid, 'catatan'],
+        );
+      } else {
+        await txn.update(
+          'catatan_local',
+          {
+            'deleted_locally': 1,
+            'sync_status': SyncStatus.pendingDelete.wireName,
+            'updated_at': now,
+            'dirty_at': now,
+          },
+          where: 'local_uuid = ?',
+          whereArgs: [localUuid],
+        );
+
+        await SyncService.enqueue(
+          txn,
+          operationId: SyncUuid.v4(),
+          userId: userId,
+          entityType: 'catatan',
+          entityLocalUuid: localUuid,
+          entityServerId: serverId,
+          action: 'delete',
+          payload: const <String, dynamic>{},
+          baseServerVersion: serverId == null ? null : serverVersion,
+        );
+      }
+    });
+
+    unawaited(const SyncService().pushPending(userId));
+  }
+
+  Future<Map<String, Object?>?> _findLocalRow(int id) async {
+    final db = await AppDatabase.instance.database;
+    final rows = await db.query(
+      'catatan_local',
+      where: 'user_id = ? AND (server_id = ? OR local_int_id = ?)',
+      whereArgs: [userId, id, id],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  Catatan _fromLocalRow(Map<String, Object?> row) {
+    final localUuid = row['local_uuid']?.toString() ?? '';
+    final serverId = (row['server_id'] as num?)?.toInt();
+    return Catatan(
+      id:
+          serverId ??
+          (row['local_int_id'] as num?)?.toInt() ??
+          _localId(localUuid),
+      localUuid: localUuid,
+      serverId: serverId,
+      serverVersion: (row['server_version'] as num?)?.toInt() ?? 0,
+      syncStatus: row['sync_status']?.toString() ?? SyncStatus.synced.wireName,
+      judul: row['judul']?.toString() ?? '',
+      isi: row['isi']?.toString() ?? '',
+      previewIsi: row['preview_isi']?.toString() ?? '',
+      hasFullIsi: row['has_full_isi'] == 1,
+      tanggal: row['tanggal']?.toString() ?? '',
+      statusSampah: row['status_sampah'] == 1,
+      createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
+      updatedAt: DateTime.tryParse(row['updated_at']?.toString() ?? ''),
+    );
+  }
+
+  String _preview(String value) {
+    final normalized = value.replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (normalized.length <= 97) return normalized;
+    return normalized.substring(0, 97);
+  }
+
+  int _localId(String value) {
+    var hash = 0;
+    for (final code in value.codeUnits) {
+      hash = 0x1fffffff & (hash + code);
+      hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
+      hash ^= hash >> 6;
+    }
+    return -hash.abs();
+  }
 }
 
-final catatanProvider = StateNotifierProvider<CatatanNotifier, AsyncValue<List<Catatan>>>((ref) {
-  return CatatanNotifier();
-});
+final catatanProvider =
+    StateNotifierProvider<CatatanNotifier, AsyncValue<List<Catatan>>>((ref) {
+      final user = ref.watch(userProvider);
+      return CatatanNotifier(userId: user?.id ?? 0);
+    });

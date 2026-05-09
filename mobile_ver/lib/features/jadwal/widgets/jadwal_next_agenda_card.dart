@@ -23,7 +23,9 @@ class JadwalNextAgendaCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
-      child: item == null ? const _EmptyCard() : _FilledCard(item: item!, onOpenAgenda: onOpenAgenda),
+      child: item == null
+          ? const _EmptyCard()
+          : _FilledCard(item: item!, onOpenAgenda: onOpenAgenda),
     );
   }
 }
@@ -32,10 +34,7 @@ class _FilledCard extends StatelessWidget {
   final JadwalItem item;
   final VoidCallback onOpenAgenda;
 
-  const _FilledCard({
-    required this.item,
-    required this.onOpenAgenda,
-  });
+  const _FilledCard({required this.item, required this.onOpenAgenda});
 
   @override
   Widget build(BuildContext context) {
@@ -87,9 +86,7 @@ class _FilledCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             item.location.trim(),
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-            ),
+            style: const TextStyle(color: Color(0xFF64748B)),
           ),
         ],
         const SizedBox(height: 10),
@@ -152,9 +149,7 @@ class _EmptyCard extends StatelessWidget {
         SizedBox(height: 4),
         Text(
           'Tambahkan jadwal kuliah atau ujian agar ringkasan harian muncul.',
-          style: TextStyle(
-            color: Color(0xFF64748B),
-          ),
+          style: TextStyle(color: Color(0xFF64748B)),
         ),
       ],
     );

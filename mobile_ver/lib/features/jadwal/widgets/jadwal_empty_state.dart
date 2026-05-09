@@ -23,10 +23,7 @@ class JadwalEmptyState extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(
-            Icons.calendar_month_outlined,
-            color: Color(0xFF64748B),
-          ),
+          const Icon(Icons.calendar_month_outlined, color: Color(0xFF64748B)),
           const SizedBox(height: 10),
           Text(
             title,
@@ -39,10 +36,7 @@ class JadwalEmptyState extends StatelessWidget {
           const SizedBox(height: 5),
           Text(
             subtitle,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              height: 1.3,
-            ),
+            style: const TextStyle(color: Color(0xFF64748B), height: 1.3),
           ),
         ],
       ),

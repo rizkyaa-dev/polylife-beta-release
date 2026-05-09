@@ -59,12 +59,19 @@ class JadwalModeSwitcher extends StatelessWidget {
                 onTap: () => onSelected(option.key),
                 borderRadius: BorderRadius.circular(99),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: selected ? option.accentColor.withValues(alpha: 0.12) : const Color(0xFFF8FAFC),
+                    color: selected
+                        ? option.accentColor.withValues(alpha: 0.12)
+                        : const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(99),
                     border: Border.all(
-                      color: selected ? option.accentColor.withValues(alpha: 0.4) : const Color(0xFFE2E8F0),
+                      color: selected
+                          ? option.accentColor.withValues(alpha: 0.4)
+                          : const Color(0xFFE2E8F0),
                     ),
                   ),
                   child: Row(
@@ -73,28 +80,39 @@ class JadwalModeSwitcher extends StatelessWidget {
                       Icon(
                         option.icon,
                         size: 14,
-                        color: selected ? option.accentColor : const Color(0xFF64748B),
+                        color: selected
+                            ? option.accentColor
+                            : const Color(0xFF64748B),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         option.label,
                         style: TextStyle(
-                          color: selected ? option.accentColor : const Color(0xFF334155),
+                          color: selected
+                              ? option.accentColor
+                              : const Color(0xFF334155),
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: selected ? option.accentColor.withValues(alpha: 0.2) : const Color(0xFFE2E8F0),
+                          color: selected
+                              ? option.accentColor.withValues(alpha: 0.2)
+                              : const Color(0xFFE2E8F0),
                           borderRadius: BorderRadius.circular(99),
                         ),
                         child: Text(
                           '${option.count}',
                           style: TextStyle(
-                            color: selected ? option.accentColor : const Color(0xFF475569),
+                            color: selected
+                                ? option.accentColor
+                                : const Color(0xFF475569),
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                           ),

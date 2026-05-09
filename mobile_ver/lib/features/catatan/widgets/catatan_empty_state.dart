@@ -28,9 +28,7 @@ class CatatanEmptyState extends StatelessWidget {
           Text(
             'Klik tombol Baru untuk menyimpan ide atau ringkasan.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF64748B),
-            ),
+            style: TextStyle(color: Color(0xFF64748B)),
           ),
         ],
       ),

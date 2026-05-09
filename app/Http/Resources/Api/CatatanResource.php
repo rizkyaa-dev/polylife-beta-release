@@ -25,6 +25,9 @@ class CatatanResource extends JsonResource
             'status_sampah' => (bool) $this->status_sampah,
             'created_at' => optional($this->created_at)->toIso8601String(),
             'updated_at' => optional($this->updated_at)->toIso8601String(),
+            'sync_uuid' => (string) ($this->sync_uuid ?? ''),
+            'server_version' => (int) ($this->server_version ?? 1),
+            'deleted_at' => optional($this->deleted_at)->toIso8601String(),
         ];
     }
 }

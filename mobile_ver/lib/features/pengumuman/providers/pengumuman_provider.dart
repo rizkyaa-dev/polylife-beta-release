@@ -15,7 +15,8 @@ class PengumumanNotifier extends StateNotifier<AsyncValue<List<Pengumuman>>> {
       id: 1,
       title: 'Briefing Organisasi Mingguan',
       body: 'Rapat koordinasi terbuka untuk seluruh anggota.',
-      excerpt: 'Rapat koordinasi terbuka untuk seluruh anggota pada Jumat 19.00.',
+      excerpt:
+          'Rapat koordinasi terbuka untuk seluruh anggota pada Jumat 19.00.',
       imageUrl: null,
       targetMode: 'afiliasi',
       publishedAt: '2026-02-28 08:00:00',
@@ -40,10 +41,7 @@ class PengumumanNotifier extends StateNotifier<AsyncValue<List<Pengumuman>>> {
     fetchPengumuman();
   }
 
-  Future<void> fetchPengumuman({
-    bool showLoader = true,
-    bool force = false,
-  }) {
+  Future<void> fetchPengumuman({bool showLoader = true, bool force = false}) {
     if (!force &&
         _lastFetchedAt != null &&
         DateTime.now().difference(_lastFetchedAt!) < _freshWindow &&
@@ -86,7 +84,10 @@ class PengumumanNotifier extends StateNotifier<AsyncValue<List<Pengumuman>>> {
         _lastFetchedAt = DateTime.now();
         unawaited(_prefetchAnnouncementImages(list));
       } else {
-        state = AsyncValue.error('Failed to load pengumuman', StackTrace.current);
+        state = AsyncValue.error(
+          'Failed to load pengumuman',
+          StackTrace.current,
+        );
       }
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -115,6 +116,9 @@ class PengumumanNotifier extends StateNotifier<AsyncValue<List<Pengumuman>>> {
   }
 }
 
-final pengumumanProvider = StateNotifierProvider<PengumumanNotifier, AsyncValue<List<Pengumuman>>>((ref) {
-  return PengumumanNotifier();
-});
+final pengumumanProvider =
+    StateNotifierProvider<PengumumanNotifier, AsyncValue<List<Pengumuman>>>((
+      ref,
+    ) {
+      return PengumumanNotifier();
+    });

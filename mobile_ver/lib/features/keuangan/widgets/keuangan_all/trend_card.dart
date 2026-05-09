@@ -49,17 +49,11 @@ class TrendCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: 88,
-            child: TrendBarChart(values: series),
-          ),
+          SizedBox(height: 88, child: TrendBarChart(values: series)),
           const SizedBox(height: 6),
           Text(
             'Maks: ${formatter.format(maxOut)}',
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
           ),
         ],
       ),

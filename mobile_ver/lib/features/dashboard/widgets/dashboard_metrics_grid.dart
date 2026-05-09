@@ -21,10 +21,7 @@ class DashboardMetric {
 class DashboardMetricsGrid extends StatelessWidget {
   final List<DashboardMetric> metrics;
 
-  const DashboardMetricsGrid({
-    super.key,
-    required this.metrics,
-  });
+  const DashboardMetricsGrid({super.key, required this.metrics});
 
   @override
   Widget build(BuildContext context) {
@@ -125,10 +122,7 @@ class _MetricCard extends StatelessWidget {
               metric.caption,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 11,
-              ),
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
             ),
           ],
         ),

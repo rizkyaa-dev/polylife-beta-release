@@ -17,7 +17,9 @@ class AllTransactionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isIncome = item.jenis == 'pemasukan';
     final dateText = DateFormat('dd MMM yyyy', 'id_ID').format(item.tanggal);
-    final subtitle = (item.deskripsi ?? '').trim().isEmpty ? item.jenis : item.deskripsi!.trim();
+    final subtitle = (item.deskripsi ?? '').trim().isEmpty
+        ? item.jenis
+        : item.deskripsi!.trim();
     final icon = resolveKeuanganCategoryIcon(
       kategori: item.kategori,
       jenis: item.jenis,
@@ -35,8 +37,12 @@ class AllTransactionTile extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: isIncome ? const Color(0xFFDCFCE7) : const Color(0xFFF1F5F9),
-            foregroundColor: isIncome ? const Color(0xFF16A34A) : const Color(0xFF475569),
+            backgroundColor: isIncome
+                ? const Color(0xFFDCFCE7)
+                : const Color(0xFFF1F5F9),
+            foregroundColor: isIncome
+                ? const Color(0xFF16A34A)
+                : const Color(0xFF475569),
             child: Icon(icon, size: 20),
           ),
           const SizedBox(width: 12),
@@ -67,7 +73,9 @@ class AllTransactionTile extends StatelessWidget {
           Text(
             '${isIncome ? '+' : '-'}${formatter.format(item.nominal)}',
             style: TextStyle(
-              color: isIncome ? const Color(0xFF166534) : const Color(0xFF0F172A),
+              color: isIncome
+                  ? const Color(0xFF166534)
+                  : const Color(0xFF0F172A),
               fontWeight: FontWeight.w800,
             ),
           ),

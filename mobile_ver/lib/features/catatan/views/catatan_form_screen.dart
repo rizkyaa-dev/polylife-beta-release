@@ -27,7 +27,7 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
     super.initState();
     _judulController = TextEditingController(text: widget.catatan?.judul ?? '');
     _isiController = TextEditingController(text: widget.catatan?.isi ?? '');
-    
+
     if (widget.catatan != null) {
       try {
         _selectedDate = DateTime.parse(widget.catatan!.tanggal);
@@ -62,12 +62,12 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
     final notifier = ref.read(catatanProvider.notifier);
-    
+
     bool success;
     if (widget.catatan == null) {
       success = await notifier.createCatatan(
@@ -83,13 +83,15 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
         formattedDate,
       );
     }
-    
+
     setState(() => _isLoading = false);
-    
+
     if (success && mounted) {
       Navigator.pop(
         context,
-        widget.catatan == null ? CatatanFormResult.created : CatatanFormResult.updated,
+        widget.catatan == null
+            ? CatatanFormResult.created
+            : CatatanFormResult.updated,
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,53 +115,53 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
           ),
         ],
       ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator())
-        : Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextFormField(
-                    controller: _judulController,
-                    decoration: const InputDecoration(
-                      labelText: 'Judul Catatan',
-                      hintText: 'Masukkan judul',
-                    ),
-                    validator: (v) => v!.isEmpty ? 'Judul wajib diisi' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  InkWell(
-                    onTap: () => _selectDate(context),
-                    child: InputDecorator(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+              key: _formKey,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _judulController,
                       decoration: const InputDecoration(
-                        labelText: 'Tanggal',
+                        labelText: 'Judul Catatan',
+                        hintText: 'Masukkan judul',
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(DateFormat('dd MMM yyyy').format(_selectedDate)),
-                          const Icon(Icons.calendar_today, size: 20),
-                        ],
+                      validator: (v) => v!.isEmpty ? 'Judul wajib diisi' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () => _selectDate(context),
+                      child: InputDecorator(
+                        decoration: const InputDecoration(labelText: 'Tanggal'),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              DateFormat('dd MMM yyyy').format(_selectedDate),
+                            ),
+                            const Icon(Icons.calendar_today, size: 20),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _isiController,
-                    decoration: const InputDecoration(
-                      labelText: 'Isi Catatan',
-                      hintText: 'Tuliskan detail catatan Anda di sini...',
-                      alignLabelWithHint: true,
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _isiController,
+                      decoration: const InputDecoration(
+                        labelText: 'Isi Catatan',
+                        hintText: 'Tuliskan detail catatan Anda di sini...',
+                        alignLabelWithHint: true,
+                      ),
+                      maxLines: 12,
                     ),
-                    maxLines: 12,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
     );
   }
 }

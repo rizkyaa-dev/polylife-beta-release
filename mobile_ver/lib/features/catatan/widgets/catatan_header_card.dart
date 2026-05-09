@@ -45,7 +45,11 @@ class CatatanHeaderCard extends StatelessWidget {
           const SizedBox(height: 6),
           const Row(
             children: [
-              Icon(Icons.lock_outline_rounded, size: 15, color: Color(0xFF94A3B8)),
+              Icon(
+                Icons.lock_outline_rounded,
+                size: 15,
+                color: Color(0xFF94A3B8),
+              ),
               SizedBox(width: 6),
               Text(
                 'Semua catatan terenkripsi',
@@ -69,7 +73,9 @@ class CatatanHeaderCard extends StatelessWidget {
                     minimumSize: const Size.fromHeight(44),
                     backgroundColor: const Color(0xFF4F46E5),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -84,7 +90,9 @@ class CatatanHeaderCard extends StatelessWidget {
                     minimumSize: const Size.fromHeight(44),
                     foregroundColor: const Color(0xFF475569),
                     side: const BorderSide(color: Color(0xFFD1D5DB)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),

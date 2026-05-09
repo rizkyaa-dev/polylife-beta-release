@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/features/auth/models/user_model.dart';
 import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/catatan/models/catatan_model.dart';
 import 'package:mobile_ver/features/catatan/providers/catatan_provider.dart';
 import 'package:mobile_ver/features/catatan/views/catatan_form_screen.dart';
+import 'package:mobile_ver/features/profile/widgets/profile_avatar.dart';
 
 class CatatanListScreen extends ConsumerStatefulWidget {
   const CatatanListScreen({super.key});
@@ -29,22 +31,27 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
       body: SafeArea(
         child: catatanAsyncValue.when(
           data: (rows) {
-            final activeNotes = rows.where((item) => !item.statusSampah).toList()
-              ..sort((a, b) => b.tanggalAsDate.compareTo(a.tanggalAsDate));
+            final activeNotes =
+                rows.where((item) => !item.statusSampah).toList()
+                  ..sort((a, b) => b.tanggalAsDate.compareTo(a.tanggalAsDate));
             final trashNotes = rows.where((item) => item.statusSampah).toList()
               ..sort((a, b) => b.tanggalAsDate.compareTo(a.tanggalAsDate));
 
             return RefreshIndicator(
               color: const Color(0xFF4B3FF2),
               onRefresh: () async {
-                await ref.read(catatanProvider.notifier).fetchCatatan(showLoader: false);
+                await ref
+                    .read(catatanProvider.notifier)
+                    .fetchCatatan(showLoader: false);
               },
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
                 children: [
                   _TopBar(
-                    userName: user?.name ?? 'Pengguna',
+                    user: user,
+                    userName: user?.displayName ?? 'Pengguna',
+                    onOpenProfile: () => context.push('/profile'),
                     onOpenNotifications: () => context.go('/pengumuman'),
                   ),
                   const SizedBox(height: 18),
@@ -116,9 +123,7 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
 
   Future<void> _openCreateForm() async {
     final result = await Navigator.of(context).push<CatatanFormResult>(
-      MaterialPageRoute(
-        builder: (_) => const CatatanFormScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const CatatanFormScreen()),
     );
     if (!mounted) {
       return;
@@ -141,7 +146,9 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      final detail = await ref.read(catatanProvider.notifier).fetchCatatanDetail(catatan.id);
+      final detail = await ref
+          .read(catatanProvider.notifier)
+          .fetchCatatanDetail(catatan.id);
 
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
@@ -164,9 +171,7 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
     }
 
     final result = await Navigator.of(context).push<CatatanFormResult>(
-      MaterialPageRoute(
-        builder: (_) => CatatanFormScreen(catatan: target),
-      ),
+      MaterialPageRoute(builder: (_) => CatatanFormScreen(catatan: target)),
     );
     if (!mounted) {
       return;
@@ -255,7 +260,9 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
       return;
     }
 
-    final success = await ref.read(catatanProvider.notifier).deleteCatatan(catatan.id);
+    final success = await ref
+        .read(catatanProvider.notifier)
+        .deleteCatatan(catatan.id);
     if (!mounted) {
       return;
     }
@@ -362,7 +369,9 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      item.listPreview.isEmpty ? '(Tanpa isi)' : item.listPreview,
+                                      item.listPreview.isEmpty
+                                          ? '(Tanpa isi)'
+                                          : item.listPreview,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.plusJakartaSans(
@@ -407,7 +416,9 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
   }
 
   Future<void> _restoreFromTrash(Catatan item) async {
-    final success = await ref.read(catatanProvider.notifier).restoreCatatan(item.id);
+    final success = await ref
+        .read(catatanProvider.notifier)
+        .restoreCatatan(item.id);
     if (!mounted) {
       return;
     }
@@ -420,13 +431,15 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Gagal memulihkan catatan.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Gagal memulihkan catatan.')));
   }
 
   Future<void> _forceDelete(Catatan item) async {
-    final success = await ref.read(catatanProvider.notifier).forceDeleteCatatan(item.id);
+    final success = await ref
+        .read(catatanProvider.notifier)
+        .forceDeleteCatatan(item.id);
     if (!mounted) {
       return;
     }
@@ -439,18 +452,22 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Gagal menghapus catatan.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Gagal menghapus catatan.')));
   }
 }
 
 class _TopBar extends StatelessWidget {
+  final User? user;
   final String userName;
+  final VoidCallback onOpenProfile;
   final VoidCallback onOpenNotifications;
 
   const _TopBar({
+    required this.user,
     required this.userName,
+    required this.onOpenProfile,
     required this.onOpenNotifications,
   });
 
@@ -458,46 +475,54 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          height: 46,
-          width: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE3E8FF), Color(0xFFB9C6FF)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x140F172A),
-                blurRadius: 14,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              _initialsFromName(userName),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF3440C8),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            userName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF3542D4),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: onOpenProfile,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  children: [
+                    ProfileAvatar(
+                      user: user,
+                      fallbackName: userName,
+                      size: 46,
+                      borderWidth: 2,
+                      gradientColors: const [
+                        Color(0xFFE3E8FF),
+                        Color(0xFFB9C6FF),
+                      ],
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x140F172A),
+                          blurRadius: 14,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                      initialsStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF3440C8),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF3542D4),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -525,7 +550,9 @@ class _CatatanFeedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = _resolveCatatanTone(item);
-    final preview = item.listPreview.isEmpty ? 'Catatan tanpa isi.' : item.listPreview;
+    final preview = item.listPreview.isEmpty
+        ? 'Catatan tanpa isi.'
+        : item.listPreview;
 
     return Material(
       color: Colors.transparent,
@@ -666,9 +693,7 @@ class _PrimaryActionButton extends StatelessWidget {
       style: FilledButton.styleFrom(
         backgroundColor: const Color(0xFF4E44F2),
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         elevation: 0,
       ),
@@ -703,9 +728,7 @@ class _OutlineActionButton extends StatelessWidget {
         foregroundColor: const Color(0xFF5A50E8),
         side: const BorderSide(color: Color(0xFFD9D6F9)),
         backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(999),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       ),
       icon: Icon(icon, size: 18),
@@ -724,10 +747,7 @@ class _SuccessBanner extends StatelessWidget {
   final String message;
   final VoidCallback onClose;
 
-  const _SuccessBanner({
-    required this.message,
-    required this.onClose,
-  });
+  const _SuccessBanner({required this.message, required this.onClose});
 
   @override
   Widget build(BuildContext context) {
@@ -818,10 +838,7 @@ class _ErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _ErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -1011,23 +1028,4 @@ String _relativeDayLabel(DateTime value, DateTime now) {
   }
 
   return DateFormat('dd MMM yyyy', 'id_ID').format(value);
-}
-
-String _initialsFromName(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-
-  if (parts.isEmpty) {
-    return 'PL';
-  }
-
-  if (parts.length == 1) {
-    final chunk = parts.first;
-    return chunk.substring(0, chunk.length >= 2 ? 2 : 1).toUpperCase();
-  }
-
-  return (parts.first[0] + parts.last[0]).toUpperCase();
 }

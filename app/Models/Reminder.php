@@ -2,15 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSyncMetadata;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Reminder extends Model
 {
     use HasFactory;
+    use HasSyncMetadata;
+    use SoftDeletes;
 
     protected $fillable = [
         'user_id',
+        'sync_uuid',
+        'server_version',
         'todolist_id',
         'tugas_id',
         'jadwal_id',
@@ -22,6 +28,7 @@ class Reminder extends Model
     protected $casts = [
         'waktu_reminder' => 'datetime',
         'aktif' => 'boolean',
+        'deleted_at' => 'datetime',
     ];
 
     public function user()

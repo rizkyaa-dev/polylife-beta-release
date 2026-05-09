@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_ver/core/config/app_mode.dart';
 import 'package:mobile_ver/core/network/api_client.dart';
 import 'package:mobile_ver/core/storage/local_storage.dart';
+import 'package:mobile_ver/core/sync/sync_service.dart';
 
 import '../models/user_model.dart';
 
@@ -36,6 +37,21 @@ class AuthController extends StateNotifier<bool> {
     email: 'ui.tester@polylife.local',
     role: 'user',
     roleLabel: 'Pengguna',
+    accountStatus: 'active',
+    emailVerifiedAt: DateTime.now().toIso8601String(),
+    affiliation: const UserAffiliation(
+      type: 'university',
+      name: 'PolyLife UI Lab',
+      studentIdType: 'nim',
+      studentIdNumber: '000000',
+      status: 'verified',
+    ),
+    profile: const UserProfile(
+      displayName: 'UI Tester',
+      themePreference: 'system',
+      timezone: 'Asia/Jakarta',
+      locale: 'id',
+    ),
   );
 
   Future<void> _checkAuthStatus() async {
@@ -52,8 +68,11 @@ class AuthController extends StateNotifier<bool> {
         final response = await ApiClient.get('/auth/me');
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body)['data'];
-          ref.read(userProvider.notifier).state = User.fromJson(data);
+          final user = User.fromJson(Map<String, dynamic>.from(data));
+          await LocalStorage.saveUser(user);
+          ref.read(userProvider.notifier).state = user;
           state = true;
+          await const SyncService().syncNow(user.id);
         } else {
           await logout();
         }
@@ -64,7 +83,9 @@ class AuthController extends StateNotifier<bool> {
       } catch (_) {
         // Keep local session on transient network/startup failure.
         // Invalid token is still handled by non-200 response above.
-        state = true;
+        final cachedUser = await LocalStorage.getCachedUser();
+        ref.read(userProvider.notifier).state = cachedUser;
+        state = cachedUser != null;
       }
     } else {
       ref.read(userProvider.notifier).state = null;
@@ -98,9 +119,12 @@ class AuthController extends StateNotifier<bool> {
           return 'Respons login tidak valid.';
         }
 
+        final user = User.fromJson(userData);
         await LocalStorage.saveToken(token);
-        ref.read(userProvider.notifier).state = User.fromJson(userData);
+        await LocalStorage.saveUser(user);
+        ref.read(userProvider.notifier).state = user;
         state = true;
+        await const SyncService().syncNow(user.id);
         return null; // success
       } else {
         return _messageFromResponse(response.body, 'Login gagal.');
@@ -178,6 +202,41 @@ class AuthController extends StateNotifier<bool> {
     }
   }
 
+  Future<AuthActionResult> refreshCurrentUser() async {
+    if (AppMode.uiOnly) {
+      ref.read(userProvider.notifier).state = _mockUser;
+      state = true;
+      return const AuthActionResult.success('Profil diperbarui.');
+    }
+
+    try {
+      final response = await ApiClient.get('/auth/me');
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body)['data'];
+        final user = User.fromJson(Map<String, dynamic>.from(data));
+        await LocalStorage.saveUser(user);
+        ref.read(userProvider.notifier).state = user;
+        state = true;
+        await const SyncService().syncNow(user.id);
+        return const AuthActionResult.success('Profil diperbarui.');
+      }
+
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        await logout();
+      }
+
+      return AuthActionResult.failure(
+        _messageFromResponse(response.body, 'Gagal memuat profil.'),
+      );
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure(
+        'Profil lokal tetap dipakai. Koneksi belum tersedia.',
+      );
+    }
+  }
+
   Future<void> logout() async {
     if (AppMode.uiOnly) {
       ref.read(userProvider.notifier).state = _mockUser;
@@ -191,6 +250,7 @@ class AuthController extends StateNotifier<bool> {
       // Keep logout local even if server request fails.
     }
     await LocalStorage.removeToken();
+    await LocalStorage.removeUser();
     ref.read(userProvider.notifier).state = null;
     state = false;
   }

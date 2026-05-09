@@ -80,26 +80,30 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
 
       final decoded = jsonDecode(response.body);
       if (decoded is! Map<String, dynamic>) {
-        state = state.copyWith(isLoading: false, items: const <ReminderListItem>[]);
+        state = state.copyWith(
+          isLoading: false,
+          items: const <ReminderListItem>[],
+        );
         return;
       }
 
       final rawData = decoded['data'];
       if (rawData is! List) {
-        state = state.copyWith(isLoading: false, items: const <ReminderListItem>[]);
+        state = state.copyWith(
+          isLoading: false,
+          items: const <ReminderListItem>[],
+        );
         return;
       }
 
       final items = rawData
           .whereType<Map>()
-          .map((row) => ReminderListItem.fromJson(Map<String, dynamic>.from(row)))
+          .map(
+            (row) => ReminderListItem.fromJson(Map<String, dynamic>.from(row)),
+          )
           .toList();
 
-      state = state.copyWith(
-        isLoading: false,
-        items: items,
-        clearError: true,
-      );
+      state = state.copyWith(isLoading: false, items: items, clearError: true);
     } catch (_) {
       state = state.copyWith(
         isLoading: false,
@@ -138,5 +142,5 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
 
 final reminderListProvider =
     StateNotifierProvider<ReminderListNotifier, ReminderListState>((ref) {
-  return ReminderListNotifier();
-});
+      return ReminderListNotifier();
+    });

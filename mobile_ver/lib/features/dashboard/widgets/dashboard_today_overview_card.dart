@@ -23,7 +23,9 @@ class DashboardTodayOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final totalTodo = todoOngoingCount + todoCompletedCount;
-    final completionRate = totalTodo == 0 ? 0.0 : (todoCompletedCount / totalTodo).clamp(0.0, 1.0);
+    final completionRate = totalTodo == 0
+        ? 0.0
+        : (todoCompletedCount / totalTodo).clamp(0.0, 1.0);
 
     return Container(
       width: double.infinity,
@@ -126,7 +128,11 @@ class DashboardTodayOverviewCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.campaign_outlined, size: 18, color: Color(0xFF4F46E5)),
+                  const Icon(
+                    Icons.campaign_outlined,
+                    size: 18,
+                    color: Color(0xFF4F46E5),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -139,7 +145,10 @@ class DashboardTodayOverviewCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: Color(0xFF6366F1)),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF6366F1),
+                  ),
                 ],
               ),
             ),

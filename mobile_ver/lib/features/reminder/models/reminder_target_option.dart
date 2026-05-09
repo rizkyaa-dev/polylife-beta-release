@@ -2,10 +2,7 @@ class ReminderOptionItem {
   final int id;
   final String label;
 
-  const ReminderOptionItem({
-    required this.id,
-    required this.label,
-  });
+  const ReminderOptionItem({required this.id, required this.label});
 
   factory ReminderOptionItem.fromJson(Map<String, dynamic> json) {
     return ReminderOptionItem(
@@ -37,9 +34,13 @@ class ReminderTargetOption {
       helper: json['helper']?.toString() ?? '',
       options: rawOptions is List
           ? rawOptions
-              .whereType<Map>()
-              .map((item) => ReminderOptionItem.fromJson(Map<String, dynamic>.from(item)))
-              .toList()
+                .whereType<Map>()
+                .map(
+                  (item) => ReminderOptionItem.fromJson(
+                    Map<String, dynamic>.from(item),
+                  ),
+                )
+                .toList()
           : const <ReminderOptionItem>[],
     );
   }

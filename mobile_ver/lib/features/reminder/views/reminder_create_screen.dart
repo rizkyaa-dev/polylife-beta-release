@@ -13,7 +13,8 @@ class ReminderCreateScreen extends ConsumerStatefulWidget {
   const ReminderCreateScreen({super.key});
 
   @override
-  ConsumerState<ReminderCreateScreen> createState() => _ReminderCreateScreenState();
+  ConsumerState<ReminderCreateScreen> createState() =>
+      _ReminderCreateScreenState();
 }
 
 class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
@@ -68,12 +69,18 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
       }
 
       final rawData = decoded['data'];
-      final rawTargets = rawData is Map<String, dynamic> ? rawData['targets'] : null;
+      final rawTargets = rawData is Map<String, dynamic>
+          ? rawData['targets']
+          : null;
       final targets = rawTargets is List
           ? rawTargets
-              .whereType<Map>()
-              .map((item) => ReminderTargetOption.fromJson(Map<String, dynamic>.from(item)))
-              .toList()
+                .whereType<Map>()
+                .map(
+                  (item) => ReminderTargetOption.fromJson(
+                    Map<String, dynamic>.from(item),
+                  ),
+                )
+                .toList()
           : const <ReminderTargetOption>[];
 
       final firstTarget = targets.isEmpty ? null : targets.first;
@@ -81,7 +88,9 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
       setState(() {
         _targets = targets;
         _selectedTargetKey = firstTarget?.key ?? 'todolist';
-        _selectedOptionId = firstTarget?.options.isEmpty == false ? firstTarget!.options.first.id : null;
+        _selectedOptionId = firstTarget?.options.isEmpty == false
+            ? firstTarget!.options.first.id
+            : null;
         _isLoading = false;
       });
     } catch (_) {
@@ -103,7 +112,9 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
 
     setState(() {
       _selectedTargetKey = key;
-      _selectedOptionId = target?.options.isEmpty == false ? target!.options.first.id : null;
+      _selectedOptionId = target?.options.isEmpty == false
+          ? target!.options.first.id
+          : null;
     });
   }
 
@@ -137,7 +148,9 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
   Future<void> _submit() async {
     final target = _selectedTarget;
     if (target == null) {
-      setState(() => _errorMessage = 'Belum ada target reminder yang tersedia.');
+      setState(
+        () => _errorMessage = 'Belum ada target reminder yang tersedia.',
+      );
       return;
     }
 
@@ -171,10 +184,9 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
       }
 
       await ref.read(reminderListProvider.notifier).load();
-      await ref.read(upcomingReminderProvider.notifier).fetchReminder(
-            showLoader: false,
-            force: true,
-          );
+      await ref
+          .read(upcomingReminderProvider.notifier)
+          .fetchReminder(showLoader: false, force: true);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -247,10 +259,12 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
                               for (var i = 0; i < _targets.length; i++) ...[
                                 _TargetSelectorCard(
                                   target: _targets[i],
-                                  selected: _targets[i].key == _selectedTargetKey,
+                                  selected:
+                                      _targets[i].key == _selectedTargetKey,
                                   onTap: () => _selectTarget(_targets[i].key),
                                 ),
-                                if (i != _targets.length - 1) const SizedBox(height: 10),
+                                if (i != _targets.length - 1)
+                                  const SizedBox(height: 10),
                               ],
                             ],
                           ),
@@ -270,14 +284,18 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
                         if (target == null || target.options.isEmpty)
                           const _EmptyTargetPanel(
                             title: 'Belum ada data untuk target ini.',
-                            subtitle: 'Tambahkan dulu item pada menu terkait agar reminder bisa dihubungkan.',
+                            subtitle:
+                                'Tambahkan dulu item pada menu terkait agar reminder bisa dihubungkan.',
                           )
                         else
                           DropdownButtonFormField<int>(
                             key: ValueKey('${target.key}:$selectedOptionId'),
                             initialValue: selectedOptionId,
                             dropdownColor: Colors.white,
-                            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF6B7280)),
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: Color(0xFF6B7280),
+                            ),
                             decoration: _inputDecoration(),
                             items: [
                               for (final option in target.options)
@@ -295,7 +313,8 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
                                   ),
                                 ),
                             ],
-                            onChanged: (value) => setState(() => _selectedOptionId = value),
+                            onChanged: (value) =>
+                                setState(() => _selectedOptionId = value),
                           ),
                         const SizedBox(height: 18),
                         const _SectionLabel(text: 'WAKTU REMINDER'),
@@ -304,11 +323,16 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
                           borderRadius: BorderRadius.circular(18),
                           onTap: _pickDateTime,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 16,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF9FAFB),
                               borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: const Color(0xFFE5E7EB)),
+                              border: Border.all(
+                                color: const Color(0xFFE5E7EB),
+                              ),
                             ),
                             child: Row(
                               children: [
@@ -328,10 +352,14 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        DateFormat('dd/MM/yyyy, hh:mm a', 'id_ID').format(_scheduledAt),
+                                        DateFormat(
+                                          'dd/MM/yyyy, hh:mm a',
+                                          'id_ID',
+                                        ).format(_scheduledAt),
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w800,
@@ -350,7 +378,10 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right_rounded, color: Color(0xFF9CA3AF)),
+                                const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Color(0xFF9CA3AF),
+                                ),
                               ],
                             ),
                           ),
@@ -389,7 +420,9 @@ class _TargetSelectorCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: selected ? const Color(0xFFC7C2FF) : const Color(0xFFE5E7EB),
+              color: selected
+                  ? const Color(0xFFC7C2FF)
+                  : const Color(0xFFE5E7EB),
             ),
             boxShadow: selected
                 ? const [
@@ -412,7 +445,9 @@ class _TargetSelectorCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: selected ? const Color(0xFFEAE8FF) : Colors.white,
                   border: Border.all(
-                    color: selected ? const Color(0xFF4E44F2) : const Color(0xFF9CA3AF),
+                    color: selected
+                        ? const Color(0xFF4E44F2)
+                        : const Color(0xFF9CA3AF),
                     width: 1.5,
                   ),
                 ),
@@ -444,7 +479,10 @@ class _TargetSelectorCard extends StatelessWidget {
                         ),
                         if (selected)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEAE8FF),
                               borderRadius: BorderRadius.circular(999),
@@ -513,7 +551,11 @@ class _CreateReminderHeroCard extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 24),
+            child: const Icon(
+              Icons.notifications_active_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -597,10 +639,7 @@ class _SelectionHeader extends StatelessWidget {
   final String title;
   final String subtitle;
 
-  const _SelectionHeader({
-    required this.title,
-    required this.subtitle,
-  });
+  const _SelectionHeader({required this.title, required this.subtitle});
 
   @override
   Widget build(BuildContext context) {
@@ -678,7 +717,9 @@ class _CreateReminderFooter extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            active ? 'Reminder akan dikirim sesuai jadwal.' : 'Reminder disimpan dalam keadaan nonaktif.',
+                            active
+                                ? 'Reminder akan dikirim sesuai jadwal.'
+                                : 'Reminder disimpan dalam keadaan nonaktif.',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
@@ -715,7 +756,9 @@ class _CreateReminderFooter extends StatelessWidget {
                             width: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : Text(
@@ -742,7 +785,8 @@ class _EmptyTargetPanel extends StatelessWidget {
 
   const _EmptyTargetPanel({
     this.title = 'Belum ada target reminder.',
-    this.subtitle = 'Tambahkan item terkait lebih dulu agar reminder bisa dihubungkan.',
+    this.subtitle =
+        'Tambahkan item terkait lebih dulu agar reminder bisa dihubungkan.',
   });
 
   @override

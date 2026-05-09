@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_ver/core/config/app_mode.dart';
+import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 
 import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
 import 'package:mobile_ver/features/jadwal/repositories/api_jadwal_repository.dart';
 import 'package:mobile_ver/features/jadwal/repositories/in_memory_jadwal_repository.dart';
 import 'package:mobile_ver/features/jadwal/repositories/jadwal_repository.dart';
+import 'package:mobile_ver/features/jadwal/repositories/offline_first_jadwal_repository.dart';
 import 'package:mobile_ver/features/jadwal/services/jadwal_scheduler_service.dart';
 
 class JadwalActionResult {
@@ -235,5 +237,12 @@ class JadwalNotifier extends StateNotifier<JadwalState> {
 final jadwalProvider = StateNotifierProvider<JadwalNotifier, JadwalState>((
   ref,
 ) {
-  return JadwalNotifier();
+  final user = ref.watch(userProvider);
+  return JadwalNotifier(
+    repository: AppMode.uiOnly
+        ? InMemoryJadwalRepository()
+        : user == null
+        ? ApiJadwalRepository()
+        : OfflineFirstJadwalRepository(userId: user.id),
+  );
 });

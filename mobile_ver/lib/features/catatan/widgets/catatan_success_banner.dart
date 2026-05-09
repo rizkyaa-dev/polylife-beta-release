@@ -22,7 +22,11 @@ class CatatanSuccessBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_outline, color: Color(0xFF15803D), size: 18),
+          const Icon(
+            Icons.check_circle_outline,
+            color: Color(0xFF15803D),
+            size: 18,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -35,7 +39,11 @@ class CatatanSuccessBanner extends StatelessWidget {
           ),
           IconButton(
             onPressed: onClose,
-            icon: const Icon(Icons.close_rounded, size: 18, color: Color(0xFF16A34A)),
+            icon: const Icon(
+              Icons.close_rounded,
+              size: 18,
+              color: Color(0xFF16A34A),
+            ),
             visualDensity: VisualDensity.compact,
           ),
         ],

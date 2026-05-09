@@ -70,10 +70,14 @@ class JadwalMonthCalendarCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: isSelected ? const Color(0xFF4F46E5) : Colors.transparent,
+                      color: isSelected
+                          ? const Color(0xFF4F46E5)
+                          : Colors.transparent,
                       width: 1.5,
                     ),
-                    color: isSelected ? const Color(0xFFEEF2FF) : Colors.transparent,
+                    color: isSelected
+                        ? const Color(0xFFEEF2FF)
+                        : Colors.transparent,
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -81,8 +85,12 @@ class JadwalMonthCalendarCard extends StatelessWidget {
                       Text(
                         '${day.day}',
                         style: TextStyle(
-                          color: inCurrentMonth ? const Color(0xFF0F172A) : const Color(0xFFCBD5E1),
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          color: inCurrentMonth
+                              ? const Color(0xFF0F172A)
+                              : const Color(0xFFCBD5E1),
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                           fontSize: 16,
                         ),
                       ),
@@ -151,10 +159,7 @@ class _LegendItem extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _LegendItem({
-    required this.label,
-    required this.color,
-  });
+  const _LegendItem({required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -164,10 +169,7 @@ class _LegendItem extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 6),
         Text(

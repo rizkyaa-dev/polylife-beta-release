@@ -23,13 +23,16 @@ class PengumumanListScreen extends ConsumerWidget {
             if (list.isEmpty) {
               return RefreshIndicator(
                 color: const Color(0xFF4B3FF2),
-                onRefresh: () => ref.read(pengumumanProvider.notifier).fetchPengumuman(),
+                onRefresh: () =>
+                    ref.read(pengumumanProvider.notifier).fetchPengumuman(),
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                   children: [
                     _HeaderRow(
-                      onRefresh: () => ref.read(pengumumanProvider.notifier).fetchPengumuman(),
+                      onRefresh: () => ref
+                          .read(pengumumanProvider.notifier)
+                          .fetchPengumuman(),
                     ),
                     SizedBox(height: 18),
                     const Text(
@@ -49,16 +52,20 @@ class PengumumanListScreen extends ConsumerWidget {
 
             return RefreshIndicator(
               color: const Color(0xFF4B3FF2),
-              onRefresh: () => ref.read(pengumumanProvider.notifier).fetchPengumuman(),
+              onRefresh: () =>
+                  ref.read(pengumumanProvider.notifier).fetchPengumuman(),
               child: ListView.separated(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 itemCount: list.length + 2,
-                separatorBuilder: (context, index) => const SizedBox(height: 18),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 18),
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     return _HeaderRow(
-                      onRefresh: () => ref.read(pengumumanProvider.notifier).fetchPengumuman(),
+                      onRefresh: () => ref
+                          .read(pengumumanProvider.notifier)
+                          .fetchPengumuman(),
                     );
                   }
 
@@ -82,7 +89,8 @@ class PengumumanListScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) => _PengumumanErrorState(
             message: err.toString(),
-            onRetry: () => ref.read(pengumumanProvider.notifier).fetchPengumuman(),
+            onRetry: () =>
+                ref.read(pengumumanProvider.notifier).fetchPengumuman(),
           ),
         ),
       ),
@@ -123,7 +131,10 @@ class _HeaderRow extends StatelessWidget {
           child: IconButton(
             tooltip: 'Muat ulang',
             onPressed: onRefresh,
-            icon: const Icon(Icons.auto_awesome_outlined, color: Color(0xFF4B3FF2)),
+            icon: const Icon(
+              Icons.auto_awesome_outlined,
+              color: Color(0xFF4B3FF2),
+            ),
           ),
         ),
       ],
@@ -194,7 +205,10 @@ class _ActivityCard extends StatelessWidget {
                       if (isNew)
                         Container(
                           margin: const EdgeInsets.only(left: 10),
-                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 11,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFEEEBFF),
                             borderRadius: BorderRadius.circular(999),
@@ -236,7 +250,11 @@ class _ActivityCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF848A9C)),
+                      const Icon(
+                        Icons.calendar_today_outlined,
+                        size: 16,
+                        color: Color(0xFF848A9C),
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         publishedLabel,
@@ -439,10 +457,14 @@ class _PosterPlaceholder extends StatelessWidget {
                   width: 22,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: index.isEven ? const Color(0xFFFCE94F) : Colors.transparent,
+                    color: index.isEven
+                        ? const Color(0xFFFCE94F)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(
-                      color: index.isEven ? const Color(0xFFFCE94F) : Colors.white.withValues(alpha: 0.28),
+                      color: index.isEven
+                          ? const Color(0xFFFCE94F)
+                          : Colors.white.withValues(alpha: 0.28),
                     ),
                   ),
                 ),
@@ -461,7 +483,9 @@ class _PosterPlaceholder extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: const Icon(
                     Icons.image_outlined,
@@ -476,7 +500,9 @@ class _PosterPlaceholder extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white.withValues(alpha: 0.08),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.14),
+                    ),
                   ),
                 ),
               ],
@@ -527,10 +553,14 @@ class _EmptyActivityState extends StatelessWidget {
                         width: 22,
                         height: 6,
                         decoration: BoxDecoration(
-                          color: index.isEven ? const Color(0xFFFCE94F) : Colors.transparent,
+                          color: index.isEven
+                              ? const Color(0xFFFCE94F)
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(999),
                           border: Border.all(
-                            color: index.isEven ? const Color(0xFFFCE94F) : Colors.white.withValues(alpha: 0.28),
+                            color: index.isEven
+                                ? const Color(0xFFFCE94F)
+                                : Colors.white.withValues(alpha: 0.28),
                           ),
                         ),
                       ),
@@ -549,9 +579,15 @@ class _EmptyActivityState extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
                         ),
-                        child: const Icon(Icons.image_outlined, color: Colors.white, size: 28),
+                        child: const Icon(
+                          Icons.image_outlined,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                       const Spacer(),
                       Container(
@@ -582,7 +618,10 @@ class _EmptyActivityState extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 11,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEEEBFF),
                   borderRadius: BorderRadius.circular(999),
@@ -628,10 +667,7 @@ class _PengumumanErrorState extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _PengumumanErrorState({
-    required this.message,
-    required this.onRetry,
-  });
+  const _PengumumanErrorState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -641,7 +677,11 @@ class _PengumumanErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.campaign_outlined, size: 58, color: Color(0xFF4B3FF2)),
+            const Icon(
+              Icons.campaign_outlined,
+              size: 58,
+              color: Color(0xFF4B3FF2),
+            ),
             const SizedBox(height: 14),
             Text(
               'Gagal memuat kegiatan kampus',

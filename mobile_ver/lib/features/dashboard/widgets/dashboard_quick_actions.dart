@@ -17,10 +17,7 @@ class DashboardQuickAction {
 class DashboardQuickActions extends StatelessWidget {
   final List<DashboardQuickAction> actions;
 
-  const DashboardQuickActions({
-    super.key,
-    required this.actions,
-  });
+  const DashboardQuickActions({super.key, required this.actions});
 
   @override
   Widget build(BuildContext context) {

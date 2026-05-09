@@ -66,7 +66,8 @@ class RecurringCard extends StatelessWidget {
                   value: item.active,
                   contentPadding: EdgeInsets.zero,
                   onChanged: (value) {
-                    item.active = value; // Update the reference directly or wait for callback
+                    item.active =
+                        value; // Update the reference directly or wait for callback
                     onToggleActive(item);
                   },
                   title: Text(

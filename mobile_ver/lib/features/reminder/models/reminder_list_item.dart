@@ -29,7 +29,10 @@ class ReminderListItem {
       targetLabel: json['target_label']?.toString() ?? 'Reminder',
       targetContext: json['target_context']?.toString() ?? '',
       destination: json['destination']?.toString() ?? 'todo',
-      active: json['active'] == true || json['active'] == 1 || json['active'] == '1',
+      active:
+          json['active'] == true ||
+          json['active'] == 1 ||
+          json['active'] == '1',
       scheduledAt: DateTime.tryParse(json['scheduled_at']?.toString() ?? ''),
       scheduledLabel: json['scheduled_label']?.toString() ?? '',
     );

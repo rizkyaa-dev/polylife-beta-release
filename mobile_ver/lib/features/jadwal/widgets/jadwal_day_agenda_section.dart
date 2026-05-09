@@ -22,8 +22,13 @@ class JadwalDayAgendaSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateLabel = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(selectedDate);
-    final isWeekend = selectedDate.weekday == DateTime.saturday || selectedDate.weekday == DateTime.sunday;
+    final dateLabel = DateFormat(
+      'EEEE, dd MMMM yyyy',
+      'id_ID',
+    ).format(selectedDate);
+    final isWeekend =
+        selectedDate.weekday == DateTime.saturday ||
+        selectedDate.weekday == DateTime.sunday;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
@@ -58,7 +63,10 @@ class JadwalDayAgendaSection extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEEF2FF),
                   borderRadius: BorderRadius.circular(99),
@@ -88,7 +96,11 @@ class JadwalDayAgendaSection extends StatelessWidget {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, color: Color(0xFFEF4444), size: 18),
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 18,
+                  ),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -105,9 +117,7 @@ class JadwalDayAgendaSection extends StatelessWidget {
           ],
           const SizedBox(height: 12),
           if (dayItems.isEmpty)
-            _EmptyAgendaCard(
-              isWeekend: isWeekend,
-            )
+            _EmptyAgendaCard(isWeekend: isWeekend)
           else
             ...dayItems.map(
               (item) => JadwalItemCard(
@@ -126,17 +136,19 @@ class JadwalDayAgendaSection extends StatelessWidget {
 class _EmptyAgendaCard extends StatelessWidget {
   final bool isWeekend;
 
-  const _EmptyAgendaCard({
-    required this.isWeekend,
-  });
+  const _EmptyAgendaCard({required this.isWeekend});
 
   @override
   Widget build(BuildContext context) {
-    final title = isWeekend ? 'Libur kuliah (akhir pekan).' : 'Belum ada agenda hari ini.';
+    final title = isWeekend
+        ? 'Libur kuliah (akhir pekan).'
+        : 'Belum ada agenda hari ini.';
     final subtitle = isWeekend
         ? 'Sabtu/Minggu otomatis bebas perkuliahan.'
         : 'Tekan tombol + Jadwal untuk menambah agenda baru.';
-    final icon = isWeekend ? Icons.local_cafe_outlined : Icons.event_available_outlined;
+    final icon = isWeekend
+        ? Icons.local_cafe_outlined
+        : Icons.event_available_outlined;
 
     return Container(
       width: double.infinity,
@@ -168,10 +180,7 @@ class _EmptyAgendaCard extends StatelessWidget {
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              height: 1.3,
-            ),
+            style: const TextStyle(color: Color(0xFF64748B), height: 1.3),
           ),
         ],
       ),

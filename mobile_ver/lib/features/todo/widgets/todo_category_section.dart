@@ -66,7 +66,10 @@ class TodoCategorySection extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: accentColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(99),
@@ -83,7 +86,9 @@ class TodoCategorySection extends StatelessWidget {
               IconButton(
                 onPressed: onToggleExpanded,
                 icon: Icon(
-                  expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                  expanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
                   color: const Color(0xFF94A3B8),
                 ),
               ),
@@ -155,10 +160,7 @@ class _EmptyBox extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                height: 1.3,
-              ),
+              style: const TextStyle(color: Color(0xFF64748B), height: 1.3),
             ),
           ],
         ],

@@ -4,10 +4,7 @@ class TodoProgressBucket {
   final List<TodoItem> ongoing;
   final List<TodoItem> completed;
 
-  const TodoProgressBucket({
-    required this.ongoing,
-    required this.completed,
-  });
+  const TodoProgressBucket({required this.ongoing, required this.completed});
 }
 
 class TodoProgressService {
@@ -26,9 +23,6 @@ class TodoProgressService {
     final completed = source.where((item) => item.completed).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    return TodoProgressBucket(
-      ongoing: ongoing,
-      completed: completed,
-    );
+    return TodoProgressBucket(ongoing: ongoing, completed: completed);
   }
 }

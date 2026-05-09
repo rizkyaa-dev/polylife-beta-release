@@ -53,7 +53,10 @@ class BudgetCard extends StatelessWidget {
                 onPressed: onPickMonth,
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
                 ),
                 child: Text(monthLabel),
               ),
@@ -100,9 +103,13 @@ class BudgetCard extends StatelessWidget {
                             ? 'Terpakai ${formatter.format(spent)}'
                             : '${formatter.format(spent)} / ${formatter.format(limit)}',
                         style: TextStyle(
-                          color: overBudget ? const Color(0xFFDC2626) : const Color(0xFF64748B),
+                          color: overBudget
+                              ? const Color(0xFFDC2626)
+                              : const Color(0xFF64748B),
                           fontSize: 12,
-                          fontWeight: overBudget ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: overBudget
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                         ),
                       ),
                       const SizedBox(height: 5),
@@ -111,7 +118,9 @@ class BudgetCard extends StatelessWidget {
                         value: limit <= 0 ? 0 : progress.clamp(0, 1),
                         borderRadius: BorderRadius.circular(99),
                         backgroundColor: const Color(0xFFE5E7EB),
-                        color: overBudget ? const Color(0xFFDC2626) : const Color(0xFF4F46E5),
+                        color: overBudget
+                            ? const Color(0xFFDC2626)
+                            : const Color(0xFF4F46E5),
                       ),
                       if (overBudget)
                         const Padding(

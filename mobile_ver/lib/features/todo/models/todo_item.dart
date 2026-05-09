@@ -1,10 +1,11 @@
-enum TodoPriority {
-  normal,
-  high,
-}
+enum TodoPriority { normal, high }
 
 class TodoItem {
   final int id;
+  final String localUuid;
+  final int? serverId;
+  final int serverVersion;
+  final String syncStatus;
   final String title;
   final String description;
   final DateTime createdAt;
@@ -14,6 +15,10 @@ class TodoItem {
 
   const TodoItem({
     required this.id,
+    this.localUuid = '',
+    this.serverId,
+    this.serverVersion = 0,
+    this.syncStatus = 'synced',
     required this.title,
     required this.description,
     required this.createdAt,
@@ -24,6 +29,10 @@ class TodoItem {
 
   TodoItem copyWith({
     int? id,
+    String? localUuid,
+    int? serverId,
+    int? serverVersion,
+    String? syncStatus,
     String? title,
     String? description,
     DateTime? createdAt,
@@ -33,6 +42,10 @@ class TodoItem {
   }) {
     return TodoItem(
       id: id ?? this.id,
+      localUuid: localUuid ?? this.localUuid,
+      serverId: serverId ?? this.serverId,
+      serverVersion: serverVersion ?? this.serverVersion,
+      syncStatus: syncStatus ?? this.syncStatus,
       title: title ?? this.title,
       description: description ?? this.description,
       createdAt: createdAt ?? this.createdAt,

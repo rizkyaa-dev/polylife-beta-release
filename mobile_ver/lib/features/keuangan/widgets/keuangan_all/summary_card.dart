@@ -51,10 +51,7 @@ class AllSummaryCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Pemasukan ${formatter.format(totalIn)} • Pengeluaran ${formatter.format(totalOut)}',
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
           ),
         ],
       ),

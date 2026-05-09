@@ -58,8 +58,10 @@ class ReminderScreen extends ConsumerWidget {
                   for (var i = 0; i < state.items.length; i++) ...[
                     _ReminderCard(
                       item: state.items[i],
-                      onOpenTarget: () => _openDestination(context, state.items[i]),
-                      onDelete: () => _deleteReminder(context, ref, state.items[i]),
+                      onOpenTarget: () =>
+                          _openDestination(context, state.items[i]),
+                      onDelete: () =>
+                          _deleteReminder(context, ref, state.items[i]),
                     ),
                     if (i != state.items.length - 1) const SizedBox(height: 12),
                   ],
@@ -105,18 +107,21 @@ class ReminderScreen extends ConsumerWidget {
 
     if (remove != true || !context.mounted) return;
 
-    final success = await ref.read(reminderListProvider.notifier).deleteReminder(item.id);
+    final success = await ref
+        .read(reminderListProvider.notifier)
+        .deleteReminder(item.id);
     if (success) {
-      await ref.read(upcomingReminderProvider.notifier).fetchReminder(
-            showLoader: false,
-            force: true,
-          );
+      await ref
+          .read(upcomingReminderProvider.notifier)
+          .fetchReminder(showLoader: false, force: true);
     }
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? 'Reminder dihapus.' : 'Gagal menghapus reminder.'),
+        content: Text(
+          success ? 'Reminder dihapus.' : 'Gagal menghapus reminder.',
+        ),
       ),
     );
   }
@@ -212,10 +217,14 @@ class _ReminderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isUpcoming = item.scheduledAt != null && item.scheduledAt!.isAfter(DateTime.now());
+    final isUpcoming =
+        item.scheduledAt != null && item.scheduledAt!.isAfter(DateTime.now());
     final timeText = item.scheduledAt == null
         ? 'Waktu belum tersedia'
-        : DateFormat("EEEE, dd MMMM yyyy '•' HH:mm", 'id_ID').format(item.scheduledAt!);
+        : DateFormat(
+            "EEEE, dd MMMM yyyy '•' HH:mm",
+            'id_ID',
+          ).format(item.scheduledAt!);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
@@ -259,7 +268,9 @@ class _ReminderCard extends StatelessWidget {
                 height: 9,
                 width: 9,
                 decoration: BoxDecoration(
-                  color: isUpcoming ? const Color(0xFF5A50E8) : const Color(0xFFF97316),
+                  color: isUpcoming
+                      ? const Color(0xFF5A50E8)
+                      : const Color(0xFFF97316),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -366,7 +377,11 @@ class _HeroStatsPill extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 24),
+            child: const Icon(
+              Icons.notifications_active_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -399,9 +414,7 @@ class _CreateReminderButton extends StatelessWidget {
         backgroundColor: const Color(0xFF4E44F2),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       child: Text(
         '+ Reminder Baru',
@@ -413,7 +426,6 @@ class _CreateReminderButton extends StatelessWidget {
     );
   }
 }
-
 
 class _ReminderEmptyState extends StatelessWidget {
   const _ReminderEmptyState();
@@ -437,7 +449,10 @@ class _ReminderEmptyState extends StatelessWidget {
               color: const Color(0xFFF0EEFF),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(Icons.notifications_off_outlined, color: Color(0xFF4E44F2)),
+            child: const Icon(
+              Icons.notifications_off_outlined,
+              color: Color(0xFF4E44F2),
+            ),
           ),
           const SizedBox(height: 12),
           Text(

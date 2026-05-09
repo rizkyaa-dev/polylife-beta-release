@@ -15,7 +15,10 @@ class JadwalSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateLabel = DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(selectedDate);
+    final dateLabel = DateFormat(
+      'EEEE, dd MMMM yyyy',
+      'id_ID',
+    ).format(selectedDate);
 
     return Container(
       width: double.infinity,

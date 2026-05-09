@@ -85,7 +85,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
     });
 
     try {
-      final items = await ref.read(keuanganProvider.notifier).fetchAllTransactions();
+      final items = await ref
+          .read(keuanganProvider.notifier)
+          .fetchAllTransactions();
       if (!mounted) return;
 
       setState(() {
@@ -111,7 +113,10 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
     final budgetMonth = _resolvedBudgetMonth();
     final expensesByCategory = _expenseByCategory(budgetMonth);
     final sortedCategories = expensesByCategory.keys.toList()
-      ..sort((a, b) => (expensesByCategory[b] ?? 0).compareTo(expensesByCategory[a] ?? 0));
+      ..sort(
+        (a, b) =>
+            (expensesByCategory[b] ?? 0).compareTo(expensesByCategory[a] ?? 0),
+      );
     final advancedFilterCount = _advancedFilterCount();
 
     return Scaffold(
@@ -129,7 +134,10 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                     right: -6,
                     top: -4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF4F46E5),
                         borderRadius: BorderRadius.circular(10),
@@ -164,7 +172,10 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                     right: -6,
                     top: -4,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFDC2626),
                         borderRadius: BorderRadius.circular(10),
@@ -199,9 +210,11 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                   ],
                   FiltersBar(
                     searchQuery: _searchQuery,
-                    onSearchChanged: (value) => setState(() => _searchQuery = value),
+                    onSearchChanged: (value) =>
+                        setState(() => _searchQuery = value),
                     jenisFilter: _jenisFilter,
-                    onJenisChanged: (value) => setState(() => _jenisFilter = value),
+                    onJenisChanged: (value) =>
+                        setState(() => _jenisFilter = value),
                     monthFilterLabel: _monthFilterLabel(_monthFilter),
                     onMonthFilterPressed: _showMonthFilterPicker,
                   ),
@@ -209,7 +222,8 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                   TrendCard(
                     series: _buildTrendSeries(filteredItems),
                     trendRange: _trendRange,
-                    onTrendRangeChanged: (value) => setState(() => _trendRange = value),
+                    onTrendRangeChanged: (value) =>
+                        setState(() => _trendRange = value),
                     formatter: _allIdrFormatter,
                   ),
                   const SizedBox(height: 12),
@@ -221,7 +235,8 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                     budgetLimits: _budgetLimits,
                     budgetMonth: budgetMonth,
                     formatter: _allIdrFormatter,
-                    onSetBudgetLimit: (cat, limit) => _setBudgetLimit(budgetMonth, cat, limit),
+                    onSetBudgetLimit: (cat, limit) =>
+                        _setBudgetLimit(budgetMonth, cat, limit),
                   ),
                   const SizedBox(height: 12),
                   RecurringCard(
@@ -247,7 +262,10 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                           : 'Tidak ada transaksi sesuai filter.',
                     )
                   else ...[
-                    AllSummaryCard(items: filteredItems, formatter: _allIdrFormatter),
+                    AllSummaryCard(
+                      items: filteredItems,
+                      formatter: _allIdrFormatter,
+                    ),
                     const SizedBox(height: 14),
                     ..._buildGroupedByMonth(filteredItems),
                   ],
@@ -256,8 +274,6 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
             ),
     );
   }
-
-
 
   Future<void> _showMonthFilterPicker() async {
     final months = _availableMonths();
@@ -294,7 +310,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                 final selected = _monthFilter == monthKey;
                 return ListTile(
                   title: Text(_monthFilterLabel(monthKey)),
-                  trailing: selected ? const Icon(Icons.check, color: Color(0xFF4F46E5)) : null,
+                  trailing: selected
+                      ? const Icon(Icons.check, color: Color(0xFF4F46E5))
+                      : null,
                   onTap: () {
                     Navigator.of(ctx).pop();
                     setState(() {
@@ -335,7 +353,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                 final selected = _resolvedBudgetMonth() == monthKey;
                 return ListTile(
                   title: Text(_monthFilterLabel(monthKey)),
-                  trailing: selected ? const Icon(Icons.check, color: Color(0xFF4F46E5)) : null,
+                  trailing: selected
+                      ? const Icon(Icons.check, color: Color(0xFF4F46E5))
+                      : null,
                   onTap: () {
                     Navigator.of(ctx).pop();
                     setState(() {
@@ -351,7 +371,11 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
     );
   }
 
-  Future<void> _setBudgetLimit(String month, String category, double currentLimit) async {
+  Future<void> _setBudgetLimit(
+    String month,
+    String category,
+    double currentLimit,
+  ) async {
     final controller = TextEditingController(
       text: currentLimit > 0 ? currentLimit.toStringAsFixed(0) : '',
     );
@@ -467,7 +491,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                         Expanded(
                           child: TextField(
                             controller: minController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             decoration: const InputDecoration(
                               isDense: true,
                               labelText: 'Nominal Min',
@@ -479,7 +505,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                         Expanded(
                           child: TextField(
                             controller: maxController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             decoration: const InputDecoration(
                               isDense: true,
                               labelText: 'Nominal Max',
@@ -543,8 +571,12 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                               Navigator.of(ctx).pop();
                               setState(() {
                                 _dateRangeFilter = tempRange;
-                                _minNominalFilter = _parseMoney(minController.text);
-                                _maxNominalFilter = _parseMoney(maxController.text);
+                                _minNominalFilter = _parseMoney(
+                                  minController.text,
+                                );
+                                _maxNominalFilter = _parseMoney(
+                                  maxController.text,
+                                );
                                 _categoryFilters = tempCategories;
                               });
                             },
@@ -593,7 +625,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                   await Clipboard.setData(ClipboardData(text: csv));
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('CSV berhasil disalin ke clipboard.')),
+                    const SnackBar(
+                      content: Text('CSV berhasil disalin ke clipboard.'),
+                    ),
                   );
                 },
               ),
@@ -607,7 +641,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Ringkasan PDF-style disalin. Bisa ditempel ke generator PDF.'),
+                      content: Text(
+                        'Ringkasan PDF-style disalin. Bisa ditempel ke generator PDF.',
+                      ),
                     ),
                   );
                 },
@@ -690,10 +726,15 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
   Future<void> _deleteWithUndo(KeuanganTransaction item) async {
     setState(() {
       _items = _items.where((row) => row.id != item.id).toList();
-      _trashEntries.insert(0, TrashEntry(item: item, deletedAt: DateTime.now()));
+      _trashEntries.insert(
+        0,
+        TrashEntry(item: item, deletedAt: DateTime.now()),
+      );
     });
 
-    final success = await ref.read(keuanganProvider.notifier).deleteTransaction(item.id);
+    final success = await ref
+        .read(keuanganProvider.notifier)
+        .deleteTransaction(item.id);
     if (!success) {
       setState(() {
         _items = [item, ..._items];
@@ -725,7 +766,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
   }
 
   Future<void> _restoreTrashEntry(TrashEntry entry) async {
-    final success = await ref.read(keuanganProvider.notifier).createTransaction(
+    final success = await ref
+        .read(keuanganProvider.notifier)
+        .createTransaction(
           jenis: entry.item.jenis,
           kategori: entry.item.kategori,
           deskripsi: entry.item.deskripsi,
@@ -773,8 +816,14 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: jenis,
                       items: const [
-                        DropdownMenuItem(value: 'pemasukan', child: Text('Pemasukan')),
-                        DropdownMenuItem(value: 'pengeluaran', child: Text('Pengeluaran')),
+                        DropdownMenuItem(
+                          value: 'pemasukan',
+                          child: Text('Pemasukan'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'pengeluaran',
+                          child: Text('Pengeluaran'),
+                        ),
                       ],
                       onChanged: (value) {
                         if (value == null) return;
@@ -792,7 +841,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                     const SizedBox(height: 8),
                     TextField(
                       controller: nominalController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
                         labelText: 'Nominal',
                         prefixText: 'Rp ',
@@ -803,8 +854,14 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                       initialValue: frequency,
                       items: const [
                         DropdownMenuItem(value: 'daily', child: Text('Harian')),
-                        DropdownMenuItem(value: 'weekly', child: Text('Mingguan')),
-                        DropdownMenuItem(value: 'monthly', child: Text('Bulanan')),
+                        DropdownMenuItem(
+                          value: 'weekly',
+                          child: Text('Mingguan'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'monthly',
+                          child: Text('Bulanan'),
+                        ),
                       ],
                       onChanged: (value) {
                         if (value == null) return;
@@ -865,9 +922,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
 
     if (nominal == null || nominal <= 0 || kategori.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Template tidak valid.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Template tidak valid.')));
       return;
     }
 
@@ -889,7 +946,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
   Future<void> _runRecurringTemplate(RecurringTemplate template) async {
     if (!template.active) return;
 
-    final success = await ref.read(keuanganProvider.notifier).createTransaction(
+    final success = await ref
+        .read(keuanganProvider.notifier)
+        .createTransaction(
           jenis: template.jenis,
           kategori: template.kategori,
           deskripsi: 'Transaksi berulang (${template.frequencyLabel})',
@@ -906,7 +965,10 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
     }
 
     setState(() {
-      template.nextRun = _advanceRecurringDate(template.nextRun, template.frequency);
+      template.nextRun = _advanceRecurringDate(
+        template.nextRun,
+        template.frequency,
+      );
     });
     await _load();
   }
@@ -919,7 +981,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
       if (!template.active) continue;
 
       while (!template.nextRun.isAfter(now)) {
-        final success = await ref.read(keuanganProvider.notifier).createTransaction(
+        final success = await ref
+            .read(keuanganProvider.notifier)
+            .createTransaction(
               jenis: template.jenis,
               kategori: template.kategori,
               deskripsi: 'Transaksi berulang (${template.frequencyLabel})',
@@ -929,7 +993,10 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
         if (!success) break;
 
         anyCreated = true;
-        template.nextRun = _advanceRecurringDate(template.nextRun, template.frequency);
+        template.nextRun = _advanceRecurringDate(
+          template.nextRun,
+          template.frequency,
+        );
       }
     }
 
@@ -943,10 +1010,7 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
   }
 
   DateTime _advanceRecurringDate(DateTime base, String frequency) {
-    return _logic.advanceRecurringDate(
-      base: base,
-      frequency: frequency,
-    );
+    return _logic.advanceRecurringDate(base: base, frequency: frequency);
   }
 
   Future<void> _addBillReminder() async {
@@ -967,12 +1031,16 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
                   children: [
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Nama tagihan'),
+                      decoration: const InputDecoration(
+                        labelText: 'Nama tagihan',
+                      ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: amountController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       decoration: const InputDecoration(
                         labelText: 'Nominal',
                         prefixText: 'Rp ',
@@ -1029,9 +1097,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
 
     if (name.isEmpty || amount == null || amount <= 0) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reminder tidak valid.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Reminder tidak valid.')));
       return;
     }
 
@@ -1049,7 +1117,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
   }
 
   Future<void> _payBill(BillReminderItem item) async {
-    final success = await ref.read(keuanganProvider.notifier).createTransaction(
+    final success = await ref
+        .read(keuanganProvider.notifier)
+        .createTransaction(
           jenis: 'pengeluaran',
           kategori: item.name,
           deskripsi: 'Pembayaran tagihan',
@@ -1115,10 +1185,7 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
   }
 
   Map<String, double> _expenseByCategory(String monthKey) {
-    return _logic.expenseByCategory(
-      items: _items,
-      monthKey: monthKey,
-    );
+    return _logic.expenseByCategory(items: _items, monthKey: monthKey);
   }
 
   String _budgetKey(String month, String category) {
@@ -1229,7 +1296,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
       for (final item in items) {
         widgets.add(
           Dismissible(
-            key: ValueKey('all-keu-${item.id}-${item.tanggal.toIso8601String()}'),
+            key: ValueKey(
+              'all-keu-${item.id}-${item.tanggal.toIso8601String()}',
+            ),
             direction: DismissDirection.endToStart,
             background: Container(
               alignment: Alignment.centerRight,

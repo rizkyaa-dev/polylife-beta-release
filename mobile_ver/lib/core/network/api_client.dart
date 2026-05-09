@@ -19,38 +19,57 @@ class ApiClient {
 
   static Future<http.Response> get(String endpoint) async {
     final headers = await _getHeaders();
-    return http.get(ApiConfig.endpointUri(endpoint), headers: headers).timeout(_timeout);
+    return http
+        .get(ApiConfig.endpointUri(endpoint), headers: headers)
+        .timeout(_timeout);
   }
 
-  static Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> post(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     final headers = await _getHeaders();
-    return http.post(
-      ApiConfig.endpointUri(endpoint),
-      headers: headers,
-      body: jsonEncode(body),
-    ).timeout(_timeout);
+    return http
+        .post(
+          ApiConfig.endpointUri(endpoint),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
   }
 
-  static Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> put(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     final headers = await _getHeaders();
-    return http.put(
-      ApiConfig.endpointUri(endpoint),
-      headers: headers,
-      body: jsonEncode(body),
-    ).timeout(_timeout);
+    return http
+        .put(
+          ApiConfig.endpointUri(endpoint),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
   }
 
-  static Future<http.Response> patch(String endpoint, Map<String, dynamic> body) async {
+  static Future<http.Response> patch(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     final headers = await _getHeaders();
-    return http.patch(
-      ApiConfig.endpointUri(endpoint),
-      headers: headers,
-      body: jsonEncode(body),
-    ).timeout(_timeout);
+    return http
+        .patch(
+          ApiConfig.endpointUri(endpoint),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
   }
 
   static Future<http.Response> delete(String endpoint) async {
     final headers = await _getHeaders();
-    return http.delete(ApiConfig.endpointUri(endpoint), headers: headers).timeout(_timeout);
+    return http
+        .delete(ApiConfig.endpointUri(endpoint), headers: headers)
+        .timeout(_timeout);
   }
 }

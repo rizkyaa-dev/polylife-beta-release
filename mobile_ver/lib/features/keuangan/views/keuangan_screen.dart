@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/features/auth/models/user_model.dart';
 import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/keuangan/models/keuangan_model.dart';
 import 'package:mobile_ver/features/keuangan/providers/keuangan_provider.dart';
 import 'package:mobile_ver/features/keuangan/utils/category_icon_resolver.dart';
 import 'package:mobile_ver/features/keuangan/views/keuangan_form_screen.dart';
+import 'package:mobile_ver/features/profile/widgets/profile_avatar.dart';
 
 final NumberFormat _idrFormatter = NumberFormat.currency(
   locale: 'id_ID',
@@ -38,7 +40,9 @@ class KeuanganScreen extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
                   children: [
                     _FinanceTopBar(
-                      userName: user?.name ?? 'Pengguna',
+                      user: user,
+                      userName: user?.displayName ?? 'Pengguna',
+                      onOpenProfile: () => context.push('/profile'),
                       onOpenNotifications: () => context.go('/pengumuman'),
                       onLogout: () => ref.read(authProvider.notifier).logout(),
                     ),
@@ -78,10 +82,8 @@ class KeuanganScreen extends ConsumerWidget {
                             amountLabel: _idrFormatter.format(
                               state.summary.totalPemasukan,
                             ),
-                            onTap: () => _openFilteredList(
-                              context,
-                              jenis: 'pemasukan',
-                            ),
+                            onTap: () =>
+                                _openFilteredList(context, jenis: 'pemasukan'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -226,15 +228,12 @@ class KeuanganScreen extends ConsumerWidget {
       },
     );
   }
-
 }
 
 class _MonthlyTransactionListScreen extends ConsumerWidget {
   final String jenis;
 
-  const _MonthlyTransactionListScreen({
-    required this.jenis,
-  });
+  const _MonthlyTransactionListScreen({required this.jenis});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -336,12 +335,16 @@ class _MonthlyTransactionListScreen extends ConsumerWidget {
 }
 
 class _FinanceTopBar extends StatelessWidget {
+  final User? user;
   final String userName;
+  final VoidCallback onOpenProfile;
   final VoidCallback onOpenNotifications;
   final VoidCallback onLogout;
 
   const _FinanceTopBar({
+    required this.user,
     required this.userName,
+    required this.onOpenProfile,
     required this.onOpenNotifications,
     required this.onLogout,
   });
@@ -350,61 +353,69 @@ class _FinanceTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          height: 46,
-          width: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE3E8FF), Color(0xFFB9C6FF)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x140F172A),
-                blurRadius: 14,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              _initialsFromName(userName),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF3440C8),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                userName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: const Color(0xFF3542D4),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: onOpenProfile,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  children: [
+                    ProfileAvatar(
+                      user: user,
+                      fallbackName: userName,
+                      size: 46,
+                      borderWidth: 2,
+                      gradientColors: const [
+                        Color(0xFFE3E8FF),
+                        Color(0xFFB9C6FF),
+                      ],
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x140F172A),
+                          blurRadius: 14,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                      initialsStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF3440C8),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            userName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: const Color(0xFF3542D4),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _greetingLabel(),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF7A7F9A),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                _greetingLabel(),
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF7A7F9A),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
         _IconCapsuleButton(
@@ -413,10 +424,7 @@ class _FinanceTopBar extends StatelessWidget {
           onTap: onOpenNotifications,
         ),
         const SizedBox(width: 8),
-        _IconCapsuleButton(
-          icon: Icons.logout_rounded,
-          onTap: onLogout,
-        ),
+        _IconCapsuleButton(icon: Icons.logout_rounded, onTap: onLogout),
       ],
     );
   }
@@ -641,11 +649,7 @@ class _FilteredTransactionHeroCard extends StatelessWidget {
                   color: visual.iconBackground,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(
-                  visual.icon,
-                  color: visual.iconColor,
-                  size: 24,
-                ),
+                child: Icon(visual.icon, color: visual.iconColor, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -703,10 +707,7 @@ class _TransactionCard extends StatelessWidget {
   final KeuanganTransaction item;
   final VoidCallback onTap;
 
-  const _TransactionCard({
-    required this.item,
-    required this.onTap,
-  });
+  const _TransactionCard({required this.item, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -714,8 +715,8 @@ class _TransactionCard extends StatelessWidget {
     final subtitle = (item.deskripsi ?? '').trim().isNotEmpty
         ? item.deskripsi!.trim()
         : item.jenis == 'pemasukan'
-            ? 'Pemasukan'
-            : 'Pengeluaran';
+        ? 'Pemasukan'
+        : 'Pengeluaran';
 
     return Material(
       color: Colors.transparent,
@@ -928,25 +929,6 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
-String _initialsFromName(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-
-  if (parts.isEmpty) {
-    return 'PL';
-  }
-
-  if (parts.length == 1) {
-    final chunk = parts.first;
-    return chunk.substring(0, chunk.length >= 2 ? 2 : 1).toUpperCase();
-  }
-
-  return (parts.first[0] + parts.last[0]).toUpperCase();
-}
-
 String _greetingLabel() {
   final hour = DateTime.now().hour;
   if (hour < 11) {
@@ -1039,9 +1021,9 @@ Future<void> _confirmDeleteTransaction(
     return;
   }
 
-  final success = await ref.read(keuanganProvider.notifier).deleteTransaction(
-        item.id,
-      );
+  final success = await ref
+      .read(keuanganProvider.notifier)
+      .deleteTransaction(item.id);
 
   if (!context.mounted) {
     return;

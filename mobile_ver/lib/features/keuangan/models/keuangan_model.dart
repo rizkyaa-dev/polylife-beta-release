@@ -1,5 +1,9 @@
 class KeuanganTransaction {
   final int id;
+  final String localUuid;
+  final int? serverId;
+  final int serverVersion;
+  final String syncStatus;
   final String jenis;
   final String kategori;
   final String? deskripsi;
@@ -8,6 +12,10 @@ class KeuanganTransaction {
 
   const KeuanganTransaction({
     required this.id,
+    this.localUuid = '',
+    this.serverId,
+    this.serverVersion = 0,
+    this.syncStatus = 'synced',
     required this.jenis,
     required this.kategori,
     required this.deskripsi,
@@ -20,6 +28,9 @@ class KeuanganTransaction {
   factory KeuanganTransaction.fromJson(Map<String, dynamic> json) {
     return KeuanganTransaction(
       id: _toInt(json['id']),
+      localUuid: (json['sync_uuid'] ?? '').toString(),
+      serverId: _toNullableInt(json['id']),
+      serverVersion: _toInt(json['server_version'], fallback: 1),
       jenis: (json['jenis'] ?? 'pengeluaran').toString(),
       kategori: (json['kategori'] ?? '').toString(),
       deskripsi: json['deskripsi']?.toString(),
@@ -40,6 +51,10 @@ class KeuanganTransaction {
 
   KeuanganTransaction copyWith({
     int? id,
+    String? localUuid,
+    int? serverId,
+    int? serverVersion,
+    String? syncStatus,
     String? jenis,
     String? kategori,
     String? deskripsi,
@@ -48,6 +63,10 @@ class KeuanganTransaction {
   }) {
     return KeuanganTransaction(
       id: id ?? this.id,
+      localUuid: localUuid ?? this.localUuid,
+      serverId: serverId ?? this.serverId,
+      serverVersion: serverVersion ?? this.serverVersion,
+      syncStatus: syncStatus ?? this.syncStatus,
       jenis: jenis ?? this.jenis,
       kategori: kategori ?? this.kategori,
       deskripsi: deskripsi ?? this.deskripsi,
@@ -69,9 +88,9 @@ class KeuanganSummary {
   });
 
   const KeuanganSummary.zero()
-      : totalPemasukan = 0,
-        totalPengeluaran = 0,
-        saldo = 0;
+    : totalPemasukan = 0,
+      totalPengeluaran = 0,
+      saldo = 0;
 
   factory KeuanganSummary.fromJson(Map<String, dynamic> json) {
     return KeuanganSummary(
@@ -86,10 +105,7 @@ class KeuanganMonthOption {
   final String value;
   final String label;
 
-  const KeuanganMonthOption({
-    required this.value,
-    required this.label,
-  });
+  const KeuanganMonthOption({required this.value, required this.label});
 
   factory KeuanganMonthOption.fromJson(Map<String, dynamic> json) {
     return KeuanganMonthOption(
@@ -99,9 +115,15 @@ class KeuanganMonthOption {
   }
 }
 
-int _toInt(dynamic value) {
+int _toInt(dynamic value, {int fallback = 0}) {
   if (value is int) return value;
-  return int.tryParse((value ?? '').toString()) ?? 0;
+  return int.tryParse((value ?? '').toString()) ?? fallback;
+}
+
+int? _toNullableInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  return int.tryParse(value.toString());
 }
 
 double _toDouble(dynamic value) {

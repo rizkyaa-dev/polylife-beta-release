@@ -6,10 +6,7 @@ import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
 class JadwalFormScreen extends StatefulWidget {
   final JadwalItem? initialItem;
 
-  const JadwalFormScreen({
-    super.key,
-    this.initialItem,
-  });
+  const JadwalFormScreen({super.key, this.initialItem});
 
   @override
   State<JadwalFormScreen> createState() => _JadwalFormScreenState();
@@ -42,7 +39,9 @@ class _JadwalFormScreenState extends State<JadwalFormScreen> {
       (item?.startAt ?? DateTime.now()).day,
     );
     _startTime = TimeOfDay.fromDateTime(item?.startAt ?? DateTime.now());
-    _endTime = TimeOfDay.fromDateTime(item?.endAt ?? DateTime.now().add(const Duration(hours: 1)));
+    _endTime = TimeOfDay.fromDateTime(
+      item?.endAt ?? DateTime.now().add(const Duration(hours: 1)),
+    );
     _completed = item?.completed ?? false;
   }
 
@@ -129,12 +128,7 @@ class _JadwalFormScreenState extends State<JadwalFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEdit ? 'Edit Jadwal' : 'Tambah Jadwal'),
-        actions: [
-          TextButton(
-            onPressed: _submit,
-            child: const Text('Simpan'),
-          ),
-        ],
+        actions: [TextButton(onPressed: _submit, child: const Text('Simpan'))],
       ),
       body: Form(
         key: _formKey,

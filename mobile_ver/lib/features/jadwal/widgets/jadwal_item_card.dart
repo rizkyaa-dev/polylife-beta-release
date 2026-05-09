@@ -41,7 +41,9 @@ class JadwalItemCard extends StatelessWidget {
           Checkbox(
             value: item.completed,
             onChanged: (_) => onToggleCompleted(),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
             side: const BorderSide(color: Color(0xFFCBD5E1)),
           ),
           const SizedBox(width: 2),
@@ -55,7 +57,10 @@ class JadwalItemCard extends StatelessWidget {
                   runSpacing: 6,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: style.bgColor,
                         borderRadius: BorderRadius.circular(99),
@@ -93,7 +98,9 @@ class JadwalItemCard extends StatelessWidget {
                     color: const Color(0xFF0F172A),
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    decoration: item.completed ? TextDecoration.lineThrough : TextDecoration.none,
+                    decoration: item.completed
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
                   ),
                 ),
                 if (subtitleSegments.isNotEmpty) ...[
@@ -101,7 +108,9 @@ class JadwalItemCard extends StatelessWidget {
                   Text(
                     subtitleSegments.join(' • '),
                     style: TextStyle(
-                      color: item.completed ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      color: item.completed
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
                       height: 1.25,
                     ),
                   ),

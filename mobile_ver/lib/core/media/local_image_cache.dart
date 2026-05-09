@@ -9,7 +9,10 @@ class LocalImageCache {
   static const Duration _timeout = Duration(seconds: 20);
   static const String _directoryName = 'broadcast_images';
 
-  static Future<File?> getOrFetch(String url, {bool forceRefresh = false}) async {
+  static Future<File?> getOrFetch(
+    String url, {
+    bool forceRefresh = false,
+  }) async {
     try {
       if (!ApiConfig.isAllowedAbsoluteUrl(url)) {
         return null;
@@ -30,14 +33,13 @@ class LocalImageCache {
       }
 
       final response = await http.get(Uri.parse(url)).timeout(_timeout);
-      final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+      final contentType = (response.headers['content-type'] ?? '')
+          .toLowerCase();
 
-      if (
-        response.statusCode != 200 ||
-        response.bodyBytes.isEmpty ||
-        (contentType.isNotEmpty && !contentType.startsWith('image/')) ||
-        !_looksLikeImageBytes(response.bodyBytes)
-      ) {
+      if (response.statusCode != 200 ||
+          response.bodyBytes.isEmpty ||
+          (contentType.isNotEmpty && !contentType.startsWith('image/')) ||
+          !_looksLikeImageBytes(response.bodyBytes)) {
         return null;
       }
 
@@ -55,7 +57,10 @@ class LocalImageCache {
     }
   }
 
-  static Future<Uint8List?> getOrFetchBytes(String url, {bool forceRefresh = false}) async {
+  static Future<Uint8List?> getOrFetchBytes(
+    String url, {
+    bool forceRefresh = false,
+  }) async {
     try {
       final file = await getOrFetch(url, forceRefresh: forceRefresh);
       if (file == null || !await file.exists()) {
@@ -88,7 +93,9 @@ class LocalImageCache {
 
   static Future<File> _resolveFile(String url) async {
     final root = await getApplicationSupportDirectory();
-    final directory = Directory('${root.path}${Platform.pathSeparator}$_directoryName');
+    final directory = Directory(
+      '${root.path}${Platform.pathSeparator}$_directoryName',
+    );
     final extension = _extensionFromUrl(url);
     final fileName = '${_stableHash(url)}$extension';
 
@@ -97,10 +104,9 @@ class LocalImageCache {
 
   static Future<bool> _looksLikeImageFile(File file) async {
     try {
-      final bytes = await file.openRead(0, 16).fold<List<int>>(
-        <int>[],
-        (buffer, chunk) => buffer..addAll(chunk),
-      );
+      final bytes = await file
+          .openRead(0, 16)
+          .fold<List<int>>(<int>[], (buffer, chunk) => buffer..addAll(chunk));
 
       return _looksLikeImageBytes(bytes);
     } catch (_) {
@@ -109,9 +115,7 @@ class LocalImageCache {
   }
 
   static bool _looksLikeImageBytes(List<int> bytes) {
-    if (bytes.length >= 2 &&
-        bytes[0] == 0x42 &&
-        bytes[1] == 0x4D) {
+    if (bytes.length >= 2 && bytes[0] == 0x42 && bytes[1] == 0x4D) {
       return true;
     }
 
@@ -159,8 +163,14 @@ class LocalImageCache {
         bytes[5] == 0x74 &&
         bytes[6] == 0x79 &&
         bytes[7] == 0x70 &&
-        ((bytes[8] == 0x61 && bytes[9] == 0x76 && bytes[10] == 0x69 && bytes[11] == 0x66) ||
-            (bytes[8] == 0x61 && bytes[9] == 0x76 && bytes[10] == 0x69 && bytes[11] == 0x73))) {
+        ((bytes[8] == 0x61 &&
+                bytes[9] == 0x76 &&
+                bytes[10] == 0x69 &&
+                bytes[11] == 0x66) ||
+            (bytes[8] == 0x61 &&
+                bytes[9] == 0x76 &&
+                bytes[10] == 0x69 &&
+                bytes[11] == 0x73))) {
       return true;
     }
 

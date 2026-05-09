@@ -24,8 +24,13 @@ class _CatatanNoteCardState extends State<CatatanNoteCard> {
 
   @override
   Widget build(BuildContext context) {
-    final dateLabel = DateFormat('dd MMM yyyy', 'id_ID').format(widget.item.tanggalAsDate);
-    final content = widget.item.listPreview.isEmpty ? '(Tanpa isi)' : widget.item.listPreview;
+    final dateLabel = DateFormat(
+      'dd MMM yyyy',
+      'id_ID',
+    ).format(widget.item.tanggalAsDate);
+    final content = widget.item.listPreview.isEmpty
+        ? '(Tanpa isi)'
+        : widget.item.listPreview;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -40,7 +45,10 @@ class _CatatanNoteCardState extends State<CatatanNoteCard> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEEF2FF),
                   borderRadius: BorderRadius.circular(99),
@@ -59,7 +67,9 @@ class _CatatanNoteCardState extends State<CatatanNoteCard> {
                 onPressed: () => setState(() => _expanded = !_expanded),
                 visualDensity: VisualDensity.compact,
                 icon: Icon(
-                  _expanded ? Icons.fullscreen_exit_rounded : Icons.open_in_full_rounded,
+                  _expanded
+                      ? Icons.fullscreen_exit_rounded
+                      : Icons.open_in_full_rounded,
                   size: 18,
                   color: const Color(0xFFA5B4FC),
                 ),
@@ -80,10 +90,7 @@ class _CatatanNoteCardState extends State<CatatanNoteCard> {
             content,
             maxLines: _expanded ? null : 2,
             overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF334155),
-              height: 1.35,
-            ),
+            style: const TextStyle(color: Color(0xFF334155), height: 1.35),
           ),
           const SizedBox(height: 12),
           const Divider(height: 1),

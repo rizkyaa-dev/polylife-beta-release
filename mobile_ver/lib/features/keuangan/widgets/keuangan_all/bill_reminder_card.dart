@@ -54,14 +54,19 @@ class BillReminderCard extends StatelessWidget {
           else
             Column(
               children: billReminders.map((item) {
-                final overdue = !item.paid && item.dueDate.isBefore(DateTime.now());
+                final overdue =
+                    !item.paid && item.dueDate.isBefore(DateTime.now());
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(
-                    backgroundColor: overdue ? const Color(0xFFFFE4E6) : const Color(0xFFEEF2FF),
+                    backgroundColor: overdue
+                        ? const Color(0xFFFFE4E6)
+                        : const Color(0xFFEEF2FF),
                     child: Icon(
                       Icons.notifications_active_outlined,
-                      color: overdue ? const Color(0xFFDC2626) : const Color(0xFF4F46E5),
+                      color: overdue
+                          ? const Color(0xFFDC2626)
+                          : const Color(0xFF4F46E5),
                     ),
                   ),
                   title: Text(item.name),

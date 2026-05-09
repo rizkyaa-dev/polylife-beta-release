@@ -62,7 +62,10 @@ class JadwalAgendaFeedSection extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFEEF2FF),
                   borderRadius: BorderRadius.circular(99),
@@ -81,19 +84,13 @@ class JadwalAgendaFeedSection extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
-              color: Color(0xFF64748B),
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
           ),
           const SizedBox(height: 10),
           const Divider(height: 1),
           const SizedBox(height: 10),
           if (items.isEmpty)
-            JadwalEmptyState(
-              title: emptyTitle,
-              subtitle: emptySubtitle,
-            )
+            JadwalEmptyState(title: emptyTitle, subtitle: emptySubtitle)
           else
             ...items.map(
               (item) => JadwalItemCard(

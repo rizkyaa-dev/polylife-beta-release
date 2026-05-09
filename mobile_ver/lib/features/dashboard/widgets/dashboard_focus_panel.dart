@@ -19,10 +19,7 @@ class DashboardFocusItem {
 class DashboardFocusPanel extends StatelessWidget {
   final List<DashboardFocusItem> items;
 
-  const DashboardFocusPanel({
-    super.key,
-    required this.items,
-  });
+  const DashboardFocusPanel({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) {
@@ -50,9 +47,7 @@ class DashboardFocusPanel extends StatelessWidget {
           if (items.isEmpty)
             const _FocusEmpty()
           else
-            ...items.map(
-              (item) => _FocusRow(item: item),
-            ),
+            ...items.map((item) => _FocusRow(item: item)),
         ],
       ),
     );

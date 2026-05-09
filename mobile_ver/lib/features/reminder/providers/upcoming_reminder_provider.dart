@@ -6,7 +6,8 @@ import 'package:mobile_ver/core/config/app_mode.dart';
 import 'package:mobile_ver/core/network/api_client.dart';
 import 'package:mobile_ver/features/reminder/models/upcoming_reminder.dart';
 
-class UpcomingReminderNotifier extends StateNotifier<AsyncValue<UpcomingReminder?>> {
+class UpcomingReminderNotifier
+    extends StateNotifier<AsyncValue<UpcomingReminder?>> {
   static const Duration _freshWindow = Duration(seconds: 20);
   static final UpcomingReminder _mockReminder = UpcomingReminder(
     id: 1,
@@ -26,10 +27,7 @@ class UpcomingReminderNotifier extends StateNotifier<AsyncValue<UpcomingReminder
     fetchReminder();
   }
 
-  Future<void> fetchReminder({
-    bool showLoader = true,
-    bool force = false,
-  }) {
+  Future<void> fetchReminder({bool showLoader = true, bool force = false}) {
     if (!force &&
         _lastFetchedAt != null &&
         DateTime.now().difference(_lastFetchedAt!) < _freshWindow &&
@@ -113,6 +111,9 @@ class UpcomingReminderNotifier extends StateNotifier<AsyncValue<UpcomingReminder
 }
 
 final upcomingReminderProvider =
-    StateNotifierProvider<UpcomingReminderNotifier, AsyncValue<UpcomingReminder?>>((ref) {
-  return UpcomingReminderNotifier();
-});
+    StateNotifierProvider<
+      UpcomingReminderNotifier,
+      AsyncValue<UpcomingReminder?>
+    >((ref) {
+      return UpcomingReminderNotifier();
+    });

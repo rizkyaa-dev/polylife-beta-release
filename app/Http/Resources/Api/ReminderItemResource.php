@@ -38,6 +38,9 @@ class ReminderItemResource extends JsonResource
             'scheduled_label' => $scheduledAt
                 ? Carbon::parse($scheduledAt)->locale('id')->translatedFormat('l, d F Y • H:i')
                 : '',
+            'sync_uuid' => (string) ($this->sync_uuid ?? ''),
+            'server_version' => (int) ($this->server_version ?? 1),
+            'deleted_at' => optional($this->deleted_at)->toIso8601String(),
         ];
     }
 

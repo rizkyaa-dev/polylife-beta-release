@@ -4,8 +4,5 @@ class TrashEntry {
   final KeuanganTransaction item;
   final DateTime deletedAt;
 
-  TrashEntry({
-    required this.item,
-    required this.deletedAt,
-  });
+  TrashEntry({required this.item, required this.deletedAt});
 }

@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:mobile_ver/core/config/app_mode.dart';
+import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/todo/models/todo_item.dart';
 import 'package:mobile_ver/features/todo/repositories/api_todo_repository.dart';
 import 'package:mobile_ver/features/todo/repositories/in_memory_todo_repository.dart';
+import 'package:mobile_ver/features/todo/repositories/offline_first_todo_repository.dart';
 import 'package:mobile_ver/features/todo/repositories/todo_repository.dart';
 import 'package:mobile_ver/features/todo/services/todo_progress_service.dart';
 
@@ -11,10 +13,7 @@ class TodoActionResult {
   final bool success;
   final String? message;
 
-  const TodoActionResult({
-    required this.success,
-    this.message,
-  });
+  const TodoActionResult({required this.success, this.message});
 }
 
 class TodoState {
@@ -77,9 +76,9 @@ class TodoNotifier extends StateNotifier<TodoState> {
   TodoNotifier({
     TodoRepository? repository,
     TodoProgressService? progressService,
-  })  : _repository = repository ?? InMemoryTodoRepository(),
-        _progressService = progressService ?? const TodoProgressService(),
-        super(TodoState.initial()) {
+  }) : _repository = repository ?? InMemoryTodoRepository(),
+       _progressService = progressService ?? const TodoProgressService(),
+       super(TodoState.initial()) {
     load();
   }
 
@@ -173,7 +172,12 @@ class TodoNotifier extends StateNotifier<TodoState> {
 }
 
 final todoProvider = StateNotifierProvider<TodoNotifier, TodoState>((ref) {
+  final user = ref.watch(userProvider);
   return TodoNotifier(
-    repository: AppMode.uiOnly ? InMemoryTodoRepository() : ApiTodoRepository(),
+    repository: AppMode.uiOnly
+        ? InMemoryTodoRepository()
+        : user == null
+        ? ApiTodoRepository()
+        : OfflineFirstTodoRepository(userId: user.id),
   );
 });

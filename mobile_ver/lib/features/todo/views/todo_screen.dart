@@ -51,7 +51,8 @@ class TodoScreen extends ConsumerWidget {
                     onToggleExpanded: notifier.toggleOngoingExpanded,
                     items: state.ongoingItems,
                     emptyIcon: Icons.playlist_add_check_rounded,
-                    emptyTitle: 'Belum ada tugas berlangsung, klik + Tugas Baru untuk mulai membuat daftar.',
+                    emptyTitle:
+                        'Belum ada tugas berlangsung, klik + Tugas Baru untuk mulai membuat daftar.',
                     emptySubtitle: '',
                     onToggleCompleted: notifier.toggleCompleted,
                     onDelete: (item) => _confirmDelete(context, ref, item),
@@ -66,7 +67,8 @@ class TodoScreen extends ConsumerWidget {
                     items: state.completedItems,
                     emptyIcon: Icons.check_circle_outline_rounded,
                     emptyTitle: 'Belum ada tugas yang diselesaikan.',
-                    emptySubtitle: 'Selesaikan tugasmu untuk melihat daftarnya di sini.',
+                    emptySubtitle:
+                        'Selesaikan tugasmu untuk melihat daftarnya di sini.',
                     onToggleCompleted: notifier.toggleCompleted,
                     onDelete: (item) => _confirmDelete(context, ref, item),
                   ),
@@ -95,7 +97,11 @@ class TodoScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, TodoItem item) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    TodoItem item,
+  ) async {
     final remove = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -119,9 +125,9 @@ class TodoScreen extends ConsumerWidget {
     if (remove != true) return;
     await ref.read(todoProvider.notifier).deleteTask(item.id);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Tugas dihapus.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Tugas dihapus.')));
   }
 }
 

@@ -1,5 +1,9 @@
 class Catatan {
   final int id;
+  final String localUuid;
+  final int? serverId;
+  final int serverVersion;
+  final String syncStatus;
   final String judul;
   final String isi;
   final String previewIsi;
@@ -11,6 +15,10 @@ class Catatan {
 
   Catatan({
     required this.id,
+    this.localUuid = '',
+    this.serverId,
+    this.serverVersion = 0,
+    this.syncStatus = 'synced',
     required this.judul,
     required this.isi,
     required this.previewIsi,
@@ -30,6 +38,10 @@ class Catatan {
 
     return Catatan(
       id: int.tryParse((json['id'] ?? '').toString()) ?? 0,
+      localUuid: (json['sync_uuid'] ?? '').toString(),
+      serverId: int.tryParse((json['id'] ?? '').toString()),
+      serverVersion:
+          int.tryParse((json['server_version'] ?? '').toString()) ?? 1,
       judul: (json['judul'] ?? '').toString(),
       isi: fullIsi,
       previewIsi: previewIsi,
@@ -57,6 +69,10 @@ class Catatan {
 
   Catatan copyWith({
     int? id,
+    String? localUuid,
+    int? serverId,
+    int? serverVersion,
+    String? syncStatus,
     String? judul,
     String? isi,
     String? previewIsi,
@@ -68,6 +84,10 @@ class Catatan {
   }) {
     return Catatan(
       id: id ?? this.id,
+      localUuid: localUuid ?? this.localUuid,
+      serverId: serverId ?? this.serverId,
+      serverVersion: serverVersion ?? this.serverVersion,
+      syncStatus: syncStatus ?? this.syncStatus,
       judul: judul ?? this.judul,
       isi: isi ?? this.isi,
       previewIsi: previewIsi ?? this.previewIsi,

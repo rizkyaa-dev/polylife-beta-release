@@ -49,7 +49,9 @@ class TodoProgressHeaderCard extends StatelessWidget {
               minimumSize: const Size.fromHeight(44),
               backgroundColor: const Color(0xFF4F46E5),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
           const SizedBox(height: 12),

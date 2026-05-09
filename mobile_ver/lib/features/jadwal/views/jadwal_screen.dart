@@ -4,10 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/features/auth/models/user_model.dart';
 import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
 import 'package:mobile_ver/features/jadwal/providers/jadwal_provider.dart';
 import 'package:mobile_ver/features/jadwal/views/jadwal_form_screen.dart';
+import 'package:mobile_ver/features/profile/widgets/profile_avatar.dart';
 
 class JadwalScreen extends ConsumerStatefulWidget {
   const JadwalScreen({super.key});
@@ -46,7 +48,9 @@ class _JadwalScreenState extends ConsumerState<JadwalScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 108),
                   children: [
                     _TopBar(
-                      userName: user?.name ?? 'Pengguna',
+                      user: user,
+                      userName: user?.displayName ?? 'Pengguna',
+                      onOpenProfile: () => context.push('/profile'),
                       onOpenNotifications: () => context.go('/pengumuman'),
                     ),
                     const SizedBox(height: 18),
@@ -332,55 +336,70 @@ class _JadwalScreenState extends ConsumerState<JadwalScreen> {
 }
 
 class _TopBar extends StatelessWidget {
+  final User? user;
   final String userName;
+  final VoidCallback onOpenProfile;
   final VoidCallback onOpenNotifications;
 
-  const _TopBar({required this.userName, required this.onOpenNotifications});
+  const _TopBar({
+    required this.user,
+    required this.userName,
+    required this.onOpenProfile,
+    required this.onOpenNotifications,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
-          height: 46,
-          width: 46,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: Colors.white, width: 2),
-            gradient: const LinearGradient(
-              colors: [Color(0xFFE3E8FF), Color(0xFFB9C6FF)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x140F172A),
-                blurRadius: 14,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              _initialsFromName(userName),
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: const Color(0xFF3440C8),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            userName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w800,
-              color: const Color(0xFF3542D4),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: onOpenProfile,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Row(
+                  children: [
+                    ProfileAvatar(
+                      user: user,
+                      fallbackName: userName,
+                      size: 46,
+                      borderWidth: 2,
+                      gradientColors: const [
+                        Color(0xFFE3E8FF),
+                        Color(0xFFB9C6FF),
+                      ],
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x140F172A),
+                          blurRadius: 14,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                      initialsStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF3440C8),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF3542D4),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -1718,23 +1737,4 @@ String? _agendaFallbackDetail(JadwalItem item) {
 
   final duration = _durationLabel(item.endAt.difference(item.startAt));
   return duration.trim().isEmpty ? null : duration;
-}
-
-String _initialsFromName(String name) {
-  final parts = name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .toList();
-
-  if (parts.isEmpty) {
-    return 'PL';
-  }
-
-  if (parts.length == 1) {
-    final chunk = parts.first;
-    return chunk.substring(0, chunk.length >= 2 ? 2 : 1).toUpperCase();
-  }
-
-  return (parts.first[0] + parts.last[0]).toUpperCase();
 }

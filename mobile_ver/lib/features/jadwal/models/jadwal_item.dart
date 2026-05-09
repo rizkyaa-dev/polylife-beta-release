@@ -57,6 +57,10 @@ extension JadwalTypeLabel on JadwalType {
 
 class JadwalItem {
   final int id;
+  final String localUuid;
+  final int? serverId;
+  final int serverVersion;
+  final String syncStatus;
   final String title;
   final JadwalType type;
   final DateTime startAt;
@@ -70,6 +74,10 @@ class JadwalItem {
 
   const JadwalItem({
     required this.id,
+    this.localUuid = '',
+    this.serverId,
+    this.serverVersion = 0,
+    this.syncStatus = 'synced',
     required this.title,
     required this.type,
     required this.startAt,
@@ -84,6 +92,10 @@ class JadwalItem {
 
   JadwalItem copyWith({
     int? id,
+    String? localUuid,
+    int? serverId,
+    int? serverVersion,
+    String? syncStatus,
     String? title,
     JadwalType? type,
     DateTime? startAt,
@@ -97,6 +109,10 @@ class JadwalItem {
   }) {
     return JadwalItem(
       id: id ?? this.id,
+      localUuid: localUuid ?? this.localUuid,
+      serverId: serverId ?? this.serverId,
+      serverVersion: serverVersion ?? this.serverVersion,
+      syncStatus: syncStatus ?? this.syncStatus,
       title: title ?? this.title,
       type: type ?? this.type,
       startAt: startAt ?? this.startAt,

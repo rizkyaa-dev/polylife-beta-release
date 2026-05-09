@@ -14,6 +14,7 @@ import 'features/catatan/views/catatan_list_screen.dart';
 import 'features/pengumuman/views/pengumuman_list_screen.dart';
 import 'features/keuangan/views/keuangan_screen.dart';
 import 'features/jadwal/views/jadwal_screen.dart';
+import 'features/profile/views/profile_screen.dart';
 import 'features/reminder/views/reminder_create_screen.dart';
 import 'features/reminder/views/reminder_screen.dart';
 import 'features/todo/views/todo_screen.dart';
@@ -131,7 +132,10 @@ class _MyAppState extends ConsumerState<MyApp> {
               path: '/pengumuman',
               builder: (context, state) => const PengumumanListScreen(),
             ),
-            // Placeholder for profil
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) => const ProfileScreen(),
+            ),
           ],
         ),
       ],

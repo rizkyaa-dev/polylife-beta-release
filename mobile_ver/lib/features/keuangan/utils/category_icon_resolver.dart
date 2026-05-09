@@ -18,11 +18,25 @@ IconData resolveKeuanganCategoryIcon({
   // Prioritize income matching first so icons for pemasukan stay distinct
   // even if the category text overlaps with common expense words.
   if (normalizedJenis == 'pemasukan') {
-    if (_containsRoot(normalized, ['gaji', 'upah', 'uang saku', 'thr', 'tunjangan', 'honor', 'insentif'])) {
+    if (_containsRoot(normalized, [
+      'gaji',
+      'upah',
+      'uang saku',
+      'thr',
+      'tunjangan',
+      'honor',
+      'insentif',
+    ])) {
       return Icons.payments_outlined;
     }
 
-    if (_containsRoot(normalized, ['freelance', 'proyek', 'jasa', 'konsultasi', 'project'])) {
+    if (_containsRoot(normalized, [
+      'freelance',
+      'proyek',
+      'jasa',
+      'konsultasi',
+      'project',
+    ])) {
       return Icons.work_outline;
     }
 
@@ -34,7 +48,16 @@ IconData resolveKeuanganCategoryIcon({
       return Icons.card_giftcard_outlined;
     }
 
-    if (_containsRoot(normalized, ['investasi', 'dividen', 'bunga', 'saham', 'reksa', 'deposito', 'crypto', 'emas'])) {
+    if (_containsRoot(normalized, [
+      'investasi',
+      'dividen',
+      'bunga',
+      'saham',
+      'reksa',
+      'deposito',
+      'crypto',
+      'emas',
+    ])) {
       return Icons.trending_up_outlined;
     }
 
@@ -42,7 +65,13 @@ IconData resolveKeuanganCategoryIcon({
       return Icons.savings_outlined;
     }
 
-    if (_containsRoot(normalized, ['penjualan', 'jual', 'omzet', 'dagang', 'reseller'])) {
+    if (_containsRoot(normalized, [
+      'penjualan',
+      'jual',
+      'omzet',
+      'dagang',
+      'reseller',
+    ])) {
       return Icons.storefront_outlined;
     }
 
@@ -54,7 +83,12 @@ IconData resolveKeuanganCategoryIcon({
       return Icons.monetization_on_outlined;
     }
 
-    if (_containsRoot(normalized, ['refund', 'reimburse', 'retur', 'cashback'])) {
+    if (_containsRoot(normalized, [
+      'refund',
+      'reimburse',
+      'retur',
+      'cashback',
+    ])) {
       return Icons.replay_outlined;
     }
 
@@ -65,35 +99,102 @@ IconData resolveKeuanganCategoryIcon({
     return Icons.south_west_rounded;
   }
 
-  if (_containsRoot(normalized, ['transport', 'angkut', 'ojek', 'bensin', 'bbm', 'parkir', 'tol', 'bus', 'kereta'])) {
+  if (_containsRoot(normalized, [
+    'transport',
+    'angkut',
+    'ojek',
+    'bensin',
+    'bbm',
+    'parkir',
+    'tol',
+    'bus',
+    'kereta',
+  ])) {
     return Icons.directions_car_outlined;
   }
 
-  if (_containsRoot(normalized, ['makan', 'kuliner', 'kopi', 'coffee', 'jajan', 'snack', 'resto', 'food'])) {
+  if (_containsRoot(normalized, [
+    'makan',
+    'kuliner',
+    'kopi',
+    'coffee',
+    'jajan',
+    'snack',
+    'resto',
+    'food',
+  ])) {
     return Icons.restaurant_outlined;
   }
 
-  if (_containsRoot(normalized, ['buku', 'kursus', 'kelas', 'kuliah', 'pendidik', 'alat tulis', 'atk'])) {
+  if (_containsRoot(normalized, [
+    'buku',
+    'kursus',
+    'kelas',
+    'kuliah',
+    'pendidik',
+    'alat tulis',
+    'atk',
+  ])) {
     return Icons.menu_book_outlined;
   }
 
-  if (_containsRoot(normalized, ['belanja', 'grocery', 'sembako', 'market', 'supermarket', 'minimarket'])) {
+  if (_containsRoot(normalized, [
+    'belanja',
+    'grocery',
+    'sembako',
+    'market',
+    'supermarket',
+    'minimarket',
+  ])) {
     return Icons.shopping_bag_outlined;
   }
 
-  if (_containsRoot(normalized, ['kost', 'sewa', 'kontrak', 'rumah', 'apartemen', 'hunian'])) {
+  if (_containsRoot(normalized, [
+    'kost',
+    'sewa',
+    'kontrak',
+    'rumah',
+    'apartemen',
+    'hunian',
+  ])) {
     return Icons.home_work_outlined;
   }
 
-  if (_containsRoot(normalized, ['listrik', 'air', 'pln', 'internet', 'wifi', 'pulsa', 'tagihan', 'utilitas'])) {
+  if (_containsRoot(normalized, [
+    'listrik',
+    'air',
+    'pln',
+    'internet',
+    'wifi',
+    'pulsa',
+    'tagihan',
+    'utilitas',
+  ])) {
     return Icons.receipt_outlined;
   }
 
-  if (_containsRoot(normalized, ['kesehat', 'obat', 'klinik', 'dokter', 'rumah sakit', 'rs', 'medical'])) {
+  if (_containsRoot(normalized, [
+    'kesehat',
+    'obat',
+    'klinik',
+    'dokter',
+    'rumah sakit',
+    'rs',
+    'medical',
+  ])) {
     return Icons.health_and_safety_outlined;
   }
 
-  if (_containsRoot(normalized, ['hiburan', 'movie', 'film', 'gaming', 'game', 'langganan', 'subscription', 'musik'])) {
+  if (_containsRoot(normalized, [
+    'hiburan',
+    'movie',
+    'film',
+    'gaming',
+    'game',
+    'langganan',
+    'subscription',
+    'musik',
+  ])) {
     return Icons.movie_outlined;
   }
 
@@ -101,7 +202,14 @@ IconData resolveKeuanganCategoryIcon({
     return Icons.volunteer_activism_outlined;
   }
 
-  if (_containsRoot(normalized, ['cicilan', 'asuransi', 'pajak', 'pinjaman', 'kredit', 'utang'])) {
+  if (_containsRoot(normalized, [
+    'cicilan',
+    'asuransi',
+    'pajak',
+    'pinjaman',
+    'kredit',
+    'utang',
+  ])) {
     return Icons.request_quote_outlined;
   }
 

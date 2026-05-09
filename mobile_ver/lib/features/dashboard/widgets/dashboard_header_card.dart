@@ -4,10 +4,7 @@ import 'package:intl/intl.dart';
 class DashboardHeaderCard extends StatelessWidget {
   final String userName;
 
-  const DashboardHeaderCard({
-    super.key,
-    required this.userName,
-  });
+  const DashboardHeaderCard({super.key, required this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -54,15 +51,9 @@ class DashboardHeaderCard extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: const [
-              _HintPill(
-                icon: Icons.bolt_outlined,
-                text: 'Fokus harian',
-              ),
+              _HintPill(icon: Icons.bolt_outlined, text: 'Fokus harian'),
               SizedBox(width: 8),
-              _HintPill(
-                icon: Icons.insights_outlined,
-                text: 'Ringkasan cepat',
-              ),
+              _HintPill(icon: Icons.insights_outlined, text: 'Ringkasan cepat'),
             ],
           ),
         ],
@@ -75,10 +66,7 @@ class _HintPill extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _HintPill({
-    required this.icon,
-    required this.text,
-  });
+  const _HintPill({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {

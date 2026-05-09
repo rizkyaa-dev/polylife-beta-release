@@ -81,7 +81,9 @@ class JadwalMonthHeaderCard extends StatelessWidget {
                       backgroundColor: const Color(0xFF4F46E5),
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(44),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -90,7 +92,9 @@ class JadwalMonthHeaderCard extends StatelessWidget {
                   onPressed: onToday,
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(88, 44),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     side: const BorderSide(color: Color(0xFFD1D5DB)),
                   ),
                   child: const Text('Hari Ini'),
@@ -104,7 +108,9 @@ class JadwalMonthHeaderCard extends StatelessWidget {
                 onPressed: onToday,
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(96, 42),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   side: const BorderSide(color: Color(0xFFD1D5DB)),
                 ),
                 icon: const Icon(Icons.today_outlined, size: 16),

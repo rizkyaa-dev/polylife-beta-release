@@ -76,6 +76,7 @@ class TodolistController extends Controller
     public function destroy(Request $request, int $todolist): JsonResponse
     {
         $item = $this->findOwnedOrFail($request, $todolist);
+        $item->reminders()->delete();
         $item->delete();
 
         return response()->json([

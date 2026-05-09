@@ -18,7 +18,9 @@ class TodoTaskTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final due = item.dueDate;
-    final dueLabel = due == null ? null : DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(due);
+    final dueLabel = due == null
+        ? null
+        : DateFormat('dd MMM yyyy, HH:mm', 'id_ID').format(due);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -35,7 +37,9 @@ class TodoTaskTile extends StatelessWidget {
             value: item.completed,
             onChanged: (_) => onToggleCompleted(item),
             visualDensity: VisualDensity.compact,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(5),
+            ),
           ),
           const SizedBox(width: 2),
           Expanded(
@@ -47,7 +51,9 @@ class TodoTaskTile extends StatelessWidget {
                   style: TextStyle(
                     color: const Color(0xFF0F172A),
                     fontWeight: FontWeight.w700,
-                    decoration: item.completed ? TextDecoration.lineThrough : TextDecoration.none,
+                    decoration: item.completed
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
                   ),
                 ),
                 if (item.description.trim().isNotEmpty) ...[
@@ -63,7 +69,10 @@ class TodoTaskTile extends StatelessWidget {
                 if (dueLabel != null) ...[
                   const SizedBox(height: 6),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEEF2FF),
                       borderRadius: BorderRadius.circular(99),
@@ -84,7 +93,10 @@ class TodoTaskTile extends StatelessWidget {
           IconButton(
             tooltip: 'Hapus',
             onPressed: () => onDelete(item),
-            icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: Color(0xFFDC2626),
+            ),
           ),
         ],
       ),

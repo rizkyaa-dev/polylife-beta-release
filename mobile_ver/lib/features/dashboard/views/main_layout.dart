@@ -45,17 +45,15 @@ class _MainLayoutState extends ConsumerState<MainLayout>
   }
 
   Future<void> _refreshKegiatanSilently({bool force = false}) {
-    return ref.read(pengumumanProvider.notifier).fetchPengumuman(
-          showLoader: false,
-          force: force,
-        );
+    return ref
+        .read(pengumumanProvider.notifier)
+        .fetchPengumuman(showLoader: false, force: force);
   }
 
   Future<void> _refreshReminderSilently({bool force = false}) {
-    return ref.read(upcomingReminderProvider.notifier).fetchReminder(
-          showLoader: false,
-          force: force,
-        );
+    return ref
+        .read(upcomingReminderProvider.notifier)
+        .fetchReminder(showLoader: false, force: force);
   }
 
   Future<void> _refreshTodoSilently() {
@@ -70,6 +68,7 @@ class _MainLayoutState extends ConsumerState<MainLayout>
     if (location.startsWith('/pengumuman')) return 3;
     if (location.startsWith('/todo')) return 4;
     if (location.startsWith('/catatan')) return 5;
+    if (location.startsWith('/profile')) return -1;
     return 0;
   }
 
@@ -137,9 +136,7 @@ class _MainLayoutState extends ConsumerState<MainLayout>
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           color: Colors.white,
-          border: Border(
-            top: BorderSide(color: Color(0xFFE5E7EB)),
-          ),
+          border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
         ),
         child: SafeArea(
           top: false,
