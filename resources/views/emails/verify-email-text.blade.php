@@ -4,22 +4,26 @@
         $brandName = 'PolyLife';
     }
 
-    $helpEmail = trim((string) ($supportEmail ?? config('mail.from.address', 'support@polylife.app')));
+    $helpEmail = trim((string) ($supportEmail ?? config('mail.from.address', 'no-reply@polylife.site')));
+    if ($helpEmail === '') {
+        $helpEmail = 'no-reply@polylife.site';
+    }
+
     $expiryText = (int) ($expiresInMinutes ?? 60);
 @endphp
-Verifikasi Email {{ $brandName }}
+VERIFIKASI AKUN
 
-Halo,
+Selamat datang di {{ $brandName }}.
 
-Tinggal satu langkah lagi untuk mengaktifkan akun kamu.
-Klik tautan berikut untuk verifikasi email:
+Tinggal satu langkah lagi untuk mulai menggunakan {{ $brandName }}.
+Verifikasi email kamu melalui tautan berikut:
 
 {{ $verificationUrl }}
 
-Link berlaku selama {{ $expiryText }} menit.
+Link ini berlaku selama {{ $expiryText }} menit.
 
 Jika kamu tidak merasa mendaftar, abaikan email ini.
 
-Butuh bantuan: {{ $helpEmail }}
+Butuh bantuan? Hubungi {{ $helpEmail }}
 
-{{ $brandName }}
+© {{ now()->year }} {{ $brandName }}. All rights reserved.
