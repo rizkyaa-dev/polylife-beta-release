@@ -85,7 +85,7 @@
 
                                 <tr>
                                     <td align="center" style="padding:30px 0 16px;">
-                                        <a href="{{ $resetUrl }}" class="email-button" style="display:inline-block;background-color:#5148e5;border-radius:12px;color:#ffffff;font-size:16px;line-height:1.2;font-weight:800;text-decoration:none;padding:16px 30px;min-width:240px;text-align:center;">
+                                        <a href="{{ $resetUrl }}" class="email-button" style="display:inline-block;background-color:#6254f5;background-image:linear-gradient(135deg,#6d5cff 0%,#584cf1 100%);border:2px solid #211a64;box-shadow:0 5px 0 #2b226f;border-radius:12px;color:#ffffff;font-size:16px;line-height:1.2;font-weight:800;text-decoration:none;padding:15px 30px;min-width:240px;text-align:center;">
                                             Atur Ulang Password
                                         </a>
                                     </td>
@@ -108,7 +108,7 @@
                                             Salin dan buka tautan ini di browser:
                                         </p>
                                         <p class="email-link-box" style="margin:0;color:#5148e5;font-size:13px;line-height:1.55;word-break:break-all;overflow-wrap:anywhere;">
-                                            <a href="{{ $resetUrl }}" style="color:#5148e5;text-decoration:underline;">{{ $resetUrl }}</a>
+                                            <a href="{{ $resetUrl }}" style="color:#6254f5;text-decoration:underline;">{{ $resetUrl }}</a>
                                         </p>
                                     </td>
                                 </tr>
