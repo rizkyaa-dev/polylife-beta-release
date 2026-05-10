@@ -34,7 +34,7 @@
     @endphp
     <div class="grid gap-6 xl:grid-cols-2">
         {{-- Kartu: Jadwal Hari Ini --}}
-        <section class="bg-white rounded-2xl shadow-sm border p-5 h-full flex flex-col dark:bg-slate-900 dark:border-slate-800">
+        <section class="bg-white rounded-2xl shadow-sm border p-4 sm:p-5 h-full flex flex-col min-w-0 dark:bg-slate-900 dark:border-slate-800">
             <header class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-slate-100">Jadwal Hari Ini</h2>
                 <a href="{{ $jadwalIndexRoute }}" class="text-sm text-indigo-600 hover:underline">Lihat semua</a>
@@ -378,7 +378,7 @@
         </section>
         
         {{-- Kartu: To-Do Prioritas --}}
-        <section class="bg-white rounded-2xl shadow-sm border p-5 h-full flex flex-col dark:bg-slate-900 dark:border-slate-800">
+        <section class="bg-white rounded-2xl shadow-sm border p-4 sm:p-5 h-full flex flex-col min-w-0 dark:bg-slate-900 dark:border-slate-800">
             <header class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-slate-100">To-Do List Prioritas</h2>
                 <a href="{{ $todolistIndexRoute }}" class="text-sm text-indigo-600 hover:underline">Kelola</a>
@@ -432,9 +432,9 @@
         </section>
 
         {{-- Kartu: Keuangan Bulan Ini --}}
-        <section class="bg-white rounded-2xl shadow-sm border p-6 dark:bg-slate-900 dark:border-slate-800">
+        <section class="bg-white rounded-2xl shadow-sm border p-4 sm:p-6 min-w-0 dark:bg-slate-900 dark:border-slate-800">
             <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
-                <div>
+                <div class="min-w-0">
                     <h2 class="text-lg font-semibold text-gray-800 dark:text-slate-100">Keuangan Bulan Ini</h2>
                     <p class="text-sm text-gray-500 dark:text-slate-400">Pilih periode untuk melihat ringkasan pemasukan, pengeluaran, dan saldo.</p>
                 </div>
@@ -530,7 +530,7 @@
         </section>
 
         {{-- Kartu: Reminder Mendatang --}}
-        <section class="bg-white rounded-2xl shadow-sm border p-5 h-full flex flex-col dark:bg-slate-900 dark:border-slate-800">
+        <section class="bg-white rounded-2xl shadow-sm border p-4 sm:p-5 h-full flex flex-col min-w-0 dark:bg-slate-900 dark:border-slate-800">
             <header class="flex items-center justify-between mb-4">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-slate-100">Reminder Mendatang</h2>
                 @if($reminderManageRoute)
