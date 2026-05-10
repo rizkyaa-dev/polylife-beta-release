@@ -8,6 +8,6 @@ class DeleteCatatanAction
 {
     public function __invoke(Catatan $catatan): void
     {
-        $catatan->delete();
+        $catatan->forceDelete();
     }
 }

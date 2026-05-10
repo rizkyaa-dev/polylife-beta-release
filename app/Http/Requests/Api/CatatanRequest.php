@@ -17,6 +17,7 @@ abstract class CatatanRequest extends FormRequest
             'judul' => ['required', 'string', 'max:180'],
             'isi' => ['required', 'string'],
             'tanggal' => ['required', 'date'],
+            'show_preview' => ['nullable', 'boolean'],
         ];
     }
 }

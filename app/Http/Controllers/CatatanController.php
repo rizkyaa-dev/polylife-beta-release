@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Catatan\BulkTrashCatatanAction;
 use App\Actions\Catatan\BulkForceDeleteCatatanAction;
 use App\Actions\Catatan\BulkRestoreCatatanAction;
+use App\Actions\Catatan\BulkTrashCatatanAction;
 use App\Actions\Catatan\DeleteCatatanAction;
 use App\Actions\Catatan\RestoreCatatanAction;
 use App\Actions\Catatan\SaveCatatanAction;
@@ -14,6 +14,7 @@ use App\Http\Requests\Catatan\BulkTrashCatatanRequest;
 use App\Http\Requests\Catatan\StoreCatatanRequest;
 use App\Http\Requests\Catatan\UpdateCatatanRequest;
 use App\Models\Catatan;
+use App\Services\Catatan\CatatanSearchIndexer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,7 +22,9 @@ use Illuminate\Support\Facades\Auth;
 class CatatanController extends Controller
 {
     private const INDEX_PER_PAGE = 12;
+
     private const MANAGE_PER_PAGE = 20;
+
     private const TRASH_PER_PAGE = 20;
 
     public function __construct(
@@ -31,16 +34,16 @@ class CatatanController extends Controller
         private readonly DeleteCatatanAction $deleteCatatanAction,
         private readonly BulkTrashCatatanAction $bulkTrashCatatanAction,
         private readonly BulkRestoreCatatanAction $bulkRestoreCatatanAction,
-        private readonly BulkForceDeleteCatatanAction $bulkForceDeleteCatatanAction
-    ) {
-    }
+        private readonly BulkForceDeleteCatatanAction $bulkForceDeleteCatatanAction,
+        private readonly CatatanSearchIndexer $catatanSearchIndexer
+    ) {}
 
     public function index()
     {
         $userId = Auth::id();
 
         $catatans = Catatan::query()
-            ->selectSummary()
+            ->selectWebSummary()
             ->where('user_id', $userId)
             ->where('status_sampah', false)
             ->latest('tanggal')
@@ -64,14 +67,29 @@ class CatatanController extends Controller
         $sort = (string) $request->string('sort', 'latest');
 
         $query = Catatan::query()
-            ->selectSummary()
+            ->selectWebSummary()
             ->where('user_id', $userId)
             ->where('status_sampah', false);
 
         if ($search !== '') {
-            $query->where(function ($builder) use ($search) {
-                $builder->where('judul', 'like', '%' . $search . '%')
-                    ->orWhere('preview_isi', 'like', '%' . $search . '%');
+            $tokenHashes = $this->catatanSearchIndexer->hashesForSearch($search);
+
+            $query->where(function ($builder) use ($search, $tokenHashes) {
+                $builder->where('judul', 'like', '%'.$search.'%');
+
+                if ($tokenHashes !== []) {
+                    $builder->orWhere(function ($tokenQuery) use ($tokenHashes) {
+                        foreach ($tokenHashes as $tokenHash) {
+                            $tokenQuery->whereExists(function ($exists) use ($tokenHash) {
+                                $exists->selectRaw('1')
+                                    ->from('catatan_search_tokens')
+                                    ->whereColumn('catatan_search_tokens.catatan_id', 'catatans.id')
+                                    ->whereColumn('catatan_search_tokens.user_id', 'catatans.user_id')
+                                    ->where('catatan_search_tokens.token_hash', $tokenHash);
+                            });
+                        }
+                    });
+                }
             });
         }
 
@@ -113,7 +131,7 @@ class CatatanController extends Controller
     public function trash()
     {
         $catatans = Catatan::query()
-            ->selectSummary()
+            ->selectWebSummary()
             ->where('user_id', Auth::id())
             ->where('status_sampah', true)
             ->latest('updated_at')
@@ -144,7 +162,8 @@ class CatatanController extends Controller
                 'id' => (int) $catatan->id,
                 'judul' => (string) $catatan->judul,
                 'isi' => (string) ($catatan->isi ?? ''),
-                'preview_isi' => (string) ($catatan->preview_isi ?? ''),
+                'preview_isi' => $catatan->previewForDisplay(),
+                'show_preview' => (bool) $catatan->show_preview,
                 'tanggal' => optional($catatan->tanggal)->toDateString() ?? (string) $catatan->tanggal,
                 'status_sampah' => (bool) $catatan->status_sampah,
                 'created_at' => optional($catatan->created_at)->toIso8601String(),
@@ -201,7 +220,7 @@ class CatatanController extends Controller
 
         return redirect()
             ->route('catatan.manage', $routeParams)
-            ->with('success', $affected . ' catatan dipindahkan ke sampah.');
+            ->with('success', $affected.' catatan dipindahkan ke sampah.');
     }
 
     public function restore(Catatan $catatan)
@@ -237,7 +256,7 @@ class CatatanController extends Controller
 
         return redirect()
             ->route('catatan.sampah', $routeParams)
-            ->with('success', $affected . ' catatan berhasil dipulihkan.');
+            ->with('success', $affected.' catatan berhasil dipulihkan.');
     }
 
     public function forceDelete(Catatan $catatan)
@@ -273,7 +292,7 @@ class CatatanController extends Controller
 
         return redirect()
             ->route('catatan.sampah', $routeParams)
-            ->with('success', $affected . ' catatan dihapus permanen.');
+            ->with('success', $affected.' catatan dihapus permanen.');
     }
 
     private function authorizeAccess(Catatan $catatan): void

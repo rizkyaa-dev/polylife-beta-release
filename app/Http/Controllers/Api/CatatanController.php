@@ -79,6 +79,7 @@ class CatatanController extends Controller
             'judul' => trim((string) $validated['judul']),
             'isi' => (string) $validated['isi'],
             'preview_isi' => Catatan::makePreviewIsi((string) $validated['isi']),
+            'show_preview' => (bool) ($validated['show_preview'] ?? false),
             'tanggal' => $validated['tanggal'],
             'status_sampah' => false,
         ]);
@@ -107,6 +108,7 @@ class CatatanController extends Controller
             'judul' => trim((string) $validated['judul']),
             'isi' => (string) $validated['isi'],
             'preview_isi' => Catatan::makePreviewIsi((string) $validated['isi']),
+            'show_preview' => (bool) ($validated['show_preview'] ?? false),
             'tanggal' => $validated['tanggal'],
         ]);
 
@@ -140,7 +142,7 @@ class CatatanController extends Controller
     public function forceDelete(Request $request, int $catatan): JsonResponse
     {
         $item = $this->findOwnedCatatanOrFail($request, $catatan);
-        $item->delete();
+        $item->forceDelete();
 
         return response()->json([
             'message' => 'Catatan dihapus permanen.',
@@ -155,7 +157,7 @@ class CatatanController extends Controller
             ->first();
 
         if (! $item) {
-            throw (new ModelNotFoundException())->setModel(Catatan::class, [$id]);
+            throw (new ModelNotFoundException)->setModel(Catatan::class, [$id]);
         }
 
         return $item;

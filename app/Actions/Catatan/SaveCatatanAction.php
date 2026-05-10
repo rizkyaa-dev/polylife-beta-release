@@ -16,6 +16,7 @@ class SaveCatatanAction
             'judul' => trim((string) $validated['judul']),
             'isi' => (string) $validated['isi'],
             'preview_isi' => Catatan::makePreviewIsi((string) $validated['isi']),
+            'show_preview' => (bool) ($validated['show_preview'] ?? false),
             'tanggal' => $validated['tanggal'],
         ];
 

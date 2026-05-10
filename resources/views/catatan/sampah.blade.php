@@ -91,7 +91,7 @@
                                                 Dihapus {{ $catatan->updated_at?->diffForHumans() ?? '-' }} |
                                                 Tanggal catatan: {{ \Illuminate\Support\Carbon::parse($catatan->tanggal)->translatedFormat('d M Y') }}
                                             </p>
-                                            <p class="mt-3 text-sm text-gray-600 line-clamp-2 dark:text-slate-300">{{ $catatan->preview_isi !== '' ? $catatan->preview_isi : '(Tanpa isi)' }}</p>
+                                            <p class="mt-3 text-sm text-gray-600 line-clamp-2 dark:text-slate-300">{{ $catatan->previewForDisplay() !== '' ? $catatan->previewForDisplay() : 'Preview disembunyikan' }}</p>
                                         </div>
                                         <div class="flex flex-col gap-2 text-sm">
                                             <form action="{{ route('catatan.restore', $catatan) }}" method="POST">

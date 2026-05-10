@@ -153,7 +153,7 @@
                                             <div class="min-w-0">
                                                 <h4 class="text-base font-semibold text-gray-900">{{ $catatan->judul }}</h4>
                                                 <p class="mt-1 text-sm text-gray-600 line-clamp-3">
-                                                    {{ $catatan->preview_isi !== '' ? $catatan->preview_isi : '(Tanpa isi)' }}
+                                                    {{ $catatan->previewForDisplay() !== '' ? $catatan->previewForDisplay() : 'Preview disembunyikan' }}
                                                 </p>
                                             </div>
                                             <div class="shrink-0 text-right">

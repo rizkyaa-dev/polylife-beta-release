@@ -59,6 +59,21 @@
                     @enderror
                 </div>
 
+                <label for="show_preview" class="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm">
+                    <input type="checkbox"
+                           name="show_preview"
+                           id="show_preview"
+                           value="1"
+                           @checked(old('show_preview', $catatan->show_preview))
+                           class="mt-1 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500">
+                    <span>
+                        <span class="block font-semibold text-gray-900">Tampilkan preview di daftar catatan</span>
+                        <span class="mt-1 block text-xs leading-5 text-gray-600">
+                            Preview dibuat saat ditampilkan dari isi terenkripsi dan tidak disimpan sebagai teks asli di database.
+                        </span>
+                    </span>
+                </label>
+
                 <div class="flex items-center justify-end gap-3">
                     <a href="{{ route('catatan.index') }}" class="text-sm text-gray-500 hover:text-gray-700">
                         Batal

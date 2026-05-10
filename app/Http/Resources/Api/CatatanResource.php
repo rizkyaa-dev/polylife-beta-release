@@ -18,7 +18,8 @@ class CatatanResource extends JsonResource
         return [
             'id' => (int) $this->id,
             'judul' => (string) ($this->judul ?? ''),
-            'preview_isi' => (string) ($this->preview_isi ?? ''),
+            'preview_isi' => $this->previewForDisplay(),
+            'show_preview' => (bool) ($this->show_preview ?? false),
             'has_full_isi' => $hasFullIsi,
             'isi' => $this->when($hasFullIsi, (string) ($this->isi ?? '')),
             'tanggal' => optional($this->tanggal)->toDateString() ?? (string) $this->tanggal,

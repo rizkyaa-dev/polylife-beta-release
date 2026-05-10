@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Models\Catatan;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 test('api catatan index returns preview payload while show returns full content', function () {
     $user = User::factory()->create();
@@ -31,13 +32,14 @@ test('api catatan index returns preview payload while show returns full content'
         ->assertOk()
         ->assertJsonStructure([
             'data' => [
-                '*' => ['id', 'judul', 'preview_isi', 'has_full_isi', 'tanggal', 'status_sampah'],
+                '*' => ['id', 'judul', 'preview_isi', 'show_preview', 'has_full_isi', 'tanggal', 'status_sampah'],
             ],
             'meta' => ['current_page', 'last_page', 'per_page', 'total', 'trash_count'],
             'links' => ['next', 'prev'],
         ])
         ->assertJsonPath('data.0.id', $catatan->id)
-        ->assertJsonPath('data.0.preview_isi', Catatan::makePreviewIsi($isi))
+        ->assertJsonPath('data.0.preview_isi', '')
+        ->assertJsonPath('data.0.show_preview', false)
         ->assertJsonPath('data.0.has_full_isi', false)
         ->assertJsonMissingPath('data.0.isi');
 
@@ -48,7 +50,14 @@ test('api catatan index returns preview payload while show returns full content'
     $showResponse
         ->assertOk()
         ->assertJsonPath('data.id', $catatan->id)
-        ->assertJsonPath('data.preview_isi', Catatan::makePreviewIsi($isi))
+        ->assertJsonPath('data.preview_isi', '')
+        ->assertJsonPath('data.show_preview', false)
         ->assertJsonPath('data.has_full_isi', true)
         ->assertJsonPath('data.isi', $isi);
+
+    $rawIsi = DB::table('catatans')->where('id', $catatan->id)->value('isi');
+
+    expect($rawIsi)->not->toBe($isi)
+        ->and($rawIsi)->not->toContain('Konten catatan beta')
+        ->and(DB::table('catatan_search_tokens')->where('catatan_id', $catatan->id)->count())->toBeGreaterThan(0);
 });

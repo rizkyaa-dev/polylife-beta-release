@@ -44,8 +44,7 @@ class SyncController extends Controller
         private readonly KuliahScheduleService $kuliahScheduleService,
         private readonly ReminderPayloadService $reminderPayloadService,
         private readonly TodolistReminderService $todolistReminderService,
-    ) {
-    }
+    ) {}
 
     public function push(Request $request): JsonResponse
     {
@@ -245,6 +244,7 @@ class SyncController extends Controller
                 'judul' => trim((string) $this->validatePayload($entityType, $payload)['judul']),
                 'isi' => (string) $payload['isi'],
                 'preview_isi' => Catatan::makePreviewIsi((string) $payload['isi']),
+                'show_preview' => (bool) ($payload['show_preview'] ?? false),
                 'tanggal' => $payload['tanggal'],
                 'status_sampah' => (bool) ($payload['status_sampah'] ?? false),
             ]),
@@ -285,6 +285,7 @@ class SyncController extends Controller
             'judul' => trim((string) $validated['judul']),
             'isi' => (string) $validated['isi'],
             'preview_isi' => Catatan::makePreviewIsi((string) $validated['isi']),
+            'show_preview' => (bool) ($validated['show_preview'] ?? false),
             'tanggal' => $validated['tanggal'],
             'status_sampah' => (bool) ($validated['status_sampah'] ?? false),
         ]);
@@ -411,6 +412,7 @@ class SyncController extends Controller
                 'judul' => ['required', 'string', 'max:180'],
                 'isi' => ['required', 'string'],
                 'tanggal' => ['required', 'date'],
+                'show_preview' => ['nullable', 'boolean'],
                 'status_sampah' => ['nullable', 'boolean'],
             ],
             'keuangan' => [

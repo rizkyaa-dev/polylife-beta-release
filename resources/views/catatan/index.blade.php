@@ -72,7 +72,7 @@
                         <h3 class="mt-4 text-lg font-semibold text-gray-900 line-clamp-2 catatan-title">{{ $catatan->judul }}</h3>
                         <div class="mt-2 space-y-2 text-sm text-gray-600">
                             <p class="line-clamp-3 catatan-preview">
-                                {{ $catatan->preview_isi !== '' ? $catatan->preview_isi : '(Tanpa isi)' }}
+                                {{ $catatan->previewForDisplay() !== '' ? $catatan->previewForDisplay() : 'Preview disembunyikan' }}
                             </p>
                             <div class="hidden catatan-full whitespace-pre-line leading-relaxed text-gray-700">Memuat isi catatan...</div>
                         </div>
