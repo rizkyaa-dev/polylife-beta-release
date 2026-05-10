@@ -9,23 +9,23 @@
                 <p class="text-sm text-gray-500">Perbarui isi catatanmu</p>
                 <h2 class="text-2xl font-semibold text-gray-900">Edit Catatan</h2>
             </div>
-            <a href="{{ route('catatan.index') }}" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="{{ route('catatan.index') }}" class="text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200">
                 &larr; Kembali
             </a>
         </div>
 
-        <div class="bg-white border rounded-2xl shadow-sm p-6">
+        <div class="bg-white border rounded-2xl shadow-sm p-6 dark:bg-slate-900 dark:border-slate-800">
             <form action="{{ route('catatan.update', $catatan) }}" method="POST" class="space-y-5">
                 @csrf
                 @method('PUT')
 
                 <div>
-                    <label for="judul" class="block text-sm font-medium text-gray-700">Judul</label>
+                    <label for="judul" class="form-label">Judul</label>
                     <input type="text"
                            name="judul"
                            id="judul"
                            value="{{ old('judul', $catatan->judul) }}"
-                           class="mt-1 block w-full rounded-xl border-gray-200 focus:border-indigo-400 focus:ring focus:ring-indigo-100"
+                           class="mt-1 form-input"
                            placeholder="Contoh: Ringkasan materi pertemuan"
                            required>
                     @error('judul')
@@ -34,12 +34,12 @@
                 </div>
 
                 <div>
-                    <label for="tanggal" class="block text-sm font-medium text-gray-700">Tanggal</label>
+                    <label for="tanggal" class="form-label">Tanggal</label>
                     <input type="date"
                            name="tanggal"
                            id="tanggal"
                            value="{{ old('tanggal', \Illuminate\Support\Carbon::parse($catatan->tanggal)->format('Y-m-d')) }}"
-                           class="mt-1 block w-full rounded-xl border-gray-200 focus:border-indigo-400 focus:ring focus:ring-indigo-100"
+                           class="mt-1 form-input"
                            required>
                     @error('tanggal')
                         <p class="text-sm text-rose-600 mt-1">{{ $message }}</p>
@@ -47,11 +47,11 @@
                 </div>
 
                 <div>
-                    <label for="isi" class="block text-sm font-medium text-gray-700">Isi Catatan</label>
+                    <label for="isi" class="form-label">Isi Catatan</label>
                     <textarea name="isi"
                               id="isi"
                               rows="8"
-                              class="mt-1 block w-full rounded-2xl border-gray-200 focus:border-indigo-400 focus:ring focus:ring-indigo-100"
+                              class="mt-1 form-input"
                               placeholder="Tulis isi catatanmu di sini..."
                               required>{{ old('isi', $catatan->isi) }}</textarea>
                     @error('isi')
@@ -59,23 +59,23 @@
                     @enderror
                 </div>
 
-                <label for="show_preview" class="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm">
+                <label for="show_preview" class="flex items-start gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-sm dark:border-indigo-900/60 dark:bg-indigo-950/30">
                     <input type="checkbox"
                            name="show_preview"
                            id="show_preview"
                            value="1"
                            @checked(old('show_preview', $catatan->show_preview))
-                           class="mt-1 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500">
+                           class="mt-1 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 dark:border-indigo-700 dark:bg-slate-950">
                     <span>
-                        <span class="block font-semibold text-gray-900">Tampilkan preview di daftar catatan</span>
-                        <span class="mt-1 block text-xs leading-5 text-gray-600">
+                        <span class="block font-semibold text-gray-900 dark:text-slate-100">Tampilkan preview di daftar catatan</span>
+                        <span class="mt-1 block text-xs leading-5 text-gray-600 dark:text-slate-400">
                             Preview dibuat saat ditampilkan dari isi terenkripsi dan tidak disimpan sebagai teks asli di database.
                         </span>
                     </span>
                 </label>
 
                 <div class="flex items-center justify-end gap-3">
-                    <a href="{{ route('catatan.index') }}" class="text-sm text-gray-500 hover:text-gray-700">
+                    <a href="{{ route('catatan.index') }}" class="text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200">
                         Batal
                     </a>
                     <button type="submit"
