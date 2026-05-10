@@ -237,6 +237,94 @@ class AuthController extends StateNotifier<bool> {
     }
   }
 
+  Future<AuthActionResult> updateProfile({
+    required String displayName,
+    required String bio,
+    required String phone,
+    required String dateOfBirth,
+    required String gender,
+    required String location,
+    required String themePreference,
+    required String timezone,
+    required String locale,
+  }) async {
+    if (AppMode.uiOnly) {
+      ref.read(userProvider.notifier).state = _mockUser;
+      return const AuthActionResult.success('Profil berhasil diperbarui.');
+    }
+
+    try {
+      final response = await ApiClient.patch('/profile', {
+        'display_name': _nullableString(displayName),
+        'bio': _nullableString(bio),
+        'phone': _nullableString(phone),
+        'date_of_birth': _nullableString(dateOfBirth),
+        'gender': _nullableString(gender),
+        'location': _nullableString(location),
+        'theme_preference': themePreference,
+        'timezone': _nullableString(timezone),
+        'locale': _nullableString(locale),
+      });
+
+      return _persistUserActionResponse(
+        response.body,
+        response.statusCode,
+        successFallback: 'Profil berhasil diperbarui.',
+        failureFallback: 'Profil gagal diperbarui.',
+      );
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure('Network error occurred');
+    }
+  }
+
+  Future<AuthActionResult> uploadProfileAvatar(String filePath) async {
+    if (AppMode.uiOnly) {
+      return const AuthActionResult.success('Foto profil berhasil diperbarui.');
+    }
+
+    try {
+      final response = await ApiClient.postMultipart(
+        '/profile/avatar',
+        fileField: 'avatar',
+        filePath: filePath,
+      );
+
+      return _persistUserActionResponse(
+        response.body,
+        response.statusCode,
+        successFallback: 'Foto profil berhasil diperbarui.',
+        failureFallback: 'Foto profil gagal diperbarui.',
+      );
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure('Network error occurred');
+    }
+  }
+
+  Future<AuthActionResult> deleteProfileAvatar() async {
+    if (AppMode.uiOnly) {
+      return const AuthActionResult.success('Foto profil berhasil dihapus.');
+    }
+
+    try {
+      final response = await ApiClient.delete('/profile/avatar');
+
+      return _persistUserActionResponse(
+        response.body,
+        response.statusCode,
+        successFallback: 'Foto profil berhasil dihapus.',
+        failureFallback: 'Foto profil gagal dihapus.',
+      );
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure('Network error occurred');
+    }
+  }
+
   Future<void> logout() async {
     if (AppMode.uiOnly) {
       ref.read(userProvider.notifier).state = _mockUser;
@@ -272,6 +360,46 @@ class AuthController extends StateNotifier<bool> {
     } catch (_) {
       return fallback;
     }
+  }
+
+  Future<AuthActionResult> _persistUserActionResponse(
+    String responseBody,
+    int statusCode, {
+    required String successFallback,
+    required String failureFallback,
+  }) async {
+    final isSuccess = statusCode >= 200 && statusCode < 300;
+    final message = _messageFromResponse(
+      responseBody,
+      isSuccess ? successFallback : failureFallback,
+    );
+
+    if (!isSuccess) {
+      return AuthActionResult.failure(message);
+    }
+
+    try {
+      final body = jsonDecode(responseBody) as Map<String, dynamic>;
+      final data = body['data'];
+      final userData = data is Map ? data['user'] : null;
+
+      if (userData is Map) {
+        final user = User.fromJson(Map<String, dynamic>.from(userData));
+        await LocalStorage.saveUser(user);
+        ref.read(userProvider.notifier).state = user;
+        state = true;
+      }
+    } catch (_) {
+      // Keep the successful action result even if response parsing fails.
+    }
+
+    return AuthActionResult.success(message);
+  }
+
+  String? _nullableString(String value) {
+    final trimmed = value.trim();
+
+    return trimmed.isEmpty ? null : trimmed;
   }
 }
 

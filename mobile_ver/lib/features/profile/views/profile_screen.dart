@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'package:mobile_ver/features/auth/models/user_model.dart';
 import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
@@ -20,6 +21,19 @@ class ProfileScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  final _displayNameController = TextEditingController();
+  final _bioController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _dateOfBirthController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _timezoneController = TextEditingController();
+  String _gender = '';
+  String _themePreference = 'system';
+  String _locale = 'id';
+  bool _isEditing = false;
+  bool _isSaving = false;
+  bool _isAvatarBusy = false;
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +42,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _refreshProfile(showError: false);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _displayNameController.dispose();
+    _bioController.dispose();
+    _phoneController.dispose();
+    _dateOfBirthController.dispose();
+    _locationController.dispose();
+    _timezoneController.dispose();
+    super.dispose();
   }
 
   @override
@@ -54,6 +79,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   context.go('/');
                 },
                 onRefresh: _refreshProfile,
+                onEdit: user == null ? null : () => _startEditing(user),
+                onCancelEdit: _isEditing ? _stopEditing : null,
+                isEditing: _isEditing,
               ),
               const SizedBox(height: 16),
               if (user == null)
@@ -61,65 +89,95 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               else ...[
                 _ProfileHeaderCard(user: user),
                 const SizedBox(height: 14),
-                _InfoSection(
-                  title: 'Akun',
-                  rows: [
-                    _InfoRowData(
-                      icon: Icons.badge_outlined,
-                      label: 'Nama akun',
-                      value: user.name,
-                    ),
-                    _InfoRowData(
-                      icon: Icons.mail_outline_rounded,
-                      label: 'Email',
-                      value: user.email,
-                    ),
-                    _InfoRowData(
-                      icon: Icons.verified_user_outlined,
-                      label: 'Status akun',
-                      value: _accountStatusLabel(user.accountStatus),
-                    ),
-                    _InfoRowData(
-                      icon: Icons.mark_email_read_outlined,
-                      label: 'Verifikasi email',
-                      value: user.hasVerifiedEmail
-                          ? 'Terverifikasi'
-                          : 'Belum terverifikasi',
-                    ),
-                  ],
+                _AvatarActionCard(
+                  isBusy: _isAvatarBusy,
+                  hasAvatar: user.profile?.hasAvatar == true,
+                  onPickAvatar: _pickAvatar,
+                  onDeleteAvatar: _deleteAvatar,
                 ),
                 const SizedBox(height: 14),
-                _InfoSection(
-                  title: 'Profil',
-                  rows: [
-                    _InfoRowData(
-                      icon: Icons.person_outline_rounded,
-                      label: 'Nama tampilan',
-                      value: _displayValue(user.profile?.displayName),
-                    ),
-                    _InfoRowData(
-                      icon: Icons.phone_outlined,
-                      label: 'Telepon',
-                      value: _displayValue(user.profile?.phone),
-                    ),
-                    _InfoRowData(
-                      icon: Icons.place_outlined,
-                      label: 'Lokasi',
-                      value: _displayValue(user.profile?.location),
-                    ),
-                    _InfoRowData(
-                      icon: Icons.palette_outlined,
-                      label: 'Tema profil',
-                      value: _themeLabel(user.profile?.themePreference),
-                    ),
-                    _InfoRowData(
-                      icon: Icons.schedule_rounded,
-                      label: 'Zona waktu',
-                      value: _displayValue(user.profile?.timezone),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
+                if (_isEditing)
+                  _ProfileEditSection(
+                    isSaving: _isSaving,
+                    displayNameController: _displayNameController,
+                    bioController: _bioController,
+                    phoneController: _phoneController,
+                    dateOfBirthController: _dateOfBirthController,
+                    locationController: _locationController,
+                    timezoneController: _timezoneController,
+                    gender: _gender,
+                    themePreference: _themePreference,
+                    locale: _locale,
+                    onGenderChanged: (value) =>
+                        setState(() => _gender = value ?? ''),
+                    onThemeChanged: (value) =>
+                        setState(() => _themePreference = value ?? 'system'),
+                    onLocaleChanged: (value) =>
+                        setState(() => _locale = value ?? 'id'),
+                    onSave: _saveProfile,
+                    onCancel: _stopEditing,
+                  )
+                else ...[
+                  _InfoSection(
+                    title: 'Akun',
+                    rows: [
+                      _InfoRowData(
+                        icon: Icons.badge_outlined,
+                        label: 'Nama akun',
+                        value: user.name,
+                      ),
+                      _InfoRowData(
+                        icon: Icons.mail_outline_rounded,
+                        label: 'Email',
+                        value: user.email,
+                      ),
+                      _InfoRowData(
+                        icon: Icons.verified_user_outlined,
+                        label: 'Status akun',
+                        value: _accountStatusLabel(user.accountStatus),
+                      ),
+                      _InfoRowData(
+                        icon: Icons.mark_email_read_outlined,
+                        label: 'Verifikasi email',
+                        value: user.hasVerifiedEmail
+                            ? 'Terverifikasi'
+                            : 'Belum terverifikasi',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _InfoSection(
+                    title: 'Profil',
+                    rows: [
+                      _InfoRowData(
+                        icon: Icons.person_outline_rounded,
+                        label: 'Nama tampilan',
+                        value: _displayValue(user.profile?.displayName),
+                      ),
+                      _InfoRowData(
+                        icon: Icons.phone_outlined,
+                        label: 'Telepon',
+                        value: _displayValue(user.profile?.phone),
+                      ),
+                      _InfoRowData(
+                        icon: Icons.place_outlined,
+                        label: 'Lokasi',
+                        value: _displayValue(user.profile?.location),
+                      ),
+                      _InfoRowData(
+                        icon: Icons.palette_outlined,
+                        label: 'Tema profil',
+                        value: _themeLabel(user.profile?.themePreference),
+                      ),
+                      _InfoRowData(
+                        icon: Icons.schedule_rounded,
+                        label: 'Zona waktu',
+                        value: _displayValue(user.profile?.timezone),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 _InfoSection(
                   title: 'Kampus',
                   rows: [
@@ -170,13 +228,121 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       router.go('/login');
     }
   }
+
+  void _startEditing(User user) {
+    final profile = user.profile;
+
+    _displayNameController.text = profile?.displayName ?? '';
+    _bioController.text = profile?.bio ?? '';
+    _phoneController.text = profile?.phone ?? '';
+    _dateOfBirthController.text = profile?.dateOfBirth ?? '';
+    _locationController.text = profile?.location ?? '';
+    _timezoneController.text = profile?.timezone ?? 'Asia/Jakarta';
+    _gender = _allowedValue(profile?.gender, const {
+      '',
+      'female',
+      'male',
+      'other',
+      'prefer_not_to_say',
+    }, '');
+    _themePreference = _allowedValue(profile?.themePreference, const {
+      'system',
+      'light',
+      'dark',
+    }, 'system');
+    _locale = _allowedValue(profile?.locale, const {'id', 'en'}, 'id');
+
+    setState(() => _isEditing = true);
+  }
+
+  void _stopEditing() {
+    if (_isSaving) return;
+    setState(() => _isEditing = false);
+  }
+
+  Future<void> _saveProfile() async {
+    if (_isSaving) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isSaving = true);
+
+    final result = await ref
+        .read(authProvider.notifier)
+        .updateProfile(
+          displayName: _displayNameController.text,
+          bio: _bioController.text,
+          phone: _phoneController.text,
+          dateOfBirth: _dateOfBirthController.text,
+          gender: _gender,
+          location: _locationController.text,
+          themePreference: _themePreference,
+          timezone: _timezoneController.text,
+          locale: _locale,
+        );
+
+    if (!mounted) return;
+    setState(() {
+      _isSaving = false;
+      if (result.isSuccess) {
+        _isEditing = false;
+      }
+    });
+
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
+  }
+
+  Future<void> _pickAvatar() async {
+    if (_isAvatarBusy) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 256,
+      maxHeight: 256,
+      imageQuality: 75,
+      requestFullMetadata: false,
+    );
+
+    if (image == null) return;
+
+    setState(() => _isAvatarBusy = true);
+    final result = await ref
+        .read(authProvider.notifier)
+        .uploadProfileAvatar(image.path);
+
+    if (!mounted) return;
+    setState(() => _isAvatarBusy = false);
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
+  }
+
+  Future<void> _deleteAvatar() async {
+    if (_isAvatarBusy) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isAvatarBusy = true);
+    final result = await ref.read(authProvider.notifier).deleteProfileAvatar();
+
+    if (!mounted) return;
+    setState(() => _isAvatarBusy = false);
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
+  }
 }
 
 class _TitleBar extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onRefresh;
+  final VoidCallback? onEdit;
+  final VoidCallback? onCancelEdit;
+  final bool isEditing;
 
-  const _TitleBar({required this.onBack, required this.onRefresh});
+  const _TitleBar({
+    required this.onBack,
+    required this.onRefresh,
+    required this.onEdit,
+    required this.onCancelEdit,
+    required this.isEditing,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +361,372 @@ class _TitleBar extends StatelessWidget {
           ),
         ),
         _CircleActionButton(icon: Icons.refresh_rounded, onTap: onRefresh),
+        const SizedBox(width: 8),
+        _CircleActionButton(
+          icon: isEditing ? Icons.close_rounded : Icons.edit_outlined,
+          onTap: isEditing ? onCancelEdit : onEdit,
+        ),
       ],
+    );
+  }
+}
+
+class _AvatarActionCard extends StatelessWidget {
+  final bool isBusy;
+  final bool hasAvatar;
+  final VoidCallback onPickAvatar;
+  final VoidCallback onDeleteAvatar;
+
+  const _AvatarActionCard({
+    required this.isBusy,
+    required this.hasAvatar,
+    required this.onPickAvatar,
+    required this.onDeleteAvatar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F0F172A),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.photo_camera_outlined,
+            color: ProfileScreen._primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              isBusy ? 'Memproses foto...' : 'Foto profil',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: ProfileScreen._text,
+              ),
+            ),
+          ),
+          _SmallActionButton(
+            label: 'Pilih',
+            onTap: isBusy ? null : onPickAvatar,
+          ),
+          if (hasAvatar) ...[
+            const SizedBox(width: 8),
+            _SmallActionButton(
+              label: 'Hapus',
+              isDanger: true,
+              onTap: isBusy ? null : onDeleteAvatar,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SmallActionButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  final bool isPrimary;
+  final bool isDanger;
+
+  const _SmallActionButton({
+    required this.label,
+    required this.onTap,
+    this.isPrimary = false,
+    this.isDanger = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onTap == null;
+    final background = isPrimary
+        ? ProfileScreen._primary
+        : isDanger
+        ? const Color(0xFFFFF1F2)
+        : const Color(0xFFF5F4FA);
+    final foreground = isPrimary
+        ? Colors.white
+        : isDanger
+        ? const Color(0xFFE25555)
+        : ProfileScreen._text;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 160),
+          opacity: disabled ? 0.55 : 1,
+          child: Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isPrimary
+                    ? ProfileScreen._primary
+                    : isDanger
+                    ? const Color(0xFFFFD4D4)
+                    : const Color(0xFFE7E3F3),
+              ),
+            ),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: foreground,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileTextField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final String? hintText;
+  final int? maxLength;
+  final int maxLines;
+  final TextInputType? keyboardType;
+
+  const _ProfileTextField({
+    required this.label,
+    required this.controller,
+    this.hintText,
+    this.maxLength,
+    this.maxLines = 1,
+    this.keyboardType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        maxLength: maxLength,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: ProfileScreen._text,
+        ),
+        decoration: _fieldDecoration(label, hintText),
+      ),
+    );
+  }
+}
+
+class _ProfileSelectField extends StatelessWidget {
+  final String label;
+  final String value;
+  final Map<String, String> items;
+  final ValueChanged<String?> onChanged;
+
+  const _ProfileSelectField({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<String>(
+        initialValue: items.containsKey(value) ? value : items.keys.first,
+        isExpanded: true,
+        icon: const Icon(Icons.keyboard_arrow_down_rounded),
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: ProfileScreen._text,
+        ),
+        decoration: _fieldDecoration(label, null),
+        items: items.entries
+            .map(
+              (entry) => DropdownMenuItem<String>(
+                value: entry.key,
+                child: Text(
+                  entry.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _ProfileEditSection extends StatelessWidget {
+  final bool isSaving;
+  final TextEditingController displayNameController;
+  final TextEditingController bioController;
+  final TextEditingController phoneController;
+  final TextEditingController dateOfBirthController;
+  final TextEditingController locationController;
+  final TextEditingController timezoneController;
+  final String gender;
+  final String themePreference;
+  final String locale;
+  final ValueChanged<String?> onGenderChanged;
+  final ValueChanged<String?> onThemeChanged;
+  final ValueChanged<String?> onLocaleChanged;
+  final VoidCallback onSave;
+  final VoidCallback onCancel;
+
+  const _ProfileEditSection({
+    required this.isSaving,
+    required this.displayNameController,
+    required this.bioController,
+    required this.phoneController,
+    required this.dateOfBirthController,
+    required this.locationController,
+    required this.timezoneController,
+    required this.gender,
+    required this.themePreference,
+    required this.locale,
+    required this.onGenderChanged,
+    required this.onThemeChanged,
+    required this.onLocaleChanged,
+    required this.onSave,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F0F172A),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Edit Profil',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: ProfileScreen._text,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _ProfileTextField(
+            label: 'Nama tampilan',
+            controller: displayNameController,
+            maxLength: 100,
+          ),
+          _ProfileTextField(
+            label: 'Nomor kontak',
+            controller: phoneController,
+            maxLength: 30,
+            keyboardType: TextInputType.phone,
+          ),
+          _ProfileTextField(
+            label: 'Tanggal lahir',
+            controller: dateOfBirthController,
+            hintText: 'YYYY-MM-DD',
+            keyboardType: TextInputType.datetime,
+          ),
+          _ProfileSelectField(
+            label: 'Gender',
+            value: gender,
+            onChanged: onGenderChanged,
+            items: const {
+              '': 'Tidak diisi',
+              'female': 'Perempuan',
+              'male': 'Laki-laki',
+              'other': 'Lainnya',
+              'prefer_not_to_say': 'Pilih untuk tidak menyebutkan',
+            },
+          ),
+          _ProfileTextField(
+            label: 'Lokasi',
+            controller: locationController,
+            maxLength: 120,
+          ),
+          _ProfileSelectField(
+            label: 'Tema profil',
+            value: themePreference,
+            onChanged: onThemeChanged,
+            items: const {
+              'system': 'Ikuti perangkat',
+              'light': 'Light',
+              'dark': 'Dark',
+            },
+          ),
+          _ProfileTextField(
+            label: 'Zona waktu',
+            controller: timezoneController,
+            maxLength: 64,
+            hintText: 'Asia/Jakarta',
+          ),
+          _ProfileSelectField(
+            label: 'Bahasa',
+            value: locale,
+            onChanged: onLocaleChanged,
+            items: const {'id': 'Indonesia', 'en': 'English'},
+          ),
+          _ProfileTextField(
+            label: 'Bio singkat',
+            controller: bioController,
+            maxLength: 500,
+            maxLines: 4,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _SmallActionButton(
+                  label: 'Batal',
+                  onTap: isSaving ? null : onCancel,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _SmallActionButton(
+                  label: isSaving ? 'Menyimpan...' : 'Simpan',
+                  isPrimary: true,
+                  onTap: isSaving ? null : onSave,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -507,7 +1038,7 @@ class _EmptySessionCard extends StatelessWidget {
 
 class _CircleActionButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _CircleActionButton({required this.icon, required this.onTap});
 
@@ -519,10 +1050,14 @@ class _CircleActionButton extends StatelessWidget {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
-        child: SizedBox(
-          height: 42,
-          width: 42,
-          child: Icon(icon, color: const Color(0xFF565C75), size: 21),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 160),
+          opacity: onTap == null ? 0.5 : 1,
+          child: SizedBox(
+            height: 42,
+            width: 42,
+            child: Icon(icon, color: const Color(0xFF565C75), size: 21),
+          ),
         ),
       ),
     );
@@ -603,4 +1138,42 @@ String _themeLabel(String? value) {
   }
 
   return _displayValue(value);
+}
+
+InputDecoration _fieldDecoration(String label, String? hintText) {
+  return InputDecoration(
+    labelText: label,
+    hintText: hintText,
+    counterText: '',
+    filled: true,
+    fillColor: const Color(0xFFF8F7FC),
+    labelStyle: GoogleFonts.plusJakartaSans(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: ProfileScreen._muted,
+    ),
+    hintStyle: GoogleFonts.plusJakartaSans(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: const Color(0xFF9DA3B8),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFFE7E3F3)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFFE7E3F3)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: ProfileScreen._primary, width: 1.4),
+    ),
+  );
+}
+
+String _allowedValue(String? value, Set<String> allowed, String fallback) {
+  final normalized = value?.trim() ?? '';
+  return allowed.contains(normalized) ? normalized : fallback;
 }

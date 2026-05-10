@@ -38,6 +38,28 @@ class ApiClient {
         .timeout(_timeout);
   }
 
+  static Future<http.Response> postMultipart(
+    String endpoint, {
+    required String fileField,
+    required String filePath,
+    Map<String, String> fields = const {},
+  }) async {
+    final headers = await _getHeaders();
+    final request = http.MultipartRequest(
+      'POST',
+      ApiConfig.endpointUri(endpoint),
+    );
+
+    request.headers.addAll(headers);
+    request.headers.remove('Content-Type');
+    request.fields.addAll(fields);
+    request.files.add(await http.MultipartFile.fromPath(fileField, filePath));
+
+    final response = await request.send().timeout(_timeout);
+
+    return http.Response.fromStream(response);
+  }
+
   static Future<http.Response> put(
     String endpoint,
     Map<String, dynamic> body,

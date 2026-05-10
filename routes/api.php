@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\JadwalController;
 use App\Http\Controllers\Api\KeuanganController;
 use App\Http\Controllers\Api\PengumumanController;
 use App\Http\Controllers\Api\ProfileAvatarController;
+use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\SyncController;
 use App\Http\Controllers\Api\TodolistController;
@@ -30,6 +31,9 @@ Route::prefix('v1')->group(function () use ($userWriteMiddleware) {
         Route::get('auth/me', [AuthController::class, 'me'])->name('api.v1.auth.me');
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('api.v1.auth.logout');
         Route::post('auth/logout-all', [AuthController::class, 'logoutAll'])->name('api.v1.auth.logout-all');
+        Route::patch('profile', [ProfileController::class, 'update'])->middleware($userWriteMiddleware)->name('api.v1.profile.update');
+        Route::post('profile/avatar', [ProfileController::class, 'uploadAvatar'])->middleware($userWriteMiddleware)->name('api.v1.profile.avatar.store');
+        Route::delete('profile/avatar', [ProfileController::class, 'deleteAvatar'])->middleware($userWriteMiddleware)->name('api.v1.profile.avatar.destroy');
         Route::get('profile/avatar', ProfileAvatarController::class)->name('api.v1.profile.avatar');
 
         Route::get('sync/pull', [SyncController::class, 'pull'])->name('api.v1.sync.pull');
