@@ -7,6 +7,138 @@
 @section('content')
 <div class="space-y-6">
     <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex flex-col gap-1">
+            <p class="text-xs font-semibold uppercase tracking-wide text-indigo-500 dark:text-indigo-300">Pengajuan Afiliasi</p>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-slate-100">Menunggu Review</h3>
+            <p class="text-sm text-gray-500 dark:text-slate-400">Setujui pengajuan user dan normalisasi nama afiliasi ke master template.</p>
+        </div>
+
+        <div class="mt-5 space-y-4">
+            @forelse ($pendingRequests as $request)
+                @php
+                    $suggestedTemplates = $templateSuggestions[$request->id] ?? collect();
+                    $suggestedTemplateIds = $suggestedTemplates->pluck('id')->all();
+                @endphp
+                <div class="rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                    <div class="grid gap-3 text-sm md:grid-cols-4">
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">User</p>
+                            <p class="truncate font-semibold text-slate-900 dark:text-slate-100">{{ $request->user?->name ?: 'User' }}</p>
+                            <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ $request->user?->email }}</p>
+                        </div>
+                        <div class="min-w-0 md:col-span-2">
+                            <p class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Afiliasi</p>
+                            <p class="truncate font-semibold text-slate-900 dark:text-slate-100">{{ $request->affiliation_name }}</p>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ $request->affiliation_type ?: '-' }} · {{ $request->created_at?->diffForHumans() }}</p>
+                            @if ($suggestedTemplates->isNotEmpty())
+                                <div class="mt-2 flex flex-wrap gap-1.5">
+                                    @foreach ($suggestedTemplates as $suggestion)
+                                        <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">
+                                            Saran: {{ $suggestion->affiliation_name }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Identitas</p>
+                            <p class="truncate font-semibold text-slate-900 dark:text-slate-100">{{ strtoupper((string) ($request->student_id_type ?: 'ID')) }}</p>
+                            <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ $request->student_id_number ?: '-' }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
+                        <form method="POST" action="{{ route('endmin.affiliations.requests.approve', $request) }}" class="grid gap-2 md:grid-cols-[minmax(12rem,0.75fr)_minmax(14rem,1fr)_auto]">
+                            @csrf
+                            @method('PATCH')
+                            <select name="affiliation_template_id" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" aria-label="Gunakan template">
+                                <option value="">Buat/pakai nama final</option>
+                                @if ($suggestedTemplates->isNotEmpty())
+                                    <optgroup label="Saran paling mirip">
+                                        @foreach ($suggestedTemplates as $template)
+                                            <option value="{{ $template->id }}">{{ $template->affiliation_name }}{{ $template->affiliation_type ? ' - '.$template->affiliation_type : '' }}</option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
+                                @foreach ($templates as $template)
+                                    @continue(in_array($template->id, $suggestedTemplateIds, true))
+                                    <option value="{{ $template->id }}">{{ $template->affiliation_name }}{{ $template->affiliation_type ? ' - '.$template->affiliation_type : '' }}</option>
+                                @endforeach
+                            </select>
+                            <input type="text"
+                                   name="canonical_affiliation_name"
+                                   value="{{ $request->affiliation_name }}"
+                                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                                   aria-label="Nama afiliasi final">
+                            <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500">
+                                ACC
+                            </button>
+                        </form>
+
+                        <form method="POST" action="{{ route('endmin.affiliations.requests.reject', $request) }}" class="grid gap-2 sm:grid-cols-[minmax(12rem,1fr)_auto]">
+                            @csrf
+                            @method('PATCH')
+                            <input type="text"
+                                   name="rejection_reason"
+                                   placeholder="Alasan penolakan"
+                                   class="min-w-0 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                            <button type="submit" class="inline-flex items-center justify-center rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 dark:border-rose-500/40 dark:text-rose-200 dark:hover:bg-rose-500/10">
+                                Tolak
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            @empty
+                <div class="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                    Tidak ada pengajuan afiliasi pending.
+                </div>
+            @endforelse
+        </div>
+
+        @if ($pendingRequests->hasPages())
+            <nav class="mt-4 flex justify-center" aria-label="Pagination pengajuan afiliasi">
+                <div class="inline-flex overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    @if ($pendingRequests->onFirstPage())
+                        <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center border-r border-slate-200 text-slate-300 dark:border-slate-700 dark:text-slate-600" aria-disabled="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L9.06 10l3.71 3.71a.75.75 0 1 1-1.06 1.06l-4.24-4.24a.75.75 0 0 1 0-1.06l4.24-4.24a.75.75 0 0 1 1.08 0Z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    @else
+                        <a href="{{ $pendingRequests->previousPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center border-r border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" rel="prev" aria-label="Halaman sebelumnya">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M12.79 5.23a.75.75 0 0 1-.02 1.06L9.06 10l3.71 3.71a.75.75 0 1 1-1.06 1.06l-4.24-4.24a.75.75 0 0 1 0-1.06l4.24-4.24a.75.75 0 0 1 1.08 0Z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                    @endif
+
+                    @foreach ($pendingRequests->getUrlRange(1, $pendingRequests->lastPage()) as $page => $url)
+                        @if ($page === $pendingRequests->currentPage())
+                            <span class="inline-flex h-10 min-w-10 items-center justify-center border-r border-slate-200 bg-slate-100 px-4 text-sm font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100" aria-current="page">{{ $page }}</span>
+                        @else
+                            <a href="{{ $url }}" class="inline-flex h-10 min-w-10 items-center justify-center border-r border-slate-200 px-4 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">{{ $page }}</a>
+                        @endif
+                    @endforeach
+
+                    @if ($pendingRequests->hasMorePages())
+                        <a href="{{ $pendingRequests->nextPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" rel="next" aria-label="Halaman berikutnya">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L10.94 10 7.23 6.29a.75.75 0 1 1 1.06-1.06l4.24 4.24a.75.75 0 0 1 0 1.06l-4.24 4.24a.75.75 0 0 1-1.08 0Z" clip-rule="evenodd" />
+                            </svg>
+                        </a>
+                    @else
+                        <span class="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center text-slate-300 dark:text-slate-600" aria-disabled="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L10.94 10 7.23 6.29a.75.75 0 1 1 1.06-1.06l4.24 4.24a.75.75 0 0 1 0 1.06l-4.24 4.24a.75.75 0 0 1-1.08 0Z" clip-rule="evenodd" />
+                            </svg>
+                        </span>
+                    @endif
+                </div>
+            </nav>
+        @endif
+    </div>
+
+    <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <form method="GET" action="{{ route('endmin.affiliations.index') }}" class="grid gap-3 md:grid-cols-3">
             <div class="md:col-span-2">
                 <label class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Cari</label>

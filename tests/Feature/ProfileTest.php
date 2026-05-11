@@ -15,8 +15,50 @@ test('profile page is displayed', function () {
     $response
         ->assertOk()
         ->assertSeeVolt('profile.update-profile-details-form')
+        ->assertSeeVolt('profile.update-affiliation-request-form')
         ->assertSeeVolt('profile.update-password-form')
         ->assertSeeVolt('profile.delete-user-form');
+});
+
+test('user can submit and cancel affiliation request from profile', function () {
+    $user = User::factory()->create([
+        'affiliation_status' => 'verified',
+        'affiliation_name' => 'Kampus Lama',
+    ]);
+
+    $this->actingAs($user);
+
+    Volt::test('profile.update-affiliation-request-form')
+        ->set('affiliation_type', 'university')
+        ->set('affiliation_name', 'Universitas Baru')
+        ->set('student_id_type', 'nim')
+        ->set('student_id_number', '123456789')
+        ->call('submitAffiliationRequest')
+        ->assertHasNoErrors()
+        ->assertDispatched('affiliation-request-updated');
+
+    $this->assertDatabaseHas('affiliation_requests', [
+        'user_id' => $user->id,
+        'affiliation_name' => 'Universitas Baru',
+        'student_id_number' => '123456789',
+        'status' => 'pending',
+    ]);
+
+    $this->assertDatabaseHas('users', [
+        'id' => $user->id,
+        'affiliation_name' => 'Kampus Lama',
+        'affiliation_status' => 'verified',
+    ]);
+
+    Volt::test('profile.update-affiliation-request-form')
+        ->call('cancelPendingRequest')
+        ->assertDispatched('affiliation-request-updated');
+
+    $this->assertDatabaseHas('affiliation_requests', [
+        'user_id' => $user->id,
+        'affiliation_name' => 'Universitas Baru',
+        'status' => 'canceled',
+    ]);
 });
 
 test('profile details can be updated', function () {

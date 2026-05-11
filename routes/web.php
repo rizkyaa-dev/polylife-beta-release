@@ -133,6 +133,8 @@ Route::prefix('endmin')
         Route::patch('admins/{user}/demote', [EndminAdminManagementController::class, 'demote'])->middleware($userWriteMiddleware)->name('admins.demote');
 
         Route::get('affiliations', [EndminAffiliationController::class, 'index'])->name('affiliations.index');
+        Route::patch('affiliations/requests/{affiliationRequest}/approve', [EndminAffiliationController::class, 'approve'])->middleware($userWriteMiddleware)->name('affiliations.requests.approve');
+        Route::patch('affiliations/requests/{affiliationRequest}/reject', [EndminAffiliationController::class, 'reject'])->middleware($userWriteMiddleware)->name('affiliations.requests.reject');
         Route::get('users/audit-logs', [EndminAuditLogController::class, 'index'])->name('audit-logs.index');
         Route::get('audit-logs', fn () => redirect()->route('endmin.audit-logs.index'));
         Route::get('verifikasi-broadcasts', [EndminBroadcastVerificationController::class, 'index'])->name('broadcast-verifications.index');

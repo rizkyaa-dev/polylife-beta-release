@@ -229,4 +229,14 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(AffiliationBroadcastPushLog::class);
     }
+
+    public function affiliationRequests(): HasMany
+    {
+        return $this->hasMany(AffiliationRequest::class);
+    }
+
+    public function pendingAffiliationRequest(): HasOne
+    {
+        return $this->hasOne(AffiliationRequest::class)->where('status', AffiliationRequest::STATUS_PENDING)->latestOfMany();
+    }
 }

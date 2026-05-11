@@ -16,6 +16,16 @@
         'light' => 'Terang',
         default => 'Ikuti perangkat',
     };
+    $affiliationStatusLabel = match ($user?->affiliation_status) {
+        'verified' => 'Terverifikasi',
+        'rejected' => 'Ditolak',
+        default => 'Menunggu review',
+    };
+    $affiliationStatusClass = match ($user?->affiliation_status) {
+        'verified' => 'text-emerald-600 dark:text-emerald-300',
+        'rejected' => 'text-rose-600 dark:text-rose-300',
+        default => 'text-amber-600 dark:text-amber-300',
+    };
 @endphp
 
 <div class="space-y-6">
@@ -48,9 +58,9 @@
                     <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-slate-100">{{ $themeLabel }}</p>
                 </div>
                 <div class="rounded-2xl border border-gray-100 bg-gray-50/80 p-4 dark:border-slate-700 dark:bg-slate-900/50">
-                    <p class="text-xs font-semibold uppercase text-gray-500 dark:text-slate-400">Status</p>
-                    <p class="mt-1 text-sm font-semibold text-emerald-600 dark:text-emerald-300">
-                        {{ $user->hasVerifiedEmail() ? 'Terverifikasi' : 'Belum verifikasi' }}
+                    <p class="text-xs font-semibold uppercase text-gray-500 dark:text-slate-400">Status Afiliasi</p>
+                    <p class="mt-1 text-sm font-semibold {{ $affiliationStatusClass }}">
+                        {{ $affiliationStatusLabel }}
                     </p>
                 </div>
             </div>
@@ -61,6 +71,10 @@
         <div class="space-y-6">
             <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <livewire:profile.update-profile-details-form />
+            </div>
+
+            <div class="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <livewire:profile.update-affiliation-request-form />
             </div>
         </div>
 
