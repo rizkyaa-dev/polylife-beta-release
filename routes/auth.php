@@ -29,7 +29,15 @@ Route::middleware('auth')->group(function () {
     Route::get('account/banned', AccountBannedController::class)->name('account.banned');
 
     Route::middleware('active-account')->group(function () {
-        Route::view('profile', 'profile')->name('profile');
+        Route::get('profile', function (Request $request) {
+            $user = $request->user();
+
+            if ($user && $user->isAdmin()) {
+                return redirect()->route($user->defaultDashboardRouteName());
+            }
+
+            return view('profile');
+        })->name('profile');
         Route::get('profile/avatar/{user}', ProfileAvatarController::class)->name('profile.avatar.show');
 
         Route::patch('profile/theme-preference', function (Request $request) {

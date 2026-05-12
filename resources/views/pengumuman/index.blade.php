@@ -76,9 +76,134 @@
 <script>
 (() => {
     const feed = document.querySelector('[data-feed-container]');
+
+    if (!feed) {
+        return;
+    }
+
+    const markReadUrl = @json(route('pengumuman.read', [], false));
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const pendingReadIds = new Set();
+    const sentReadIds = new Set();
+    const readTimers = new Map();
+    let readFlushTimer = null;
+
+    const updateAnnouncementBadge = (unreadCount) => {
+        const link = document.querySelector('[data-announcement-link]');
+        const badge = document.querySelector('[data-announcement-badge]');
+
+        if (!link || !badge) {
+            return;
+        }
+
+        if (unreadCount <= 0) {
+            badge.remove();
+            return;
+        }
+
+        badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+    };
+
+    const flushReadQueue = async () => {
+        if (pendingReadIds.size === 0) {
+            return;
+        }
+
+        const ids = Array.from(pendingReadIds);
+        pendingReadIds.clear();
+
+        try {
+            const response = await fetch(markReadUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({ broadcast_ids: ids }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to mark pengumuman as read');
+            }
+
+            const payload = await response.json();
+            updateAnnouncementBadge(Number(payload.unread_count || 0));
+        } catch (error) {
+            ids.forEach((id) => sentReadIds.delete(id));
+        }
+    };
+
+    const queueRead = (id) => {
+        if (!id || sentReadIds.has(id)) {
+            return;
+        }
+
+        sentReadIds.add(id);
+        pendingReadIds.add(id);
+
+        if (readFlushTimer) {
+            window.clearTimeout(readFlushTimer);
+        }
+
+        readFlushTimer = window.setTimeout(flushReadQueue, 250);
+    };
+
+    const isInReadingZone = (element) => {
+        const rect = element.getBoundingClientRect();
+        const topZone = window.innerHeight * 0.38;
+        const bottomZone = window.innerHeight * 0.68;
+
+        return rect.top <= bottomZone && rect.bottom >= topZone;
+    };
+
+    const readObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            const item = entry.target;
+            const id = item.dataset.pengumumanId;
+
+            if (!id || sentReadIds.has(id)) {
+                readObserver.unobserve(item);
+                continue;
+            }
+
+            if (entry.isIntersecting && isInReadingZone(item)) {
+                if (!readTimers.has(id)) {
+                    const timer = window.setTimeout(() => {
+                        readTimers.delete(id);
+
+                        if (isInReadingZone(item)) {
+                            item.dataset.pengumumanReadState = 'read';
+                            readObserver.unobserve(item);
+                            queueRead(id);
+                        }
+                    }, 1000);
+
+                    readTimers.set(id, timer);
+                }
+            } else if (readTimers.has(id)) {
+                window.clearTimeout(readTimers.get(id));
+                readTimers.delete(id);
+            }
+        }
+    }, {
+        root: null,
+        rootMargin: '-20% 0px -20% 0px',
+        threshold: [0, 0.2, 0.5, 0.75],
+    });
+
+    const observeUnreadItems = () => {
+        feed.querySelectorAll('[data-pengumuman-id][data-pengumuman-read-state="unread"]').forEach((item) => {
+            readObserver.observe(item);
+        });
+    };
+
+    observeUnreadItems();
+
     const sentinel = document.querySelector('[data-feed-sentinel]');
 
-    if (!feed || !sentinel) {
+    if (!sentinel) {
         return;
     }
 
@@ -141,6 +266,7 @@
 
             if (html !== '') {
                 feed.insertAdjacentHTML('beforeend', html);
+                observeUnreadItems();
             }
 
             nextUrl = payload.next_page_url || '';

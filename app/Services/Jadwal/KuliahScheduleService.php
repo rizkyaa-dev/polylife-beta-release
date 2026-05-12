@@ -41,7 +41,7 @@ class KuliahScheduleService
      * @param  iterable<int, Jadwal>  $jadwals
      * @return array<string, Collection<int, Jadwal>>
      */
-    public function mapJadwalsByDate(iterable $jadwals, ?Carbon $startLimit = null, ?Carbon $endLimit = null): array
+    public function mapJadwalsByDate(iterable $jadwals, ?Carbon $startLimit = null, ?Carbon $endLimit = null, array $offDays = [0, 6]): array
     {
         $map = [];
 
@@ -51,18 +51,21 @@ class KuliahScheduleService
             $cursor = $start->copy();
 
             while ($cursor->lte($end)) {
-                if (($jadwal->jenis ?? null) === 'kuliah' && $cursor->isWeekend()) {
+                if (($jadwal->jenis ?? null) === 'kuliah' && in_array($cursor->dayOfWeek, $offDays, true)) {
                     $cursor->addDay();
+
                     continue;
                 }
 
                 if ($startLimit && $cursor->lt($startLimit)) {
                     $cursor->addDay();
+
                     continue;
                 }
 
                 if ($endLimit && $cursor->gt($endLimit)) {
                     $cursor->addDay();
+
                     continue;
                 }
 
@@ -121,14 +124,14 @@ class KuliahScheduleService
         $signatures = collect();
 
         $matkulIds = $jadwal->matkulIds()
-            ->map(fn ($id) => 'id:' . (string) $id)
+            ->map(fn ($id) => 'id:'.(string) $id)
             ->filter();
         if ($matkulIds->isNotEmpty()) {
             $signatures = $signatures->merge($matkulIds);
         }
 
         $matkulNames = collect($jadwal->matkul_names ?? [])
-            ->map(fn ($name) => 'name:' . Str::lower(trim((string) $name)))
+            ->map(fn ($name) => 'name:'.Str::lower(trim((string) $name)))
             ->filter();
         if ($matkulNames->isNotEmpty()) {
             $signatures = $signatures->merge($matkulNames);
@@ -159,7 +162,7 @@ class KuliahScheduleService
             $signature = 'generic';
         }
 
-        return 'kuliah|' . $signature;
+        return 'kuliah|'.$signature;
     }
 
     private function matkulDetailSignature(mixed $matkul): string
@@ -175,11 +178,11 @@ class KuliahScheduleService
         }
 
         return implode('|', array_filter([
-            $id !== '' ? 'id:' . $id : null,
-            $name !== '' ? 'name:' . $name : null,
-            $kode !== '' ? 'kode:' . $kode : null,
-            $start !== '' ? 'start:' . $start : null,
-            $end !== '' ? 'end:' . $end : null,
+            $id !== '' ? 'id:'.$id : null,
+            $name !== '' ? 'name:'.$name : null,
+            $kode !== '' ? 'kode:'.$kode : null,
+            $start !== '' ? 'start:'.$start : null,
+            $end !== '' ? 'end:'.$end : null,
         ]));
     }
 

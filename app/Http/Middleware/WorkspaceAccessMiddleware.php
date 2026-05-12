@@ -8,9 +8,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class WorkspaceAccessMiddleware
 {
-    /**
-     * Restrict super admin from accessing workspace routes directly.
-     */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
@@ -19,8 +16,8 @@ class WorkspaceAccessMiddleware
             return redirect()->route('account.banned');
         }
 
-        if ($user && $user->isSuperAdmin()) {
-            return redirect()->route('endmin.dashboard');
+        if ($user && $user->isAdmin()) {
+            return redirect()->route($user->defaultDashboardRouteName());
         }
 
         return $next($request);

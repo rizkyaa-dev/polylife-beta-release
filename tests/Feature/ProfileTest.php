@@ -22,7 +22,7 @@ test('profile page is displayed', function () {
 
 test('user can submit and cancel affiliation request from profile', function () {
     $user = User::factory()->create([
-        'affiliation_status' => 'verified',
+        'affiliation_status' => 'rejected',
         'affiliation_name' => 'Kampus Lama',
     ]);
 
@@ -47,7 +47,7 @@ test('user can submit and cancel affiliation request from profile', function () 
     $this->assertDatabaseHas('users', [
         'id' => $user->id,
         'affiliation_name' => 'Kampus Lama',
-        'affiliation_status' => 'verified',
+        'affiliation_status' => 'rejected',
     ]);
 
     Volt::test('profile.update-affiliation-request-form')
@@ -58,6 +58,29 @@ test('user can submit and cancel affiliation request from profile', function () 
         'user_id' => $user->id,
         'affiliation_name' => 'Universitas Baru',
         'status' => 'canceled',
+    ]);
+});
+
+test('verified user cannot submit affiliation request from profile action', function () {
+    $user = User::factory()->create([
+        'affiliation_status' => 'verified',
+        'affiliation_name' => 'Kampus Verified',
+    ]);
+
+    $this->actingAs($user);
+
+    Volt::test('profile.update-affiliation-request-form')
+        ->set('affiliation_type', 'university')
+        ->set('affiliation_name', 'Universitas Baru')
+        ->set('student_id_type', 'nim')
+        ->set('student_id_number', '123456789')
+        ->call('submitAffiliationRequest')
+        ->assertHasErrors(['affiliation_name']);
+
+    $this->assertDatabaseMissing('affiliation_requests', [
+        'user_id' => $user->id,
+        'affiliation_name' => 'Universitas Baru',
+        'status' => 'pending',
     ]);
 });
 

@@ -10,7 +10,7 @@ class VisiblePengumumanQuery
     public function paginateForUser(User $user, string $search = '', int $perPage = 12)
     {
         $query = AffiliationBroadcast::query()
-            ->with(['creator:id,name,email', 'targets'])
+            ->with(['creator:id,name,email', 'creator.profileAvatar', 'targets'])
             ->visibleToUser($user)
             ->latest('published_at')
             ->latest('id');
@@ -32,7 +32,7 @@ class VisiblePengumumanQuery
     public function findVisibleForUser(User $user, int $broadcastId): ?AffiliationBroadcast
     {
         return AffiliationBroadcast::query()
-            ->with(['creator:id,name,email', 'targets'])
+            ->with(['creator:id,name,email', 'creator.profileAvatar', 'targets'])
             ->visibleToUser($user)
             ->whereKey($broadcastId)
             ->first();

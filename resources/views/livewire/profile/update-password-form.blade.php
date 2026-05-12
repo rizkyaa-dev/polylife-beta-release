@@ -1,7 +1,9 @@
 <?php
 
+use App\Actions\Auth\SecurePasswordUpdateAction;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Livewire\Volt\Component;
@@ -17,24 +19,54 @@ new class extends Component
      */
     public function updatePassword(): void
     {
+        $this->ensureIsNotRateLimited();
+
         try {
             $validated = $this->validate([
                 'current_password' => ['required', 'string', 'current_password'],
                 'password' => ['required', 'string', Password::defaults(), 'confirmed'],
             ]);
         } catch (ValidationException $e) {
+            RateLimiter::hit($this->throttleKey(), 60);
             $this->reset('current_password', 'password', 'password_confirmation');
 
             throw $e;
         }
 
-        Auth::user()->update([
-            'password' => Hash::make($validated['password']),
-        ]);
+        app(SecurePasswordUpdateAction::class)(
+            Auth::user(),
+            $validated['current_password'],
+            $validated['password']
+        );
 
+        RateLimiter::clear($this->throttleKey());
         $this->reset('current_password', 'password', 'password_confirmation');
 
         $this->dispatch('password-updated');
+    }
+
+    private function ensureIsNotRateLimited(): void
+    {
+        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+            return;
+        }
+
+        $seconds = RateLimiter::availableIn($this->throttleKey());
+
+        throw ValidationException::withMessages([
+            'current_password' => trans('auth.throttle', [
+                'seconds' => $seconds,
+                'minutes' => ceil($seconds / 60),
+            ]),
+        ]);
+    }
+
+    private function throttleKey(): string
+    {
+        $user = Auth::user();
+        $identity = $user ? $user->getAuthIdentifier().'|'.$user->email : request()->ip();
+
+        return Str::transliterate('profile-password-update|'.$identity.'|'.request()->ip());
     }
 }; ?>
 

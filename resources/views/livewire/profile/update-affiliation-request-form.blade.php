@@ -2,8 +2,11 @@
 
 use App\Models\AffiliationRequest;
 use App\Models\AffiliationTemplate;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Volt\Component;
 
 new class extends Component
@@ -27,6 +30,11 @@ new class extends Component
     {
         $user = Auth::user();
 
+        if ($user->affiliation_status === 'verified') {
+            $this->addError('affiliation_name', 'Afiliasi sudah terverifikasi. Pengajuan baru tidak tersedia.');
+            return;
+        }
+
         if ($user->pendingAffiliationRequest()->exists()) {
             $this->addError('affiliation_name', 'Masih ada pengajuan afiliasi yang menunggu review.');
             return;
@@ -39,14 +47,30 @@ new class extends Component
             'student_id_number' => ['required', 'string', 'max:64'],
         ]);
 
-        AffiliationRequest::query()->create([
-            'user_id' => $user->id,
-            'affiliation_type' => $validated['affiliation_type'],
-            'affiliation_name' => $this->normalize($validated['affiliation_name']),
-            'student_id_type' => $this->nullableString($validated['student_id_type'] ?? null),
-            'student_id_number' => $this->normalize($validated['student_id_number']),
-            'status' => AffiliationRequest::STATUS_PENDING,
-        ]);
+        DB::transaction(function () use ($user, $validated): void {
+            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedUser->affiliation_status === 'verified') {
+                throw ValidationException::withMessages([
+                    'affiliation_name' => 'Afiliasi sudah terverifikasi. Pengajuan baru tidak tersedia.',
+                ]);
+            }
+
+            if ($lockedUser->pendingAffiliationRequest()->exists()) {
+                throw ValidationException::withMessages([
+                    'affiliation_name' => 'Masih ada pengajuan afiliasi yang menunggu review.',
+                ]);
+            }
+
+            AffiliationRequest::query()->create([
+                'user_id' => $lockedUser->id,
+                'affiliation_type' => $validated['affiliation_type'],
+                'affiliation_name' => $this->normalize($validated['affiliation_name']),
+                'student_id_type' => $this->nullableString($validated['student_id_type'] ?? null),
+                'student_id_number' => $this->normalize($validated['student_id_number']),
+                'status' => AffiliationRequest::STATUS_PENDING,
+            ]);
+        });
 
         $this->dispatch('affiliation-request-updated');
     }
@@ -74,6 +98,10 @@ new class extends Component
         return [
             'user' => $user,
             'pendingRequest' => $user->pendingAffiliationRequest,
+            'latestRejectedRequest' => $user->affiliationRequests()
+                ->where('status', AffiliationRequest::STATUS_REJECTED)
+                ->latest()
+                ->first(),
             'templates' => AffiliationTemplate::query()
                 ->where('is_active', true)
                 ->orderBy('affiliation_name')
@@ -150,6 +178,15 @@ new class extends Component
             </p>
         </div>
     @else
+        @if ($latestRejectedRequest)
+            <div class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/30 dark:bg-rose-500/10">
+                <p class="text-sm font-semibold text-rose-900 dark:text-rose-100">Pengajuan terakhir ditolak</p>
+                <p class="mt-1 text-sm text-rose-800 dark:text-rose-200">
+                    {{ $latestRejectedRequest->rejection_reason ?: 'Silakan periksa kembali data afiliasi dan nomor identitas.' }}
+                </p>
+            </div>
+        @endif
+
         <form wire:submit="submitAffiliationRequest" class="mt-5 space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
                 <div>

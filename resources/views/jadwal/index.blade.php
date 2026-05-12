@@ -54,7 +54,22 @@
         $kegiatanList = collect($kegiatanByDate[$selectedDateKey] ?? []);
         $selectedDayIndex = $selectedDate->dayOfWeek;
         $selectedDayName = Str::lower($dayNameMap[$selectedDayIndex] ?? $selectedDate->translatedFormat('l'));
-        $isSelectedWeekend = $selectedDate->isWeekend();
+        
+        $isOffDay = function ($date) use ($guestMode) {
+            if ($guestMode || !auth()->check()) {
+                return $date->isWeekend();
+            }
+            return auth()->user()->isOffDay($date);
+        };
+
+        $getHolidayReason = function ($date) use ($guestMode) {
+            if ($guestMode || !auth()->check()) {
+                return $date->isWeekend() ? 'Akhir pekan' : null;
+            }
+            return auth()->user()->getOffDayReason($date);
+        };
+
+        $isSelectedWeekend = $isOffDay($selectedDate);
 
         $formatLegacyTime = function ($value) {
             if (!$value) {
@@ -296,7 +311,7 @@
                             $dayKey = $day->toDateString();
                             $isCurrentMonth = $day->month === $calendarMonth->month;
                             $isSelected = $dayKey === $selectedDateKey;
-                            $isKuliahWeekend = $day->isWeekend();
+                            $isKuliahWeekend = $isOffDay($day);
                             $dayEvents = collect($jadwalsByDate[$dayKey] ?? []);
                             if ($isKuliahWeekend) {
                                 $dayEvents = $dayEvents->reject(fn ($event) => $event->jenis === 'kuliah');
@@ -373,8 +388,8 @@
                                     @endif
                                 </ul>
                             @else
-                                <p class="mt-auto text-[11px] text-gray-300">
-                                    {{ $isKuliahWeekend ? 'Libur kuliah' : '—' }}
+                                <p class="mt-auto text-[11px] leading-tight text-gray-300">
+                                    {{ $isKuliahWeekend ? ($getHolidayReason($day) ?: 'Libur kuliah') : '—' }}
                                 </p>
                             @endif
                         </a>
@@ -397,7 +412,7 @@
 
                 @if($isSelectedWeekend)
                     <div class="mt-3 rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-3 text-xs font-semibold text-rose-700 shadow-sm dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100">
-                        Akhir pekan: jadwal kuliah otomatis libur.
+                        {{ $getHolidayReason($selectedDate) ?: 'Libur kuliah' }}: jadwal kuliah otomatis libur.
                     </div>
                 @endif
 
@@ -494,10 +509,10 @@
                     @empty
                         <div class="rounded-2xl border border-dashed border-gray-200 p-6 text-center dark:border-slate-700">
                             <p class="text-sm font-semibold text-gray-700 dark:text-white">
-                                {{ $isSelectedWeekend ? 'Libur kuliah (akhir pekan).' : 'Belum ada jadwal pada tanggal ini.' }}
+                                {{ $isSelectedWeekend ? ($getHolidayReason($selectedDate) ?: 'Libur kuliah') . '.' : 'Belum ada jadwal pada tanggal ini.' }}
                             </p>
                             <p class="text-xs text-gray-500 dark:text-slate-400">
-                                {{ $isSelectedWeekend ? 'Sabtu/Minggu otomatis bebas perkuliahan.' : 'Tambahkan agenda baru atau pilih tanggal berbeda.' }}
+                                {{ $isSelectedWeekend ? ($getHolidayReason($selectedDate) ?: 'Libur rutin') . ' otomatis bebas perkuliahan.' : 'Tambahkan agenda baru atau pilih tanggal berbeda.' }}
                             </p>
                         </div>
                     @endforelse

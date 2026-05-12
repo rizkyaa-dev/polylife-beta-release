@@ -57,6 +57,11 @@ class AffiliationBroadcast extends Model
         return $this->hasMany(AffiliationBroadcastPushLog::class, 'broadcast_id');
     }
 
+    public function reads(): HasMany
+    {
+        return $this->hasMany(AffiliationBroadcastRead::class, 'broadcast_id');
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_PUBLISHED)

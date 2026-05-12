@@ -10,10 +10,10 @@ use App\Models\Jadwal;
 use App\Models\Matkul;
 use App\Queries\Jadwal\JadwalCalendarQuery;
 use App\Services\Jadwal\KuliahScheduleService;
+use App\ViewModels\JadwalIndexViewModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
-use App\ViewModels\JadwalIndexViewModel;
 
 class JadwalController extends Controller
 {
@@ -22,8 +22,7 @@ class JadwalController extends Controller
         private readonly StoreJadwalAction $storeJadwalAction,
         private readonly UpdateJadwalAction $updateJadwalAction,
         private readonly KuliahScheduleService $kuliahScheduleService
-    ) {
-    }
+    ) {}
 
     public function index()
     {
@@ -33,7 +32,7 @@ class JadwalController extends Controller
             : Carbon::now();
 
         $calendarMonth = request('bulan')
-            ? Carbon::parse(request('bulan') . '-01')
+            ? Carbon::parse(request('bulan').'-01')
             : $selectedDate->copy()->startOfMonth();
 
         $viewModel = JadwalIndexViewModel::fromPayload(
@@ -71,7 +70,7 @@ class JadwalController extends Controller
             'today' => (clone $summaryQuery)
                 ->whereDate('tanggal_mulai', '<=', $today)
                 ->whereDate('tanggal_selesai', '>=', $today)
-                ->when($today->isWeekend(), fn ($query) => $query->where('jenis', '!=', 'kuliah'))
+                ->when(Auth::user()->isOffDay($today), fn ($query) => $query->where('jenis', '!=', 'kuliah'))
                 ->count(),
             'kuliah' => (clone $summaryQuery)->where('jenis', 'kuliah')->count(),
             'completed' => (clone $summaryQuery)
@@ -86,9 +85,9 @@ class JadwalController extends Controller
             ->where('user_id', $userId)
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($innerQuery) use ($search) {
-                    $innerQuery->where('catatan_tambahan', 'like', '%' . $search . '%')
-                        ->orWhere('title', 'like', '%' . $search . '%')
-                        ->orWhere('location', 'like', '%' . $search . '%');
+                    $innerQuery->where('catatan_tambahan', 'like', '%'.$search.'%')
+                        ->orWhere('title', 'like', '%'.$search.'%')
+                        ->orWhere('location', 'like', '%'.$search.'%');
                 });
             })
             ->when($jenis !== '', fn ($query) => $query->where('jenis', $jenis))

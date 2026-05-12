@@ -12,12 +12,32 @@
 @endsection
 
 @section('content')
+@php
+    $creator = $broadcast->creator;
+    $creatorName = $creator?->name ?: ($creator?->email ?: 'Admin');
+    $creatorAvatar = $creator?->profileAvatar;
+    $creatorAvatarUrl = $creator && $creatorAvatar
+        ? route('pengumuman.creator-avatar', [
+            'user' => $creator->id,
+            'v' => strtotime((string) $creatorAvatar->updated_at) ?: null,
+        ], false)
+        : null;
+    $creatorInitial = strtoupper(mb_substr($creatorName ?: 'A', 0, 1));
+@endphp
 <div class="grid gap-6 xl:grid-cols-3">
     <div class="xl:col-span-2 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <span>{{ optional($broadcast->published_at)->format('d M Y H:i') }}</span>
-            <span>•</span>
-            <span>{{ $broadcast->creator?->name ?: ($broadcast->creator?->email ?: 'Admin') }}</span>
+        <div class="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <div class="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-100 text-sm font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-100">
+                @if ($creatorAvatarUrl)
+                    <img src="{{ $creatorAvatarUrl }}" alt="Foto profil {{ $creatorName }}" class="h-full w-full object-cover">
+                @else
+                    {{ $creatorInitial }}
+                @endif
+            </div>
+            <div class="min-w-0">
+                <p class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{{ $creatorName }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ optional($broadcast->published_at)->format('d M Y H:i') }}</p>
+            </div>
             @if ($broadcast->target_mode === \App\Models\AffiliationBroadcast::TARGET_MODE_GLOBAL)
                 <span class="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-100">Global</span>
             @endif

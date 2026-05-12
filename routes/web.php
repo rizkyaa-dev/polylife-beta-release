@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AffiliationBroadcastController as AdminAffiliationBroadcastController;
+use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\BroadcastImageController;
 use App\Http\Controllers\CatatanController;
 use App\Http\Controllers\DashboardController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\KeuanganStatistikController;
 use App\Http\Controllers\MatkulController;
 use App\Http\Controllers\NilaiMutuController;
 use App\Http\Controllers\PengumumanController;
+use App\Http\Controllers\PengumumanCreatorAvatarController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\TodolistController;
@@ -75,6 +77,8 @@ Route::prefix('workspace')->middleware(['auth', 'active-account', 'workspace-acc
     Route::resource('catatan', CatatanController::class)
         ->middlewareFor(['store', 'update', 'destroy'], $userWriteMiddleware);
     Route::get('pengumuman', [PengumumanController::class, 'index'])->name('pengumuman.index');
+    Route::post('pengumuman/read', [PengumumanController::class, 'markRead'])->middleware('throttle:workspace-write')->name('pengumuman.read');
+    Route::get('pengumuman/creator-avatar/{user}', PengumumanCreatorAvatarController::class)->name('pengumuman.creator-avatar');
     Route::get('pengumuman/{broadcast}', [PengumumanController::class, 'show'])->name('pengumuman.show');
     Route::resource('ipk', IpkController::class)
         ->middlewareFor(['store', 'update', 'destroy'], $userWriteMiddleware);
@@ -106,6 +110,7 @@ Route::prefix('admin')
     ->middleware(['auth', 'active-account', 'admin', 'prevent-back-history'])
     ->group(function () use ($userWriteMiddleware) {
         Route::get('/', fn () => redirect()->route('admin.broadcasts.index'))->name('dashboard');
+        Route::get('profile', AdminProfileController::class)->name('profile');
         Route::resource('broadcasts', AdminAffiliationBroadcastController::class)
             ->except(['destroy'])
             ->middlewareFor(['store', 'update'], $userWriteMiddleware);
@@ -133,6 +138,8 @@ Route::prefix('endmin')
         Route::patch('admins/{user}/demote', [EndminAdminManagementController::class, 'demote'])->middleware($userWriteMiddleware)->name('admins.demote');
 
         Route::get('affiliations', [EndminAffiliationController::class, 'index'])->name('affiliations.index');
+        Route::get('affiliations/{affiliationName}/extend', [EndminAffiliationController::class, 'extend'])->name('affiliations.extend');
+        Route::post('affiliations/{affiliationName}/extend/batch', [EndminAffiliationController::class, 'batch'])->middleware($bulkWriteMiddleware)->name('affiliations.extend.batch');
         Route::patch('affiliations/requests/{affiliationRequest}/approve', [EndminAffiliationController::class, 'approve'])->middleware($userWriteMiddleware)->name('affiliations.requests.approve');
         Route::patch('affiliations/requests/{affiliationRequest}/reject', [EndminAffiliationController::class, 'reject'])->middleware($userWriteMiddleware)->name('affiliations.requests.reject');
         Route::get('users/audit-logs', [EndminAuditLogController::class, 'index'])->name('audit-logs.index');

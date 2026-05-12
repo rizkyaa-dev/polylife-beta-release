@@ -20,12 +20,16 @@ new class extends Component
     public string $theme_preference = 'system';
     public string $timezone = 'Asia/Jakarta';
     public string $locale = 'id';
+    public array $off_days = [];
+    public bool $auto_national_holidays = true;
     public ?string $avatarUrl = null;
     public bool $remove_avatar = false;
+    public string $context = 'workspace';
     public $avatar = null;
 
-    public function mount(): void
+    public function mount(string $context = 'workspace'): void
     {
+        $this->context = $context === 'admin' ? 'admin' : 'workspace';
         $profile = Auth::user()->profile;
 
         $this->display_name = (string) ($profile?->display_name ?? '');
@@ -37,6 +41,8 @@ new class extends Component
         $this->theme_preference = (string) ($profile?->theme_preference ?? 'system');
         $this->timezone = (string) ($profile?->timezone ?? 'Asia/Jakarta');
         $this->locale = (string) ($profile?->locale ?? 'id');
+        $this->off_days = array_map('intval', $profile?->preferences['off_days'] ?? [0, 6]);
+        $this->auto_national_holidays = (bool) ($profile?->preferences['auto_national_holidays'] ?? true);
         $this->avatarUrl = $profile?->avatar_url;
     }
 
@@ -62,6 +68,9 @@ new class extends Component
             'timezone' => ['nullable', 'string', 'max:64'],
             'locale' => ['nullable', Rule::in(['id', 'en'])],
             'avatar' => ['nullable', 'file', 'mimetypes:image/webp', 'max:512'],
+            'off_days' => ['nullable', 'array'],
+            'off_days.*' => ['integer', 'min:0', 'max:6'],
+            'auto_national_holidays' => ['required', 'boolean'],
         ]);
 
         $user = Auth::user();
@@ -108,6 +117,14 @@ new class extends Component
             }
         }
 
+        $preferences = $profile->preferences ?? [];
+        if ($this->context !== 'admin') {
+            $preferences = array_merge($preferences, [
+                'off_days' => array_map('intval', $this->off_days),
+                'auto_national_holidays' => $this->auto_national_holidays,
+            ]);
+        }
+
         $profile->fill([
             'display_name' => $this->nullableString($validated['display_name'] ?? null),
             'bio' => $this->nullableString($validated['bio'] ?? null),
@@ -118,7 +135,7 @@ new class extends Component
             'theme_preference' => $validated['theme_preference'],
             'timezone' => $this->nullableString($validated['timezone'] ?? null),
             'locale' => $validated['locale'] ?: null,
-            'preferences' => $profile->preferences ?? [],
+            'preferences' => $preferences,
         ]);
 
         $profile->save();
@@ -171,10 +188,16 @@ new class extends Component
 
 <section>
     <header class="space-y-1">
-        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-500 dark:text-indigo-300">Profil opsional</p>
-        <h2 class="text-xl font-semibold text-gray-900 dark:text-slate-100">Tampilan dan identitas workspace</h2>
+        <p class="text-xs font-semibold uppercase tracking-wide text-indigo-500 dark:text-indigo-300">
+            {{ $context === 'admin' ? 'Profil admin' : 'Profil opsional' }}
+        </p>
+        <h2 class="text-xl font-semibold text-gray-900 dark:text-slate-100">
+            {{ $context === 'admin' ? 'Tampilan dan identitas admin' : 'Tampilan dan identitas workspace' }}
+        </h2>
         <p class="text-sm text-gray-500 dark:text-slate-400">
-            Data ini tidak mempengaruhi login. Gunakan untuk foto profil, nama tampilan, dan preferensi antarmuka.
+            {{ $context === 'admin'
+                ? 'Data ini hanya mengatur tampilan profil admin dan preferensi panel.'
+                : 'Data ini tidak mempengaruhi login. Gunakan untuk foto profil, nama tampilan, dan preferensi antarmuka.' }}
         </p>
     </header>
 
@@ -285,6 +308,49 @@ new class extends Component
             </div>
         </div>
 
+        @if ($context !== 'admin')
+            <div class="rounded-2xl border border-gray-100 bg-gray-50/50 p-4 dark:border-slate-800 dark:bg-slate-800/30">
+                <x-input-label value="Hari Libur Rutin" />
+                <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Pilih hari-hari di mana jadwal perkuliahan Anda biasanya libur.</p>
+                
+                <div class="mt-4 flex flex-wrap gap-x-8 gap-y-4">
+                    @foreach([
+                        1 => 'Senin',
+                        2 => 'Selasa',
+                        3 => 'Rabu',
+                        4 => 'Kamis',
+                        5 => 'Jumat',
+                        6 => 'Sabtu',
+                        0 => 'Minggu'
+                    ] as $value => $label)
+                        <label class="inline-flex cursor-pointer items-center group">
+                            <input type="checkbox" 
+                                   wire:model="off_days" 
+                                   value="{{ $value }}"
+                                   class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:focus:ring-offset-slate-900 transition-all group-hover:border-indigo-400">
+                            <span class="ml-2 text-xs font-medium text-gray-600 dark:text-slate-300 group-hover:text-indigo-600 transition-colors">{{ $label }}</span>
+                        </label>
+                    @endforeach
+                </div>
+                <x-input-error class="mt-2" :messages="$errors->get('off_days')" />
+            </div>
+
+            <div class="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 dark:border-indigo-500/30 dark:bg-indigo-500/10">
+                <label class="flex cursor-pointer items-center justify-between gap-4">
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold text-gray-900 dark:text-slate-100">Hari Libur Nasional Otomatis</p>
+                        <p class="text-xs text-gray-500 dark:text-slate-400">Otomatis tandai tanggal merah resmi pemerintah sebagai hari libur di kalender.</p>
+                    </div>
+                    <div class="relative inline-flex items-center">
+                        <input type="checkbox" 
+                               wire:model="auto_national_holidays" 
+                               id="auto_national_holidays"
+                               class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:focus:ring-offset-slate-900">
+                    </div>
+                </label>
+            </div>
+        @endif
+
         <div>
             <x-input-label for="bio" value="Bio singkat" />
             <textarea wire:model="bio" id="bio" rows="4" maxlength="500" class="form-input mt-1 block w-full resize-y" placeholder="Catatan pendek tentang kamu"></textarea>
@@ -298,7 +364,7 @@ new class extends Component
             <button type="submit"
                     wire:loading.attr="disabled"
                     class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-indigo-500 dark:hover:bg-indigo-400">
-                Simpan profil
+                {{ $context === 'admin' ? 'Simpan profil admin' : 'Simpan profil' }}
             </button>
 
             <x-action-message class="text-sm font-medium text-emerald-600 dark:text-emerald-300" on="profile-details-updated">

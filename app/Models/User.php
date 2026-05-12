@@ -230,6 +230,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(AffiliationBroadcastPushLog::class);
     }
 
+    public function affiliationBroadcastReads(): HasMany
+    {
+        return $this->hasMany(AffiliationBroadcastRead::class);
+    }
+
     public function affiliationRequests(): HasMany
     {
         return $this->hasMany(AffiliationRequest::class);
@@ -238,5 +243,48 @@ class User extends Authenticatable implements MustVerifyEmail
     public function pendingAffiliationRequest(): HasOne
     {
         return $this->hasOne(AffiliationRequest::class)->where('status', AffiliationRequest::STATUS_PENDING)->latestOfMany();
+    }
+
+    public function offDays(): array
+    {
+        $days = $this->profile->preferences['off_days'] ?? null;
+
+        if (is_array($days)) {
+            return array_map('intval', $days);
+        }
+
+        return [0, 6]; // Default: Sunday, Saturday
+    }
+
+    public function isOffDay(\Illuminate\Support\Carbon $date): bool
+    {
+        // Routine off days
+        if (in_array($date->dayOfWeek, $this->offDays(), true)) {
+            return true;
+        }
+
+        // National holidays (if enabled in preferences, default is true)
+        if ($this->profile->preferences['auto_national_holidays'] ?? true) {
+            return app(\App\Services\HolidayService::class)->isHoliday($date);
+        }
+
+        return false;
+    }
+
+    public function getOffDayReason(\Illuminate\Support\Carbon $date): ?string
+    {
+        // National holidays take precedence for the label
+        if ($this->profile->preferences['auto_national_holidays'] ?? true) {
+            $nationalHoliday = app(\App\Services\HolidayService::class)->getHolidayName($date);
+            if ($nationalHoliday) {
+                return $nationalHoliday;
+            }
+        }
+
+        if (in_array($date->dayOfWeek, $this->offDays(), true)) {
+            return 'Hari libur rutin';
+        }
+
+        return null;
     }
 }

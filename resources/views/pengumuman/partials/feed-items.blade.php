@@ -1,12 +1,30 @@
 @foreach ($broadcasts as $broadcast)
-    <article class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    @php
+        $creator = $broadcast->creator;
+        $creatorName = $creator?->name ?: ($creator?->email ?: 'Admin');
+        $creatorAvatar = $creator?->profileAvatar;
+        $creatorAvatarUrl = $creator && $creatorAvatar
+            ? route('pengumuman.creator-avatar', [
+                'user' => $creator->id,
+                'v' => strtotime((string) $creatorAvatar->updated_at) ?: null,
+            ], false)
+            : null;
+        $creatorInitial = strtoupper(mb_substr($creatorName ?: 'A', 0, 1));
+    @endphp
+    <article class="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+             data-pengumuman-id="{{ $broadcast->id }}"
+             data-pengumuman-read-state="unread">
         <div class="flex items-center gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
-            <div class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-100">
-                {{ strtoupper(mb_substr($broadcast->creator?->name ?: 'A', 0, 1)) }}
+            <div class="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo-100 text-sm font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-100">
+                @if ($creatorAvatarUrl)
+                    <img src="{{ $creatorAvatarUrl }}" alt="Foto profil {{ $creatorName }}" class="h-full w-full object-cover">
+                @else
+                    {{ $creatorInitial }}
+                @endif
             </div>
             <div class="min-w-0">
                 <p class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-                    {{ $broadcast->creator?->name ?: ($broadcast->creator?->email ?: 'Admin') }}
+                    {{ $creatorName }}
                 </p>
                 <p class="text-xs text-slate-500 dark:text-slate-400">
                     {{ optional($broadcast->published_at)->format('d M Y H:i') }}

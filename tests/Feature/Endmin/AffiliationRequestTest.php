@@ -68,3 +68,108 @@ test('super admin can reject affiliation request', function () {
         'reviewed_by' => $superAdmin->id,
     ]);
 });
+
+test('super admin can view users in affiliation detail page', function () {
+    $superAdmin = User::factory()->create(['is_admin' => User::ADMIN_LEVEL_SUPER_ADMIN]);
+    $regularUser = User::factory()->create([
+        'name' => 'Mahasiswa Afiliasi',
+        'email' => 'mahasiswa@example.test',
+        'affiliation_type' => 'university',
+        'affiliation_name' => 'Universitas Detail',
+        'student_id_type' => 'nim',
+        'student_id_number' => '220002',
+        'affiliation_status' => 'verified',
+    ]);
+    $adminUser = User::factory()->create([
+        'name' => 'Admin Afiliasi',
+        'email' => 'admin-affiliation@example.test',
+        'is_admin' => User::ADMIN_LEVEL_ADMIN,
+        'affiliation_type' => 'university',
+        'affiliation_name' => 'Universitas Detail',
+        'student_id_type' => 'nidn',
+        'student_id_number' => '990001',
+        'affiliation_status' => 'verified',
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('endmin.affiliations.extend', [
+            'affiliationName' => 'Universitas Detail',
+            'type' => 'university',
+        ]))
+        ->assertOk()
+        ->assertSee('Universitas Detail')
+        ->assertSee($regularUser->email)
+        ->assertSee($adminUser->email)
+        ->assertSee('Admin');
+});
+
+test('super admin can filter and batch update affiliation verification in detail page', function () {
+    $superAdmin = User::factory()->create(['is_admin' => User::ADMIN_LEVEL_SUPER_ADMIN]);
+    $pendingUser = User::factory()->create([
+        'name' => 'Cari Mahasiswa',
+        'email' => 'cari-mahasiswa@example.test',
+        'affiliation_type' => 'university',
+        'affiliation_name' => 'Universitas Batch',
+        'student_id_type' => 'nim',
+        'student_id_number' => 'BATCH001',
+        'affiliation_status' => 'pending',
+    ]);
+    $otherUser = User::factory()->create([
+        'name' => 'User Lain',
+        'email' => 'lain@example.test',
+        'affiliation_type' => 'university',
+        'affiliation_name' => 'Universitas Batch',
+        'student_id_type' => 'nim',
+        'student_id_number' => 'BATCH002',
+        'affiliation_status' => 'pending',
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('endmin.affiliations.extend', [
+            'affiliationName' => 'Universitas Batch',
+            'type' => 'university',
+            'q' => 'BATCH001',
+        ]))
+        ->assertOk()
+        ->assertSee($pendingUser->email)
+        ->assertDontSee($otherUser->email);
+
+    $this->actingAs($superAdmin)
+        ->post(route('endmin.affiliations.extend.batch', [
+            'affiliationName' => 'Universitas Batch',
+            'type' => 'university',
+        ]), [
+            'action' => 'verify',
+            'user_ids' => [$pendingUser->id],
+        ])
+        ->assertRedirect(route('endmin.affiliations.extend', [
+            'affiliationName' => 'Universitas Batch',
+            'type' => 'university',
+        ]));
+
+    $this->assertDatabaseHas('users', [
+        'id' => $pendingUser->id,
+        'affiliation_status' => 'verified',
+        'affiliation_verified_by' => $superAdmin->id,
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->post(route('endmin.affiliations.extend.batch', [
+            'affiliationName' => 'Universitas Batch',
+            'type' => 'university',
+        ]), [
+            'action' => 'unverify',
+            'user_ids' => [$pendingUser->id],
+        ])
+        ->assertRedirect(route('endmin.affiliations.extend', [
+            'affiliationName' => 'Universitas Batch',
+            'type' => 'university',
+        ]));
+
+    $this->assertDatabaseHas('users', [
+        'id' => $pendingUser->id,
+        'affiliation_status' => 'pending',
+        'affiliation_verified_at' => null,
+        'affiliation_verified_by' => null,
+    ]);
+});

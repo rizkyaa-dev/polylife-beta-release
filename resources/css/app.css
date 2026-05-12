@@ -225,6 +225,10 @@
         @apply flex flex-wrap gap-3 text-xs sm:text-sm text-slate-500 dark:text-slate-400;
     }
 
+    .endmin-checkbox {
+        @apply h-4 w-4 rounded border-gray-300 text-indigo-600 shadow-sm transition-all focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:focus:ring-offset-slate-900;
+    }
+
     .app-shell {
         overscroll-behavior-y: contain;
     }

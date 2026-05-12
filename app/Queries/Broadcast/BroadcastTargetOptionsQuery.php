@@ -38,11 +38,14 @@ class BroadcastTargetOptionsQuery
             ->where('status', 'active')
             ->whereNotNull('affiliation_name')
             ->where('affiliation_name', '!=', '')
+            ->where('affiliation_name', '!=', 'Unassigned Affiliation')
             ->distinct()
             ->orderBy('affiliation_name')
             ->get();
 
-        if ($rawOptions->isEmpty() && filled($actor->affiliation_name)) {
+        if ($actor->affiliation_status !== 'verified') {
+            $rawOptions = collect();
+        } elseif ($rawOptions->isEmpty() && filled($actor->affiliation_name)) {
             $rawOptions = collect([
                 (object) [
                     'affiliation_type' => $actor->affiliation_type,

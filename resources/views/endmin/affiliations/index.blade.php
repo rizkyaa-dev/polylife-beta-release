@@ -181,6 +181,7 @@
                         <th class="py-3 pr-4">Verified</th>
                         <th class="py-3 pr-4">Pending</th>
                         <th class="py-3 pr-4">Admin</th>
+                        <th class="py-3 pr-4 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100 dark:divide-slate-800">
@@ -204,10 +205,16 @@
                                     {{ (int) $affiliation->admin_count }}
                                 </span>
                             </td>
+                            <td class="py-3 pr-4 text-right">
+                                <a href="{{ route('endmin.affiliations.extend', ['affiliationName' => $affiliation->affiliation_name, 'type' => $affiliation->affiliation_type]) }}"
+                                   class="inline-flex items-center rounded-lg border border-indigo-200 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:border-indigo-300 hover:bg-indigo-50 dark:border-indigo-500/30 dark:text-indigo-200 dark:hover:bg-indigo-500/10">
+                                    Lihat
+                                </a>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-6 text-center text-slate-500 dark:text-slate-400">Belum ada data afiliasi.</td>
+                            <td colspan="7" class="py-6 text-center text-slate-500 dark:text-slate-400">Belum ada data afiliasi.</td>
                         </tr>
                     @endforelse
                 </tbody>

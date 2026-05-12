@@ -57,6 +57,39 @@ test('navigation menu can be rendered', function () {
         ->assertSee('Jadwal Hari Ini');
 });
 
+test('admin cannot access workspace routes', function () {
+    $admin = User::factory()->create([
+        'is_admin' => User::ADMIN_LEVEL_ADMIN,
+        'role' => 'admin',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('workspace.home'))
+        ->assertRedirect(route('admin.dashboard'));
+});
+
+test('admin cannot access workspace profile route', function () {
+    $admin = User::factory()->create([
+        'is_admin' => User::ADMIN_LEVEL_ADMIN,
+        'role' => 'admin',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('profile'))
+        ->assertRedirect(route('admin.dashboard'));
+});
+
+test('super admin cannot access workspace routes', function () {
+    $superAdmin = User::factory()->create([
+        'is_admin' => User::ADMIN_LEVEL_SUPER_ADMIN,
+        'role' => 'super_admin',
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('workspace.home'))
+        ->assertRedirect(route('endmin.dashboard'));
+});
+
 test('users can logout', function () {
     $user = User::factory()->create();
 

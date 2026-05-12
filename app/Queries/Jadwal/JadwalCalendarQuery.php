@@ -37,8 +37,12 @@ class JadwalCalendarQuery
             ->get();
 
         $this->kuliahScheduleService->appendMatkulDetails($jadwals, $matkuls);
+
+        $user = \App\Models\User::find($userId);
+        $offDays = $user ? $user->offDays() : [0, 6];
+
         $jadwalsByDate = $this->kuliahScheduleService->deduplicateKuliahByDate(
-            $this->kuliahScheduleService->mapJadwalsByDate($jadwals, $startCalendar, $endCalendar)
+            $this->kuliahScheduleService->mapJadwalsByDate($jadwals, $startCalendar, $endCalendar, $offDays)
         );
 
         $calendarDays = [];

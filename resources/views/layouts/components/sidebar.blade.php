@@ -65,25 +65,7 @@
     $announcementUnreadCount = 0;
 
     if (! $guestMode && $user) {
-        $lastSeenAtRaw = session('pengumuman_last_seen_at');
-        $lastSeenCacheKey = is_scalar($lastSeenAtRaw) ? sha1((string) $lastSeenAtRaw) : 'all';
-        $announcementUnreadCount = \Illuminate\Support\Facades\Cache::remember(
-            "sidebar:announcement-unread:{$user->id}:{$lastSeenCacheKey}",
-            now()->addSeconds(60),
-            function () use ($user, $lastSeenAtRaw): int {
-                $announcementQuery = \App\Models\AffiliationBroadcast::query()->visibleToUser($user);
-
-                if (is_string($lastSeenAtRaw) && trim($lastSeenAtRaw) !== '') {
-                    try {
-                        $announcementQuery->where('published_at', '>', \Illuminate\Support\Carbon::parse($lastSeenAtRaw));
-                    } catch (\Throwable $e) {
-                        // Ignore malformed session value and treat all visible broadcasts as unread.
-                    }
-                }
-
-                return $announcementQuery->count();
-            }
-        );
+        $announcementUnreadCount = app(\App\Actions\Broadcast\MarkPengumumanReadAction::class)->unreadCountForUser($user);
     }
 
     $announcementBadgeLabel = $announcementUnreadCount > 99 ? '99+' : (string) $announcementUnreadCount;
@@ -189,12 +171,14 @@
                 <a href="{{ route('pengumuman.index') }}"
                     class="relative inline-flex h-10 w-10 items-center justify-center rounded-2xl border text-slate-500 transition hover:border-indigo-200 hover:text-indigo-600 dark:border-slate-800 dark:text-slate-300 {{ $announcementIsActive ? 'border-indigo-300 text-indigo-600 dark:border-indigo-500/50 dark:text-indigo-300' : 'border-slate-200/70' }}"
                     title="Pengumuman"
-                    aria-label="Pengumuman">
+                    aria-label="Pengumuman"
+                    data-announcement-link>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.34 6.182A18.036 18.036 0 0118 4.5c.83 0 1.5.67 1.5 1.5v12c0 .83-.67 1.5-1.5 1.5a18.036 18.036 0 01-7.66-1.682M10.34 6.182L3.87 9.592a1.5 1.5 0 000 2.816l6.47 3.41M10.34 6.182v11.636M6.75 14.25V18a1.5 1.5 0 001.5 1.5h.75" />
                     </svg>
                     @if ($announcementUnreadCount > 0)
-                        <span class="absolute -right-1 -top-1 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-rose-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white ring-2 ring-white dark:ring-slate-950">
+                        <span class="absolute -right-1 -top-1 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-rose-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white ring-2 ring-white dark:ring-slate-950"
+                              data-announcement-badge>
                             {{ $announcementBadgeLabel }}
                         </span>
                     @endif
