@@ -74,14 +74,14 @@ if (isBrowser) {
     };
 
     const resolveInitialTheme = () => {
-        const datasetTheme = root.dataset?.theme;
-        if (datasetTheme === 'dark' || datasetTheme === 'light') {
-            return datasetTheme;
-        }
-
         const storedTheme = getStoredTheme();
         if (storedTheme && ! hasServerThemePreference()) {
             return storedTheme;
+        }
+
+        const datasetTheme = root.dataset?.theme;
+        if (datasetTheme === 'dark' || datasetTheme === 'light') {
+            return datasetTheme;
         }
 
         return mediaQuery.matches ? 'dark' : 'light';
@@ -101,6 +101,8 @@ if (isBrowser) {
         toggle.dataset.themeBound = 'true';
         toggle.addEventListener('click', () => {
             const nextTheme = root.classList.contains('dark') ? 'light' : 'dark';
+            document.body?.classList.add('theme-color-syncing');
+            window.setTimeout(() => document.body?.classList.remove('theme-color-syncing'), 220);
             applyTheme(nextTheme, true);
         });
 
@@ -131,6 +133,7 @@ if (isBrowser) {
     }
 
     document.addEventListener('livewire:navigated', () => {
+        applyTheme(resolveInitialTheme());
         bindToggle();
     });
 }

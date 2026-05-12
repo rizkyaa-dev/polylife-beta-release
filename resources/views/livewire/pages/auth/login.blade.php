@@ -10,6 +10,25 @@ new #[Layout('layouts.guest')] class extends Component
 {
     public LoginForm $form;
 
+    public function mount(): void
+    {
+        $retryUntil = (int) session('login_throttle_until', 0);
+        $seconds = max(0, $retryUntil - time());
+
+        if ($seconds > 0) {
+            $this->form->retryAfterSeconds = $seconds;
+
+            $this->addError('form.email', trans('auth.throttle', [
+                'seconds' => $seconds,
+                'minutes' => ceil($seconds / 60),
+            ]));
+
+            return;
+        }
+
+        session()->forget('login_throttle_until');
+    }
+
     /**
      * Handle an incoming authentication request.
      */
@@ -52,7 +71,7 @@ new #[Layout('layouts.guest')] class extends Component
         class="rounded-[18px] border-2 border-[#6AE4C8] bg-[#E8FFF7] px-4 py-3 text-sm font-semibold text-[#189570] shadow-[4px_4px_0_0_#B8FFE7] dark:border-[#2FD3A6]/60 dark:bg-[#052926] dark:text-[#8CECD2] dark:shadow-[4px_4px_0_0_rgba(5,20,20,0.8)]"
         :status="session('status')" />
 
-    <form wire:submit="login" class="space-y-6">
+    <form wire:submit="login" class="space-y-6" data-login-form>
         <div class="space-y-2">
             <label for="email" class="text-sm font-semibold text-[#4C4C63] dark:text-[#D7D3FF]">{{ __('Email') }}</label>
             <input
@@ -63,9 +82,18 @@ new #[Layout('layouts.guest')] class extends Component
                 autofocus
                 autocomplete="username"
                 placeholder="nama@kampus.ac.id"
-                class="w-full rounded-[18px] border-2 border-[#8181FF]/40 bg-[#F6F4FF] px-4 py-3 text-base font-medium text-[#2D2D3C] placeholder:text-[#A7A6C9] shadow-[4px_4px_0_0_#C5D4FF] focus:border-[#8181FF] focus:outline-none focus:ring-0 transition dark:border-[#6A5BFF]/70 dark:bg-[#120C26] dark:text-white dark:placeholder:text-[#8A83C5] dark:shadow-[4px_4px_0_0_rgba(11,6,22,0.9)]" />
+                data-login-email
+                class="auth-input" />
             @error('form.email')
-                <p class="text-sm text-rose-500">{{ $message }}</p>
+                <p class="text-sm text-rose-500"
+                    @if ($form->retryAfterSeconds > 0)
+                        data-login-throttle-message
+                        data-login-throttle-seconds="{{ $form->retryAfterSeconds }}"
+                        data-login-throttle-template="{{ trans('auth.throttle', ['seconds' => '__SECONDS__', 'minutes' => '__MINUTES__']) }}"
+                        data-login-throttle-ready="{{ __('You may try again now.') }}"
+                    @endif>
+                    {{ $message }}
+                </p>
             @enderror
         </div>
 
@@ -78,7 +106,8 @@ new #[Layout('layouts.guest')] class extends Component
                 name="password"
                 autocomplete="current-password"
                 placeholder="••••••••"
-                class="w-full rounded-[18px] border-2 border-[#8181FF]/40 bg-[#F6F4FF] px-4 py-3 text-base font-medium text-[#2D2D3C] placeholder:text-[#A7A6C9] shadow-[4px_4px_0_0_#C5D4FF] focus:border-[#8181FF] focus:outline-none focus:ring-0 transition dark:border-[#6A5BFF]/70 dark:bg-[#120C26] dark:text-white dark:placeholder:text-[#8A83C5] dark:shadow-[4px_4px_0_0_rgba(11,6,22,0.9)]" />
+                data-login-password
+                class="auth-input" />
             @error('form.password')
                 <p class="text-sm text-rose-500">{{ $message }}</p>
             @enderror
@@ -122,3 +151,122 @@ new #[Layout('layouts.guest')] class extends Component
         </a>
     </p>
 </div>
+
+@script
+<script>
+    const bindLoginFocusGuard = () => {
+        const form = document.querySelector('[data-login-form]');
+
+        if (!form || form.dataset.focusGuardBound === 'true') {
+            return;
+        }
+
+        form.dataset.focusGuardBound = 'true';
+
+        form.addEventListener('submit', (event) => {
+            const email = form.querySelector('[data-login-email]');
+            const password = form.querySelector('[data-login-password]');
+
+            if (!email || !password) {
+                return;
+            }
+
+            if (email.value.trim() !== '' && password.value === '') {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                password.focus({ preventScroll: true });
+            }
+        }, true);
+    };
+
+    bindLoginFocusGuard();
+    document.addEventListener('livewire:navigated', bindLoginFocusGuard);
+
+    const startLoginThrottleCountdown = (message) => {
+            const template = message.dataset.loginThrottleTemplate || '';
+            const readyText = message.dataset.loginThrottleReady || '';
+        let endsAt = Number.parseInt(message.dataset.loginThrottleEndsAt || '0', 10);
+
+        if (!Number.isFinite(endsAt) || endsAt <= 0) {
+            const seconds = Number.parseInt(message.dataset.loginThrottleSeconds || '0', 10);
+
+            if (!Number.isFinite(seconds) || seconds <= 0) {
+                return false;
+            }
+
+            endsAt = Date.now() + (seconds * 1000);
+            message.dataset.loginThrottleEndsAt = String(endsAt);
+        }
+
+        if (!template) {
+            return false;
+        }
+
+        const existingInterval = Number.parseInt(message.dataset.countdownInterval || '0', 10);
+        if (Number.isFinite(existingInterval) && existingInterval > 0) {
+            window.clearInterval(existingInterval);
+        }
+
+            const render = () => {
+            const seconds = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+
+                if (seconds <= 0) {
+                    message.textContent = readyText;
+                return 0;
+                }
+
+                message.textContent = template
+                    .replace('__SECONDS__', String(seconds))
+                    .replace('__MINUTES__', String(Math.ceil(seconds / 60)));
+
+            return seconds;
+            };
+
+        if (render() <= 0) {
+            delete message.dataset.countdownInterval;
+
+            return true;
+        }
+
+            const interval = window.setInterval(() => {
+            const remaining = render();
+
+            if (remaining <= 0) {
+                    window.clearInterval(interval);
+                delete message.dataset.countdownInterval;
+                }
+            }, 1000);
+
+        message.dataset.countdownInterval = String(interval);
+
+        return true;
+    };
+
+    const bindLoginThrottleCountdown = () => {
+        document.querySelectorAll('[data-login-throttle-message]').forEach((message) => {
+            startLoginThrottleCountdown(message);
+        });
+    };
+
+    bindLoginThrottleCountdown();
+
+    if (!window.__polylifeLoginThrottleCountdownBound) {
+        window.__polylifeLoginThrottleCountdownBound = true;
+        document.addEventListener('livewire:navigated', bindLoginThrottleCountdown);
+        window.addEventListener('pageshow', bindLoginThrottleCountdown);
+        window.addEventListener('focus', bindLoginThrottleCountdown);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                bindLoginThrottleCountdown();
+            }
+        });
+    }
+
+    if (window.Livewire?.hook) {
+        window.Livewire.hook('morph.updated', () => {
+            bindLoginFocusGuard();
+            bindLoginThrottleCountdown();
+        });
+    }
+</script>
+@endscript

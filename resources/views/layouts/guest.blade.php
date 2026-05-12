@@ -20,17 +20,18 @@
                     return;
                 }
 
-                const prefersDark = () => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-
                 try {
                     const storedTheme = window.localStorage.getItem('theme');
-                    if (storedTheme === 'light') {
-                        root.classList.remove('dark');
-                    } else {
-                        root.classList.add('dark');
-                    }
+                    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    const resolvedTheme = storedTheme === 'dark' || storedTheme === 'light'
+                        ? storedTheme
+                        : (prefersDark ? 'dark' : 'light');
+
+                    root.classList.toggle('dark', resolvedTheme === 'dark');
+                    root.dataset.theme = resolvedTheme;
                 } catch (error) {
                     root.classList.add('dark');
+                    root.dataset.theme = 'dark';
                 }
             })();
         </script>

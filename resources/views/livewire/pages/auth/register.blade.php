@@ -74,7 +74,7 @@ new #[Layout('layouts.guest')] class extends Component
                 autofocus
                 autocomplete="name"
                 placeholder="Nama lengkap"
-                class="w-full rounded-[18px] border-2 border-[#8181FF]/40 bg-[#F6F4FF] px-4 py-3 text-base font-medium text-[#2D2D3C] placeholder:text-[#A7A6C9] shadow-[4px_4px_0_0_#C5D4FF] focus:border-[#8181FF] focus:outline-none focus:ring-0 transition dark:border-[#6A5BFF]/70 dark:bg-[#120C26] dark:text-white dark:placeholder:text-[#8A83C5] dark:shadow-[4px_4px_0_0_rgba(11,6,22,0.9)]" />
+                class="auth-input" />
             @error('name')
                 <p class="text-sm text-rose-500">{{ $message }}</p>
             @enderror
@@ -90,7 +90,7 @@ new #[Layout('layouts.guest')] class extends Component
                 required
                 autocomplete="username"
                 placeholder="nama@kampus.ac.id"
-                class="w-full rounded-[18px] border-2 border-[#8181FF]/40 bg-[#F6F4FF] px-4 py-3 text-base font-medium text-[#2D2D3C] placeholder:text-[#A7A6C9] shadow-[4px_4px_0_0_#C5D4FF] focus:border-[#8181FF] focus:outline-none focus:ring-0 transition dark:border-[#6A5BFF]/70 dark:bg-[#120C26] dark:text-white dark:placeholder:text-[#8A83C5] dark:shadow-[4px_4px_0_0_rgba(11,6,22,0.9)]" />
+                class="auth-input" />
             @error('email')
                 <p class="text-sm text-rose-500">{{ $message }}</p>
             @enderror
@@ -106,7 +106,7 @@ new #[Layout('layouts.guest')] class extends Component
                 required
                 autocomplete="new-password"
                 placeholder="Minimal 8 karakter"
-                class="w-full rounded-[18px] border-2 border-[#8181FF]/40 bg-[#F6F4FF] px-4 py-3 text-base font-medium text-[#2D2D3C] placeholder:text-[#A7A6C9] shadow-[4px_4px_0_0_#C5D4FF] focus:border-[#8181FF] focus:outline-none focus:ring-0 transition dark:border-[#6A5BFF]/70 dark:bg-[#120C26] dark:text-white dark:placeholder:text-[#8A83C5] dark:shadow-[4px_4px_0_0_rgba(11,6,22,0.9)]" />
+                class="auth-input" />
             @error('password')
                 <p class="text-sm text-rose-500">{{ $message }}</p>
             @enderror
@@ -122,7 +122,7 @@ new #[Layout('layouts.guest')] class extends Component
                 required
                 autocomplete="new-password"
                 placeholder="Ulangi password"
-                class="w-full rounded-[18px] border-2 border-[#8181FF]/40 bg-[#F6F4FF] px-4 py-3 text-base font-medium text-[#2D2D3C] placeholder:text-[#A7A6C9] shadow-[4px_4px_0_0_#C5D4FF] focus:border-[#8181FF] focus:outline-none focus:ring-0 transition dark:border-[#6A5BFF]/70 dark:bg-[#120C26] dark:text-white dark:placeholder:text-[#8A83C5] dark:shadow-[4px_4px_0_0_rgba(11,6,22,0.9)]" />
+                class="auth-input" />
             @error('password_confirmation')
                 <p class="text-sm text-rose-500">{{ $message }}</p>
             @enderror

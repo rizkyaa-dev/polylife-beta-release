@@ -196,6 +196,23 @@
         animation: themeDimPulse 650ms ease-out forwards;
     }
 
+    body.theme-switching *,
+    body.theme-switching *::before,
+    body.theme-switching *::after {
+        transition-property: transform, opacity, box-shadow !important;
+    }
+
+    body.theme-color-syncing *,
+    body.theme-color-syncing *::before,
+    body.theme-color-syncing *::after {
+        transition-property: transform, opacity !important;
+    }
+
+    body.theme-color-syncing .auth-input,
+    body.theme-color-syncing .auth-input::placeholder {
+        transition: none !important;
+    }
+
 
     .form-label {
         @apply block text-sm font-semibold text-gray-800 dark:text-slate-100;
@@ -207,6 +224,10 @@
 
     .form-input {
         @apply w-full rounded-2xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:border-indigo-400 focus:ring focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-indigo-400/70 dark:focus:ring-indigo-500/30;
+    }
+
+    .auth-input {
+        @apply w-full rounded-[18px] border-2 border-[#8181FF]/40 bg-[#F6F4FF] px-4 py-3 text-base font-medium text-[#2D2D3C] placeholder:text-[#A7A6C9] shadow-[4px_4px_0_0_#C5D4FF] focus:border-[#8181FF] focus:outline-none focus:ring-0 dark:border-[#6A5BFF]/70 dark:bg-[#120C26] dark:text-white dark:placeholder:text-[#8A83C5] dark:shadow-[4px_4px_0_0_rgba(11,6,22,0.9)];
     }
 
     .page-stack {

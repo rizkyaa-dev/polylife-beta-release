@@ -21,6 +21,8 @@ class LoginForm extends Form
     #[Validate('boolean')]
     public bool $remember = false;
 
+    public int $retryAfterSeconds = 0;
+
     /**
      * Attempt to authenticate the request's credentials.
      *
@@ -31,6 +33,7 @@ class LoginForm extends Form
         $this->ensureIsNotRateLimited();
 
         if (! Auth::attempt($this->only(['email', 'password']), $this->remember)) {
+            $this->retryAfterSeconds = 0;
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -39,6 +42,8 @@ class LoginForm extends Form
         }
 
         RateLimiter::clear($this->throttleKey());
+        session()->forget('login_throttle_until');
+        $this->retryAfterSeconds = 0;
     }
 
     /**
@@ -47,12 +52,20 @@ class LoginForm extends Form
     protected function ensureIsNotRateLimited(): void
     {
         if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+            if ((int) session('login_throttle_until', 0) <= time()) {
+                session()->forget('login_throttle_until');
+            }
+
+            $this->retryAfterSeconds = 0;
+
             return;
         }
 
         event(new Lockout(request()));
 
         $seconds = RateLimiter::availableIn($this->throttleKey());
+        $this->retryAfterSeconds = $seconds;
+        session(['login_throttle_until' => time() + $seconds]);
 
         throw ValidationException::withMessages([
             'form.email' => trans('auth.throttle', [

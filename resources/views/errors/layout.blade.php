@@ -98,5 +98,66 @@
             </div>
         </div>
     </div>
+    <script>
+        (() => {
+            const startErrorCountdown = (element) => {
+                let endsAt = Number.parseInt(element.dataset.errorCountdownEndsAt || '0', 10);
+
+                if (!Number.isFinite(endsAt) || endsAt <= 0) {
+                    const seconds = Number.parseInt(element.dataset.errorCountdownSeconds || '0', 10);
+
+                    if (!Number.isFinite(seconds) || seconds <= 0) {
+                        return;
+                    }
+
+                    endsAt = Date.now() + (seconds * 1000);
+                    element.dataset.errorCountdownEndsAt = String(endsAt);
+                }
+
+                const existingInterval = Number.parseInt(element.dataset.errorCountdownInterval || '0', 10);
+                if (Number.isFinite(existingInterval) && existingInterval > 0) {
+                    window.clearInterval(existingInterval);
+                }
+
+                const readyText = element.dataset.errorCountdownReady || 'sekarang';
+
+                const render = () => {
+                    const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+
+                    element.textContent = remaining > 0 ? `${remaining} detik` : readyText;
+
+                    return remaining;
+                };
+
+                if (render() <= 0) {
+                    delete element.dataset.errorCountdownInterval;
+
+                    return;
+                }
+
+                const interval = window.setInterval(() => {
+                    if (render() <= 0) {
+                        window.clearInterval(interval);
+                        delete element.dataset.errorCountdownInterval;
+                    }
+                }, 1000);
+
+                element.dataset.errorCountdownInterval = String(interval);
+            };
+
+            const bindErrorCountdowns = () => {
+                document.querySelectorAll('[data-error-countdown]').forEach(startErrorCountdown);
+            };
+
+            bindErrorCountdowns();
+            window.addEventListener('pageshow', bindErrorCountdowns);
+            window.addEventListener('focus', bindErrorCountdowns);
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    bindErrorCountdowns();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

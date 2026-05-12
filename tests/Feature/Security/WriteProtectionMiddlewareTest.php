@@ -101,7 +101,7 @@ test('duplicate write middleware renders the custom 429 page for web requests', 
     $this->post('/__test/duplicate-write-a', $payload)
         ->assertStatus(429)
         ->assertSee('Terlalu banyak aksi dalam waktu singkat', false)
-        ->assertSee('Coba lagi dalam 3 detik.', false)
+        ->assertSee('data-error-countdown-seconds="3"', false)
         ->assertHeader('Retry-After', '3');
 });
 
