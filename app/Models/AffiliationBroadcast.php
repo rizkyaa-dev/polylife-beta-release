@@ -77,15 +77,23 @@ class AffiliationBroadcast extends Model
                     ->orWhere(function (Builder $affiliationQuery) use ($user) {
                         $affiliationQuery->where('target_mode', self::TARGET_MODE_AFFILIATION)
                             ->whereHas('targets', function (Builder $targetQuery) use ($user) {
-                                $targetQuery->where('affiliation_name', (string) ($user->affiliation_name ?? ''))
-                                    ->when(
-                                        filled($user->affiliation_type),
-                                        fn (Builder $typeQuery) => $typeQuery->where(function (Builder $matchTypeQuery) use ($user) {
-                                            $matchTypeQuery->whereNull('affiliation_type')
-                                                ->orWhere('affiliation_type', (string) $user->affiliation_type);
-                                        }),
-                                        fn (Builder $typeQuery) => $typeQuery->whereNull('affiliation_type')
-                                    );
+                                $targetQuery->where(function (Builder $matchQuery) use ($user) {
+                                    if ($user->affiliation_template_id) {
+                                        $matchQuery->where('affiliation_template_id', (int) $user->affiliation_template_id);
+                                    }
+
+                                    $matchQuery->orWhere(function (Builder $legacyQuery) use ($user) {
+                                        $legacyQuery->where('affiliation_name', (string) ($user->affiliation_name ?? ''))
+                                            ->when(
+                                                filled($user->affiliation_type),
+                                                fn (Builder $typeQuery) => $typeQuery->where(function (Builder $matchTypeQuery) use ($user) {
+                                                    $matchTypeQuery->whereNull('affiliation_type')
+                                                        ->orWhere('affiliation_type', (string) $user->affiliation_type);
+                                                }),
+                                                fn (Builder $typeQuery) => $typeQuery->whereNull('affiliation_type')
+                                            );
+                                    });
+                                });
                             });
                     });
             });

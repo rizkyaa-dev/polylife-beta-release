@@ -6,7 +6,7 @@ class ReminderOptionItem {
 
   factory ReminderOptionItem.fromJson(Map<String, dynamic> json) {
     return ReminderOptionItem(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: _toInt(json['id']),
       label: json['label']?.toString() ?? '',
     );
   }
@@ -44,4 +44,9 @@ class ReminderTargetOption {
           : const <ReminderOptionItem>[],
     );
   }
+}
+
+int _toInt(dynamic value) {
+  if (value is num) return value.toInt();
+  return int.tryParse((value ?? '').toString()) ?? 0;
 }

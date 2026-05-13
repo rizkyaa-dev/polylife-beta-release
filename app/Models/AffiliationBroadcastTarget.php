@@ -12,6 +12,7 @@ class AffiliationBroadcastTarget extends Model
 
     protected $fillable = [
         'broadcast_id',
+        'affiliation_template_id',
         'affiliation_type',
         'affiliation_name',
     ];
@@ -19,5 +20,10 @@ class AffiliationBroadcastTarget extends Model
     public function broadcast(): BelongsTo
     {
         return $this->belongsTo(AffiliationBroadcast::class, 'broadcast_id');
+    }
+
+    public function affiliationTemplate(): BelongsTo
+    {
+        return $this->belongsTo(AffiliationTemplate::class, 'affiliation_template_id');
     }
 }

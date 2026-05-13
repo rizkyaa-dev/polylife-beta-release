@@ -36,4 +36,19 @@ class AffiliationTemplate extends Model
     {
         return $this->hasMany(AffiliationRequest::class);
     }
+
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class, 'affiliation_template_id');
+    }
+
+    public function adminAssignments(): HasMany
+    {
+        return $this->hasMany(AdminAssignment::class, 'affiliation_template_id');
+    }
+
+    public function broadcastTargets(): HasMany
+    {
+        return $this->hasMany(AffiliationBroadcastTarget::class, 'affiliation_template_id');
+    }
 }

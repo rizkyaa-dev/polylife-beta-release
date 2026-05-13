@@ -4,6 +4,7 @@ namespace App\Queries\Broadcast;
 
 use App\Models\AdminAssignment;
 use App\Models\AffiliationBroadcast;
+use App\Models\AffiliationTemplate;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
@@ -15,14 +16,22 @@ class BroadcastTargetOptionsQuery
     public function forActor(User $actor): array
     {
         if ($actor->isSuperAdmin()) {
-            $rawOptions = User::query()
-                ->select('affiliation_type', 'affiliation_name')
+            $templateOptions = AffiliationTemplate::query()
+                ->select('id as affiliation_template_id', 'affiliation_type', 'affiliation_name')
+                ->where('is_active', true)
+                ->orderBy('affiliation_name')
+                ->get();
+
+            $legacyOptions = User::query()
+                ->selectRaw('NULL as affiliation_template_id, affiliation_type, affiliation_name')
+                ->whereNull('affiliation_template_id')
                 ->whereNotNull('affiliation_name')
                 ->where('affiliation_name', '!=', '')
                 ->distinct()
                 ->orderBy('affiliation_name')
                 ->get();
 
+            $rawOptions = $templateOptions->concat($legacyOptions);
             $targetOptions = $this->mapTargetOptions($rawOptions->all());
 
             return [
@@ -33,7 +42,7 @@ class BroadcastTargetOptionsQuery
         }
 
         $rawOptions = AdminAssignment::query()
-            ->select('affiliation_type', 'affiliation_name')
+            ->select('affiliation_template_id', 'affiliation_type', 'affiliation_name')
             ->where('user_id', $actor->id)
             ->where('status', 'active')
             ->whereNotNull('affiliation_name')
@@ -48,6 +57,7 @@ class BroadcastTargetOptionsQuery
         } elseif ($rawOptions->isEmpty() && filled($actor->affiliation_name)) {
             $rawOptions = collect([
                 (object) [
+                    'affiliation_template_id' => $actor->affiliation_template_id,
                     'affiliation_type' => $actor->affiliation_type,
                     'affiliation_name' => $actor->affiliation_name,
                 ],
@@ -69,7 +79,7 @@ class BroadcastTargetOptionsQuery
     public function selectedValues(AffiliationBroadcast $broadcast): array
     {
         return $broadcast->targets
-            ->map(fn ($target) => $this->encodeTargetValue($target->affiliation_type, $target->affiliation_name))
+            ->map(fn ($target) => $this->encodeTargetValue($target->affiliation_type, $target->affiliation_name, $target->affiliation_template_id))
             ->values()
             ->all();
     }
@@ -88,7 +98,7 @@ class BroadcastTargetOptionsQuery
     /**
      * @param  array<int, string>  $rawTargets
      * @param  array<int, array<string, mixed>>  $targetOptions
-     * @return array<int, array{affiliation_type: ?string, affiliation_name: string}>
+     * @return array<int, array{affiliation_template_id: ?int, affiliation_type: ?string, affiliation_name: string}>
      */
     public function resolveSelectedTargets(array $rawTargets, array $targetOptions, string $targetMode): array
     {
@@ -116,6 +126,7 @@ class BroadcastTargetOptionsQuery
             $selected[] = [
                 'affiliation_type' => $allowedMap[$targetValue]['affiliation_type'],
                 'affiliation_name' => $allowedMap[$targetValue]['affiliation_name'],
+                'affiliation_template_id' => $allowedMap[$targetValue]['affiliation_template_id'],
             ];
         }
 
@@ -136,12 +147,15 @@ class BroadcastTargetOptionsQuery
                 ? trim((string) $option->affiliation_type)
                 : null;
             $name = trim((string) ($option->affiliation_name ?? ''));
+            $templateId = filled($option->affiliation_template_id ?? null)
+                ? (int) $option->affiliation_template_id
+                : null;
 
             if ($name === '') {
                 continue;
             }
 
-            $key = $this->encodeTargetValue($type, $name);
+            $key = $this->encodeTargetValue($type, $name, $templateId);
             if (isset($seen[$key])) {
                 continue;
             }
@@ -150,6 +164,7 @@ class BroadcastTargetOptionsQuery
             $labelPrefix = $type ? strtoupper($type) . ' - ' : '';
             $options[] = [
                 'value' => $key,
+                'affiliation_template_id' => $templateId,
                 'affiliation_type' => $type,
                 'affiliation_name' => $name,
                 'label' => $labelPrefix . $name,
@@ -159,8 +174,12 @@ class BroadcastTargetOptionsQuery
         return $options;
     }
 
-    private function encodeTargetValue(?string $affiliationType, string $affiliationName): string
+    private function encodeTargetValue(?string $affiliationType, string $affiliationName, ?int $templateId = null): string
     {
+        if ($templateId) {
+            return 'template:'.$templateId;
+        }
+
         return ($affiliationType ?: '') . '||' . $affiliationName;
     }
 }

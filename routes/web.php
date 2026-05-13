@@ -26,6 +26,7 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\TodolistController;
 use App\Http\Controllers\TugasController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -41,6 +42,15 @@ Route::prefix('workspace')->middleware(['auth', 'active-account', 'workspace-acc
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('workspace.home');
     // Alias legacy untuk kompatibilitas route('dashboard') dan akses /workspace
     Route::get('/', fn () => redirect()->route('workspace.home', request()->query()))->name('dashboard');
+    Route::get('profile', function (Request $request) {
+        $user = $request->user();
+
+        if ($user && $user->isAdmin()) {
+            return redirect()->route($user->defaultDashboardRouteName());
+        }
+
+        return view('profile');
+    })->name('profile');
 
     // Data endpoints
     Route::get('/dashboard/keuangan/data', [DashboardController::class, 'getKeuanganData'])->name('dashboard.keuangan.data');
@@ -138,6 +148,12 @@ Route::prefix('endmin')
         Route::patch('admins/{user}/demote', [EndminAdminManagementController::class, 'demote'])->middleware($userWriteMiddleware)->name('admins.demote');
 
         Route::get('affiliations', [EndminAffiliationController::class, 'index'])->name('affiliations.index');
+        Route::get('affiliations/manage', [EndminAffiliationController::class, 'manage'])->name('affiliations.manage.index');
+        Route::get('affiliations/manage/create', [EndminAffiliationController::class, 'create'])->name('affiliations.manage.create');
+        Route::post('affiliations/manage', [EndminAffiliationController::class, 'store'])->middleware($userWriteMiddleware)->name('affiliations.manage.store');
+        Route::get('affiliations/manage/{template}/edit', [EndminAffiliationController::class, 'edit'])->name('affiliations.manage.edit');
+        Route::put('affiliations/manage/{template}', [EndminAffiliationController::class, 'update'])->middleware($userWriteMiddleware)->name('affiliations.manage.update');
+        Route::delete('affiliations/manage/{template}', [EndminAffiliationController::class, 'destroy'])->middleware($userWriteMiddleware)->name('affiliations.manage.destroy');
         Route::get('affiliations/{affiliationName}/extend', [EndminAffiliationController::class, 'extend'])->name('affiliations.extend');
         Route::post('affiliations/{affiliationName}/extend/batch', [EndminAffiliationController::class, 'batch'])->middleware($bulkWriteMiddleware)->name('affiliations.extend.batch');
         Route::patch('affiliations/requests/{affiliationRequest}/approve', [EndminAffiliationController::class, 'approve'])->middleware($userWriteMiddleware)->name('affiliations.requests.approve');

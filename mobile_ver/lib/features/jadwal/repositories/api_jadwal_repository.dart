@@ -5,9 +5,14 @@ import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
 import 'package:mobile_ver/features/jadwal/repositories/jadwal_repository.dart';
 
 class ApiJadwalRepository implements JadwalRepository {
+  ApiJadwalRepository({HttpApiClient? client})
+    : _client = client ?? const StaticApiClientAdapter();
+
+  final HttpApiClient _client;
+
   @override
   Future<List<JadwalItem>> fetchAll() async {
-    final response = await ApiClient.get('/jadwal?per_page=200');
+    final response = await _client.get('/jadwal?per_page=200');
     if (response.statusCode != 200) {
       throw Exception('Failed to load jadwal');
     }
@@ -38,7 +43,7 @@ class ApiJadwalRepository implements JadwalRepository {
 
   @override
   Future<JadwalItem> create(JadwalItem item) async {
-    final response = await ApiClient.post('/jadwal', _toApiPayload(item));
+    final response = await _client.post('/jadwal', _toApiPayload(item));
     if (response.statusCode != 201) {
       throw Exception('Failed to create jadwal');
     }
@@ -58,7 +63,7 @@ class ApiJadwalRepository implements JadwalRepository {
 
   @override
   Future<JadwalItem> update(JadwalItem item) async {
-    final response = await ApiClient.put(
+    final response = await _client.put(
       '/jadwal/${item.id}',
       _toApiPayload(item),
     );
@@ -81,7 +86,7 @@ class ApiJadwalRepository implements JadwalRepository {
 
   @override
   Future<void> delete(int id) async {
-    final response = await ApiClient.delete('/jadwal/$id');
+    final response = await _client.delete('/jadwal/$id');
     if (response.statusCode != 200) {
       throw Exception('Failed to delete jadwal');
     }

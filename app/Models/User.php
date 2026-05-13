@@ -35,6 +35,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'ban_reason_text',
         'affiliation_type',
         'affiliation_name',
+        'affiliation_template_id',
         'student_id_type',
         'student_id_number',
         'affiliation_status',
@@ -203,6 +204,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function profileAvatar(): HasOne
     {
         return $this->hasOne(UserProfileAvatar::class);
+    }
+
+    public function affiliationTemplate()
+    {
+        return $this->belongsTo(AffiliationTemplate::class, 'affiliation_template_id');
     }
 
     public function adminAssignments(): HasMany

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Endmin;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateUserVerificationDetailRequest extends FormRequest
 {
@@ -34,6 +35,29 @@ class UpdateUserVerificationDetailRequest extends FormRequest
                         ->orWhere('role', 'super_admin');
                 }),
             ],
+        ];
+    }
+
+    /**
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($this->input('affiliation_status') !== 'verified') {
+                    return;
+                }
+
+                if ($this->filled('affiliation_name')) {
+                    return;
+                }
+
+                $validator->errors()->add(
+                    'affiliation_name',
+                    'Nama afiliasi wajib diisi sebelum memverifikasi afiliasi.'
+                );
+            },
         ];
     }
 }

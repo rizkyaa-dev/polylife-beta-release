@@ -13,6 +13,7 @@ use App\Http\Requests\Endmin\BulkProcessUsersRequest;
 use App\Http\Requests\Endmin\UpdateManagedUserRequest;
 use App\Http\Requests\Endmin\UpdateUserVerificationDetailRequest;
 use App\Http\Requests\Endmin\UpdateUserVerificationRequest;
+use App\Models\AffiliationTemplate;
 use App\Models\User;
 use Illuminate\Http\Request;
 
@@ -221,8 +222,22 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        $templates = AffiliationTemplate::query()
+            ->where('is_active', true)
+            ->orderBy('affiliation_name')
+            ->get(['id', 'affiliation_type', 'affiliation_name']);
+        $superAdmins = User::query()
+            ->where(function ($query) {
+                $query->where('is_admin', User::ADMIN_LEVEL_SUPER_ADMIN)
+                    ->orWhere('role', 'super_admin');
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
+
         return view('endmin.users.edit', [
-            'user' => $user,
+            'user' => $user->load(['affiliationTemplate', 'adminAssignments' => fn ($query) => $query->where('status', 'active')->orderBy('affiliation_name')]),
+            'templates' => $templates,
+            'superAdmins' => $superAdmins,
             'sidebarView' => 'layouts.components.endmin-sidebar',
         ]);
     }

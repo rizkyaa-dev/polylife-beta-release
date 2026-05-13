@@ -17,14 +17,16 @@
         default => 'Ikuti perangkat',
     };
     $accountStatus = ($user->account_status ?? 'active') === 'banned' ? 'Suspend' : 'Aktif';
-    $affiliationStatusLabel = match ($user->affiliation_status) {
-        'verified' => 'Terverifikasi',
-        'rejected' => 'Ditolak',
+    $hasVerifiedAffiliation = $user->affiliation_status === 'verified'
+        && (filled($user->affiliation_template_id) || filled($user->affiliation_name));
+    $affiliationStatusLabel = match (true) {
+        $hasVerifiedAffiliation => 'Terverifikasi',
+        $user->affiliation_status === 'rejected' => 'Ditolak',
         default => 'Menunggu review',
     };
-    $affiliationStatusClass = match ($user->affiliation_status) {
-        'verified' => 'text-emerald-600 dark:text-emerald-300',
-        'rejected' => 'text-rose-600 dark:text-rose-300',
+    $affiliationStatusClass = match (true) {
+        $hasVerifiedAffiliation => 'text-emerald-600 dark:text-emerald-300',
+        $user->affiliation_status === 'rejected' => 'text-rose-600 dark:text-rose-300',
         default => 'text-amber-600 dark:text-amber-300',
     };
 @endphp
@@ -89,19 +91,14 @@
                 </div>
             @else
                 <div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-                    Belum ada target afiliasi untuk akun admin ini. Hubungi super admin untuk menetapkan afiliasi.
+                    Akun admin ini belum memiliki afiliasi terverifikasi. Ajukan afiliasi agar super admin dapat meninjau dan mengaktifkan target broadcast.
                 </div>
             @endif
         </div>
 
-        @if ($user->pendingAffiliationRequest)
-            <div class="mt-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/40">
-                <p class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Pengajuan afiliasi pending</p>
-                <p class="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ $user->pendingAffiliationRequest->affiliation_name }}</p>
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {{ strtoupper((string) ($user->pendingAffiliationRequest->student_id_type ?: 'ID')) }}:
-                    {{ $user->pendingAffiliationRequest->student_id_number ?: '-' }}
-                </p>
+        @if (count($targetOptions) === 0)
+            <div class="mt-5 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                <livewire:profile.update-affiliation-request-form />
             </div>
         @endif
     </section>

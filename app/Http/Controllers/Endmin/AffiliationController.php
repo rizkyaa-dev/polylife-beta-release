@@ -10,9 +10,12 @@ use App\Models\AffiliationTemplate;
 use App\Models\User;
 use App\Queries\User\AffiliationIndexQuery;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AffiliationController extends Controller
 {
@@ -42,12 +45,119 @@ class AffiliationController extends Controller
             'pendingRequests' => $pendingRequests,
             'templates' => $templates,
             'templateSuggestions' => $this->templateSuggestions($pendingRequests, $templates),
+            'affiliationTypeOptions' => $this->affiliationTypeOptions(),
             'filters' => [
                 'q' => $search,
                 'status' => $status,
             ],
             'sidebarView' => 'layouts.components.endmin-sidebar',
         ]);
+    }
+
+    public function manage(Request $request)
+    {
+        $search = trim((string) $request->query('q', ''));
+        $status = trim((string) $request->query('status', 'active'));
+
+        $templates = AffiliationTemplate::query()
+            ->withCount(['users', 'adminAssignments', 'broadcastTargets'])
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $searchQuery) use ($search): void {
+                    $searchQuery->where('affiliation_name', 'like', '%'.$search.'%')
+                        ->orWhere('affiliation_type', 'like', '%'.$search.'%');
+                });
+            })
+            ->when($status === 'active', fn (Builder $query) => $query->where('is_active', true))
+            ->when($status === 'inactive', fn (Builder $query) => $query->where('is_active', false))
+            ->orderByDesc('is_active')
+            ->orderBy('affiliation_name')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('endmin.affiliations.manage.index', [
+            'templates' => $templates,
+            'filters' => [
+                'q' => $search,
+                'status' => $status,
+            ],
+            'sidebarView' => 'layouts.components.endmin-sidebar',
+        ]);
+    }
+
+    public function create()
+    {
+        return view('endmin.affiliations.manage.form', [
+            'template' => new AffiliationTemplate([
+                'affiliation_type' => 'university',
+                'aliases' => [],
+                'is_active' => true,
+            ]),
+            'mode' => 'create',
+            'sidebarView' => 'layouts.components.endmin-sidebar',
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $this->validatedTemplatePayload($request);
+
+        $template = AffiliationTemplate::query()->create([
+            ...$validated,
+            'created_by' => $request->user()->id,
+        ]);
+
+        return redirect()
+            ->route('endmin.affiliations.manage.edit', $template)
+            ->with('success', 'Afiliasi berhasil dibuat.');
+    }
+
+    public function edit(AffiliationTemplate $template)
+    {
+        $template->loadCount(['users', 'adminAssignments', 'broadcastTargets']);
+
+        return view('endmin.affiliations.manage.form', [
+            'template' => $template,
+            'mode' => 'edit',
+            'sidebarView' => 'layouts.components.endmin-sidebar',
+        ]);
+    }
+
+    public function update(Request $request, AffiliationTemplate $template)
+    {
+        $validated = $this->validatedTemplatePayload($request, $template);
+        $oldType = $template->affiliation_type;
+        $oldName = $template->affiliation_name;
+
+        DB::transaction(function () use ($template, $validated, $oldType, $oldName): void {
+            $template->forceFill($validated)->save();
+            $this->syncTemplateToRuntimeRecords($template, $oldType, $oldName);
+        });
+
+        return redirect()
+            ->route('endmin.affiliations.manage.edit', $template)
+            ->with('success', 'Afiliasi berhasil diperbarui dan disinkronkan.');
+    }
+
+    public function destroy(AffiliationTemplate $template)
+    {
+        $relatedCount = $template->users()->count()
+            + $template->adminAssignments()->count()
+            + $template->broadcastTargets()->count()
+            + $template->requests()->count();
+
+        if ($relatedCount > 0) {
+            $template->forceFill(['is_active' => false])->save();
+
+            return redirect()
+                ->route('endmin.affiliations.manage.index')
+                ->with('success', 'Afiliasi sudah dipakai, jadi dinonaktifkan agar riwayat data tetap aman.');
+        }
+
+        $template->delete();
+
+        return redirect()
+            ->route('endmin.affiliations.manage.index')
+            ->with('success', 'Afiliasi kosong berhasil dihapus.');
     }
 
     public function extend(Request $request, string $affiliationName)
@@ -137,6 +247,7 @@ class AffiliationController extends Controller
                     'affiliation_status' => 'verified',
                     'affiliation_verified_at' => $user->affiliation_verified_at ?: now(),
                     'affiliation_verified_by' => $request->user()->id,
+                    'affiliation_template_id' => $user->affiliation_template_id ?: $this->findTemplateId($user->affiliation_type, $user->affiliation_name),
                 ])->save();
             } else {
                 $user->forceFill([
@@ -165,6 +276,7 @@ class AffiliationController extends Controller
 
         $validated = $httpRequest->validate([
             'affiliation_template_id' => ['nullable', 'integer', Rule::exists('affiliation_templates', 'id')->where('is_active', true)],
+            'canonical_affiliation_type' => ['nullable', Rule::in(array_keys($this->affiliationTypeOptions()))],
             'canonical_affiliation_name' => ['nullable', 'string', 'max:160'],
         ]);
 
@@ -172,6 +284,7 @@ class AffiliationController extends Controller
             $httpRequest->user(),
             $affiliationRequest,
             $validated['affiliation_template_id'] ?? null,
+            $validated['canonical_affiliation_type'] ?? null,
             $validated['canonical_affiliation_name'] ?? null
         );
 
@@ -196,6 +309,128 @@ class AffiliationController extends Controller
     }
 
     /**
+     * @return array{affiliation_type: ?string, affiliation_name: string, aliases: array<int, string>, is_active: bool}
+     */
+    private function validatedTemplatePayload(Request $request, ?AffiliationTemplate $template = null): array
+    {
+        $validated = $request->validate([
+            'affiliation_type' => ['nullable', Rule::in(['school', 'university', 'institute', 'polytechnic', 'academy', 'organization', 'company', 'foundation', 'other'])],
+            'affiliation_name' => ['required', 'string', 'max:160'],
+            'aliases_text' => ['nullable', 'string', 'max:2000'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $type = $this->nullableString($validated['affiliation_type'] ?? null);
+        $name = $this->normalizeName((string) $validated['affiliation_name']);
+
+        $duplicate = AffiliationTemplate::query()
+            ->where('affiliation_name', $name)
+            ->when($type === null, fn (Builder $query) => $query->whereNull('affiliation_type'), fn (Builder $query) => $query->where('affiliation_type', $type))
+            ->when($template, fn (Builder $query) => $query->whereKeyNot($template->id))
+            ->exists();
+
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'affiliation_name' => 'Nama afiliasi dengan tipe yang sama sudah ada.',
+            ]);
+        }
+
+        return [
+            'affiliation_type' => $type,
+            'affiliation_name' => $name,
+            'aliases' => $this->parseAliases((string) ($validated['aliases_text'] ?? '')),
+            'is_active' => $request->boolean('is_active'),
+        ];
+    }
+
+    private function syncTemplateToRuntimeRecords(AffiliationTemplate $template, ?string $oldType, string $oldName): void
+    {
+        $payload = [
+            'affiliation_template_id' => $template->id,
+            'affiliation_type' => $template->affiliation_type,
+            'affiliation_name' => $template->affiliation_name,
+            'updated_at' => now(),
+        ];
+
+        foreach (['users', 'admin_assignments', 'affiliation_broadcast_targets'] as $table) {
+            DB::table($table)
+                ->where(function ($query) use ($template, $oldType, $oldName): void {
+                    $query->where('affiliation_template_id', $template->id)
+                        ->orWhere(function ($legacyQuery) use ($oldType, $oldName): void {
+                            $legacyQuery->where('affiliation_name', $oldName);
+
+                            $oldType === null
+                                ? $legacyQuery->whereNull('affiliation_type')
+                                : $legacyQuery->where('affiliation_type', $oldType);
+                        });
+                })
+                ->update($payload);
+        }
+    }
+
+    private function findTemplateId(?string $type, ?string $name): ?int
+    {
+        $name = $this->normalizeName((string) $name);
+        if ($name === '') {
+            return null;
+        }
+
+        $type = $this->nullableString($type);
+        $query = AffiliationTemplate::query()
+            ->where('affiliation_name', $name)
+            ->when($type === null, fn (Builder $builder) => $builder->whereNull('affiliation_type'), fn (Builder $builder) => $builder->where('affiliation_type', $type));
+
+        return $query->value('id');
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseAliases(string $value): array
+    {
+        if (trim($value) === '') {
+            return [];
+        }
+
+        $items = preg_split('/[\r\n,]+/', $value) ?: [];
+
+        return array_values(array_unique(array_filter(
+            array_map(fn (string $item): string => $this->normalizeName($item), $items),
+            fn (string $item): bool => $item !== ''
+        )));
+    }
+
+    private function normalizeName(string $value): string
+    {
+        return preg_replace('/\s+/', ' ', trim($value)) ?: trim($value);
+    }
+
+    private function nullableString(?string $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function affiliationTypeOptions(): array
+    {
+        return [
+            'school' => 'Sekolah',
+            'university' => 'Universitas',
+            'institute' => 'Institut',
+            'polytechnic' => 'Politeknik',
+            'academy' => 'Akademi',
+            'organization' => 'Organisasi',
+            'company' => 'Perusahaan',
+            'foundation' => 'Yayasan',
+            'other' => 'Lainnya',
+        ];
+    }
+
+    /**
      * @return array<int, Collection<int, AffiliationTemplate>>
      */
     private function templateSuggestions(LengthAwarePaginator $requests, Collection $templates): array
@@ -205,9 +440,21 @@ class AffiliationController extends Controller
         foreach ($requests->items() as $request) {
             $requestTokens = $this->affiliationTokens((string) $request->affiliation_name);
             $requestNormalized = implode(' ', $requestTokens);
+            $requestType = $this->inferAffiliationType((string) $request->affiliation_name, $request->affiliation_type);
 
             $matches = $templates
-                ->map(function (AffiliationTemplate $template) use ($requestTokens, $requestNormalized): array {
+                ->map(function (AffiliationTemplate $template) use ($requestTokens, $requestNormalized, $requestType): array {
+                    $templateType = $this->inferAffiliationType((string) $template->affiliation_name, $template->affiliation_type);
+                    $storedTemplateType = $this->nullableString($template->affiliation_type);
+
+                    if ($storedTemplateType && $templateType && $storedTemplateType !== $templateType) {
+                        return ['template' => $template, 'score' => 0];
+                    }
+
+                    if ($requestType && $templateType && $requestType !== $templateType) {
+                        return ['template' => $template, 'score' => 0];
+                    }
+
                     $templateTokens = $this->affiliationTokens((string) $template->affiliation_name);
                     $templateNormalized = implode(' ', $templateTokens);
                     $overlap = count(array_intersect($requestTokens, $templateTokens));
@@ -222,9 +469,13 @@ class AffiliationController extends Controller
                         }
                     }
 
+                    if ($requestType && $templateType === $requestType) {
+                        $score += 0.35;
+                    }
+
                     return ['template' => $template, 'score' => $score];
                 })
-                ->filter(fn (array $match): bool => $match['score'] >= 0.5)
+                ->filter(fn (array $match): bool => $match['score'] >= 0.65)
                 ->sortByDesc('score')
                 ->take(3)
                 ->pluck('template')
@@ -253,5 +504,30 @@ class AffiliationController extends Controller
             explode(' ', $normalized),
             fn (string $token): bool => mb_strlen($token) >= 3
         )));
+    }
+
+    private function inferAffiliationType(string $name, ?string $fallbackType = null): ?string
+    {
+        $normalized = mb_strtolower($name);
+
+        $keywordMap = [
+            'polytechnic' => ['politeknik', 'polytechnic'],
+            'university' => ['universitas', 'university'],
+            'institute' => ['institut', 'institute'],
+            'academy' => ['akademi', 'academy'],
+            'school' => ['sekolah', 'sma', 'smk', 'smp', 'sd', 'madrasah', 'school'],
+            'company' => ['pt ', 'cv ', 'perusahaan', 'company'],
+            'foundation' => ['yayasan', 'foundation'],
+        ];
+
+        foreach ($keywordMap as $type => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($normalized, $keyword)) {
+                    return $type;
+                }
+            }
+        }
+
+        return $this->nullableString($fallbackType);
     }
 }

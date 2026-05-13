@@ -95,3 +95,44 @@ class ApiClient {
         .timeout(_timeout);
   }
 }
+
+abstract class HttpApiClient {
+  Future<http.Response> get(String endpoint);
+
+  Future<http.Response> post(String endpoint, Map<String, dynamic> body);
+
+  Future<http.Response> put(String endpoint, Map<String, dynamic> body);
+
+  Future<http.Response> patch(String endpoint, Map<String, dynamic> body);
+
+  Future<http.Response> delete(String endpoint);
+}
+
+class StaticApiClientAdapter implements HttpApiClient {
+  const StaticApiClientAdapter();
+
+  @override
+  Future<http.Response> get(String endpoint) {
+    return ApiClient.get(endpoint);
+  }
+
+  @override
+  Future<http.Response> post(String endpoint, Map<String, dynamic> body) {
+    return ApiClient.post(endpoint, body);
+  }
+
+  @override
+  Future<http.Response> put(String endpoint, Map<String, dynamic> body) {
+    return ApiClient.put(endpoint, body);
+  }
+
+  @override
+  Future<http.Response> patch(String endpoint, Map<String, dynamic> body) {
+    return ApiClient.patch(endpoint, body);
+  }
+
+  @override
+  Future<http.Response> delete(String endpoint) {
+    return ApiClient.delete(endpoint);
+  }
+}

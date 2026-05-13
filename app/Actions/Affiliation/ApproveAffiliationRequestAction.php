@@ -9,15 +9,22 @@ use App\Support\Endmin\AuditLogger;
 class ApproveAffiliationRequestAction
 {
     public function __construct(
-        private readonly ResolveAffiliationTemplateAction $resolveAffiliationTemplateAction
+        private readonly ResolveAffiliationTemplateAction $resolveAffiliationTemplateAction,
+        private readonly \App\Actions\User\UpsertAdminAssignmentAction $upsertAdminAssignmentAction
     ) {}
 
-    public function __invoke(User $actor, AffiliationRequest $request, ?int $templateId = null, ?string $canonicalName = null): void
+    public function __invoke(
+        User $actor,
+        AffiliationRequest $request,
+        ?int $templateId = null,
+        ?string $canonicalType = null,
+        ?string $canonicalName = null
+    ): void
     {
         $template = ($this->resolveAffiliationTemplateAction)(
             $actor,
             $templateId,
-            $request->affiliation_type,
+            $canonicalType ?: $request->affiliation_type,
             $canonicalName ?: $request->affiliation_name
         );
 
@@ -25,6 +32,7 @@ class ApproveAffiliationRequestAction
         $before = $user?->only([
             'affiliation_type',
             'affiliation_name',
+            'affiliation_template_id',
             'student_id_type',
             'student_id_number',
             'affiliation_status',
@@ -35,6 +43,7 @@ class ApproveAffiliationRequestAction
         $user->forceFill([
             'affiliation_type' => $template->affiliation_type,
             'affiliation_name' => $template->affiliation_name,
+            'affiliation_template_id' => $template->id,
             'student_id_type' => $request->student_id_type,
             'student_id_number' => $request->student_id_number,
             'affiliation_status' => 'verified',
@@ -52,6 +61,10 @@ class ApproveAffiliationRequestAction
             'rejection_reason' => null,
         ])->save();
 
+        if ($user?->isAdminOnly() && $user->isActiveAccount()) {
+            ($this->upsertAdminAssignmentAction)($user, 'active', null, (int) $actor->id);
+        }
+
         AuditLogger::log(
             actor: $actor,
             module: 'affiliation',
@@ -61,6 +74,7 @@ class ApproveAffiliationRequestAction
             after: $user->only([
                 'affiliation_type',
                 'affiliation_name',
+                'affiliation_template_id',
                 'student_id_type',
                 'student_id_number',
                 'affiliation_status',

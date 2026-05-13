@@ -12,6 +12,7 @@ class AdminAssignment extends Model
 
     protected $fillable = [
         'user_id',
+        'affiliation_template_id',
         'affiliation_type',
         'affiliation_name',
         'position_name',
@@ -35,6 +36,11 @@ class AdminAssignment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function affiliationTemplate(): BelongsTo
+    {
+        return $this->belongsTo(AffiliationTemplate::class, 'affiliation_template_id');
     }
 
     public function assignedBy(): BelongsTo

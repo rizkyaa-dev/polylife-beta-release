@@ -11,8 +11,10 @@ class UpsertAdminAssignmentAction
     {
         $affiliationType = trim((string) ($user->affiliation_type ?? '')) ?: 'other';
         $affiliationName = trim((string) ($user->affiliation_name ?? '')) ?: 'Unassigned Affiliation';
+        $affiliationTemplateId = $user->affiliation_template_id;
 
         $payload = [
+            'affiliation_template_id' => $affiliationTemplateId,
             'status' => $status,
             'contact_email' => $user->email,
         ];

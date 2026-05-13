@@ -6,12 +6,16 @@ import 'package:mobile_ver/features/todo/models/todo_item.dart';
 import 'package:mobile_ver/features/todo/repositories/todo_repository.dart';
 
 class ApiTodoRepository implements TodoRepository {
+  ApiTodoRepository({HttpApiClient? client})
+    : _client = client ?? const StaticApiClientAdapter();
+
   static final DateFormat _dateFormatter = DateFormat('yyyy-MM-dd');
   static final DateFormat _timeFormatter = DateFormat('HH:mm');
+  final HttpApiClient _client;
 
   @override
   Future<List<TodoItem>> fetchAll() async {
-    final response = await ApiClient.get('/todolist');
+    final response = await _client.get('/todolist');
     if (response.statusCode != 200) {
       throw Exception('Failed to load todo');
     }
@@ -53,7 +57,7 @@ class ApiTodoRepository implements TodoRepository {
 
   @override
   Future<TodoItem> create(TodoItem item) async {
-    final response = await ApiClient.post('/todolist', _toApiPayload(item));
+    final response = await _client.post('/todolist', _toApiPayload(item));
     if (response.statusCode != 201) {
       throw Exception('Failed to create todo');
     }
@@ -63,7 +67,7 @@ class ApiTodoRepository implements TodoRepository {
 
   @override
   Future<TodoItem> update(TodoItem item) async {
-    final response = await ApiClient.put(
+    final response = await _client.put(
       '/todolist/${item.id}',
       _toApiPayload(item),
     );
@@ -76,7 +80,7 @@ class ApiTodoRepository implements TodoRepository {
 
   @override
   Future<void> delete(int id) async {
-    final response = await ApiClient.delete('/todolist/$id');
+    final response = await _client.delete('/todolist/$id');
     if (response.statusCode != 200) {
       throw Exception('Failed to delete todo');
     }

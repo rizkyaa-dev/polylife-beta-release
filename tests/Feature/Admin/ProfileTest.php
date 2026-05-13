@@ -61,8 +61,48 @@ test('admin profile does not expose broadcast target while affiliation is pendin
     $this->actingAs($admin)
         ->get(route('admin.profile'))
         ->assertOk()
-        ->assertSee('Pengajuan afiliasi pending')
+        ->assertSeeVolt('profile.update-affiliation-request-form')
+        ->assertSee('Pengajuan sedang menunggu review')
         ->assertSee('PENDING001')
-        ->assertSee('Belum ada target afiliasi untuk akun admin ini.')
+        ->assertSee('Akun admin ini belum memiliki afiliasi terverifikasi.')
         ->assertDontSee('UNIVERSITY - Universitas Pending Admin');
+});
+
+test('admin profile treats verified status without affiliation data as unverified', function () {
+    $admin = User::factory()->create([
+        'is_admin' => User::ADMIN_LEVEL_ADMIN,
+        'account_status' => 'active',
+        'affiliation_type' => null,
+        'affiliation_name' => null,
+        'affiliation_template_id' => null,
+        'student_id_type' => null,
+        'student_id_number' => null,
+        'affiliation_status' => 'verified',
+        'affiliation_verified_at' => now(),
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.profile'))
+        ->assertOk()
+        ->assertSeeVolt('profile.update-affiliation-request-form')
+        ->assertSee('Belum diisi')
+        ->assertSee('Menunggu review')
+        ->assertDontSee('Afiliasi sudah terverifikasi')
+        ->assertDontSee('Diverifikasi');
+});
+
+test('admin without affiliation request can submit affiliation from profile', function () {
+    $admin = User::factory()->create([
+        'is_admin' => User::ADMIN_LEVEL_ADMIN,
+        'account_status' => 'active',
+        'affiliation_type' => null,
+        'affiliation_name' => null,
+        'affiliation_status' => 'pending',
+    ]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.profile'))
+        ->assertOk()
+        ->assertSeeVolt('profile.update-affiliation-request-form')
+        ->assertSee('Submit Pengajuan');
 });

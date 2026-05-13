@@ -16,14 +16,16 @@
         'light' => 'Terang',
         default => 'Ikuti perangkat',
     };
-    $affiliationStatusLabel = match ($user?->affiliation_status) {
-        'verified' => 'Terverifikasi',
-        'rejected' => 'Ditolak',
+    $hasVerifiedAffiliation = $user?->affiliation_status === 'verified'
+        && (filled($user?->affiliation_template_id) || filled($user?->affiliation_name));
+    $affiliationStatusLabel = match (true) {
+        $hasVerifiedAffiliation => 'Terverifikasi',
+        $user?->affiliation_status === 'rejected' => 'Ditolak',
         default => 'Menunggu review',
     };
-    $affiliationStatusClass = match ($user?->affiliation_status) {
-        'verified' => 'text-emerald-600 dark:text-emerald-300',
-        'rejected' => 'text-rose-600 dark:text-rose-300',
+    $affiliationStatusClass = match (true) {
+        $hasVerifiedAffiliation => 'text-emerald-600 dark:text-emerald-300',
+        $user?->affiliation_status === 'rejected' => 'text-rose-600 dark:text-rose-300',
         default => 'text-amber-600 dark:text-amber-300',
     };
 @endphp

@@ -129,7 +129,7 @@ class AffiliationBroadcastPushService
 
         if ($broadcast->target_mode !== AffiliationBroadcast::TARGET_MODE_GLOBAL) {
             $targets = $broadcast->targets
-                ->filter(fn ($target) => filled($target->affiliation_name))
+                ->filter(fn ($target) => filled($target->affiliation_name) || filled($target->affiliation_template_id))
                 ->values();
 
             if ($targets->isEmpty()) {
@@ -139,14 +139,24 @@ class AffiliationBroadcastPushService
             $query->where(function ($outerQuery) use ($targets): void {
                 foreach ($targets as $target) {
                     $outerQuery->orWhere(function ($matchQuery) use ($target): void {
-                        $matchQuery->where('affiliation_name', $target->affiliation_name);
+                        $matchQuery->where(function ($targetQuery) use ($target): void {
+                            if (filled($target->affiliation_template_id)) {
+                                $targetQuery->where('affiliation_template_id', (int) $target->affiliation_template_id);
+                            }
 
-                        if (filled($target->affiliation_type)) {
-                            $matchQuery->where(function ($typeQuery) use ($target): void {
-                                $typeQuery->whereNull('affiliation_type')
-                                    ->orWhere('affiliation_type', $target->affiliation_type);
-                            });
-                        }
+                            if (filled($target->affiliation_name)) {
+                                $targetQuery->orWhere(function ($legacyQuery) use ($target): void {
+                                    $legacyQuery->where('affiliation_name', $target->affiliation_name);
+
+                                    if (filled($target->affiliation_type)) {
+                                        $legacyQuery->where(function ($typeQuery) use ($target): void {
+                                            $typeQuery->whereNull('affiliation_type')
+                                                ->orWhere('affiliation_type', $target->affiliation_type);
+                                        });
+                                    }
+                                });
+                            }
+                        });
                     });
                 }
             });

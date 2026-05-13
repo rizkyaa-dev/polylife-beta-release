@@ -10,7 +10,7 @@ test('profile page is displayed', function () {
 
     $this->actingAs($user);
 
-    $response = $this->get('/profile');
+    $response = $this->get('/workspace/profile');
 
     $response
         ->assertOk()
@@ -18,6 +18,14 @@ test('profile page is displayed', function () {
         ->assertSeeVolt('profile.update-affiliation-request-form')
         ->assertSeeVolt('profile.update-password-form')
         ->assertSeeVolt('profile.delete-user-form');
+});
+
+test('legacy profile path redirects to workspace profile', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/profile')
+        ->assertRedirect(route('profile'));
 });
 
 test('user can submit and cancel affiliation request from profile', function () {
@@ -61,26 +69,42 @@ test('user can submit and cancel affiliation request from profile', function () 
     ]);
 });
 
-test('verified user cannot submit affiliation request from profile action', function () {
+test('verified user can open form and submit affiliation change request', function () {
     $user = User::factory()->create([
         'affiliation_status' => 'verified',
         'affiliation_name' => 'Kampus Verified',
+        'student_id_type' => 'nim',
+        'student_id_number' => 'OLD001',
     ]);
 
     $this->actingAs($user);
 
     Volt::test('profile.update-affiliation-request-form')
+        ->assertSee('Ajukan pindah afiliasi')
+        ->assertDontSee('Submit Pengajuan')
+        ->call('showAffiliationChangeForm')
+        ->assertSet('showChangeForm', true)
+        ->assertSee('Submit Pengajuan')
         ->set('affiliation_type', 'university')
         ->set('affiliation_name', 'Universitas Baru')
         ->set('student_id_type', 'nim')
         ->set('student_id_number', '123456789')
         ->call('submitAffiliationRequest')
-        ->assertHasErrors(['affiliation_name']);
+        ->assertHasNoErrors()
+        ->assertDispatched('affiliation-request-updated');
 
-    $this->assertDatabaseMissing('affiliation_requests', [
+    $this->assertDatabaseHas('affiliation_requests', [
         'user_id' => $user->id,
         'affiliation_name' => 'Universitas Baru',
+        'student_id_number' => '123456789',
         'status' => 'pending',
+    ]);
+
+    $this->assertDatabaseHas('users', [
+        'id' => $user->id,
+        'affiliation_name' => 'Kampus Verified',
+        'student_id_number' => 'OLD001',
+        'affiliation_status' => 'verified',
     ]);
 });
 

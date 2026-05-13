@@ -21,6 +21,7 @@ class CaptureUserSnapshotAction
             'email_verified_at' => optional($user->email_verified_at)->toDateTimeString(),
             'affiliation_type' => $user->affiliation_type,
             'affiliation_name' => $user->affiliation_name,
+            'affiliation_template_id' => $user->affiliation_template_id,
             'affiliation_status' => $user->affiliation_status,
             'student_id_type' => $user->student_id_type,
             'student_id_number' => $user->student_id_number,

@@ -4,6 +4,7 @@ namespace App\Actions\User;
 
 use App\Models\User;
 use App\Support\Endmin\AuditLogger;
+use Illuminate\Validation\ValidationException;
 
 class UpdateUserVerificationAction
 {
@@ -18,6 +19,16 @@ class UpdateUserVerificationAction
     public function __invoke(User $actor, User $user, array $validated, bool $emailVerified): void
     {
         $before = ($this->captureUserSnapshotAction)($user);
+
+        if (
+            $validated['affiliation_status'] === 'verified'
+            && blank($user->affiliation_template_id)
+            && blank($user->affiliation_name)
+        ) {
+            throw ValidationException::withMessages([
+                'affiliation_status' => 'Lengkapi afiliasi user sebelum menandai sebagai terverifikasi.',
+            ]);
+        }
 
         $user->email_verified_at = $emailVerified ? ($user->email_verified_at ?: now()) : null;
         $user->affiliation_status = $validated['affiliation_status'];
