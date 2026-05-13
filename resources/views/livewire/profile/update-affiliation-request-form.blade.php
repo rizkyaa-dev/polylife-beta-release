@@ -122,6 +122,18 @@ new class extends Component
                 ->orderBy('affiliation_name')
                 ->limit(50)
                 ->get(['affiliation_name']),
+            'templateSuggestions' => AffiliationTemplate::query()
+                ->where('is_active', true)
+                ->orderBy('affiliation_name')
+                ->limit(200)
+                ->get(['affiliation_type', 'affiliation_name', 'aliases'])
+                ->map(fn (AffiliationTemplate $template): array => [
+                    'type' => $template->affiliation_type,
+                    'name' => $template->affiliation_name,
+                    'aliases' => array_values(array_filter((array) ($template->aliases ?? []))),
+                ])
+                ->unique(fn (array $template): string => mb_strtolower(preg_replace('/\s+/', ' ', trim($template['name']))))
+                ->values(),
         ];
     }
 
@@ -273,7 +285,9 @@ new class extends Component
             </div>
         @endif
 
-        <form wire:submit="submitAffiliationRequest" class="mt-5 space-y-4">
+        <form wire:submit="submitAffiliationRequest"
+              class="mt-5 space-y-4"
+              data-affiliation-smart-type-form>
             @if ($hasVerifiedAffiliation)
                 <div class="rounded-2xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-100">
                     Isi data afiliasi baru. Afiliasi lama tetap aktif sampai perubahan ini disetujui.
@@ -283,11 +297,15 @@ new class extends Component
             <div class="grid gap-4 md:grid-cols-2">
                 <div>
                     <label for="affiliation_type" class="form-label">Jenis Afiliasi</label>
-                    <select id="affiliation_type" wire:model="affiliation_type" class="mt-1 form-input">
+                    <select id="affiliation_type"
+                            wire:model.live="affiliation_type"
+                            class="mt-1 form-input"
+                            data-affiliation-type-select>
                         @foreach ($this->affiliationTypeOptions() as $value => $label)
                             <option value="{{ $value }}">{{ $label }}</option>
                         @endforeach
                     </select>
+                    <p class="mt-1 hidden text-xs text-indigo-600 dark:text-indigo-300" data-affiliation-type-hint></p>
                     @error('affiliation_type') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
@@ -303,12 +321,21 @@ new class extends Component
 
             <div>
                 <label for="affiliation_name" class="form-label">Nama Afiliasi</label>
-                <input id="affiliation_name" wire:model="affiliation_name" type="text" list="affiliation-template-options" class="mt-1 form-input" placeholder="Contoh: Universitas Indonesia">
-                <datalist id="affiliation-template-options">
-                    @foreach ($templates as $template)
-                        <option value="{{ $template->affiliation_name }}"></option>
-                    @endforeach
-                </datalist>
+                <div class="relative mt-1" data-affiliation-combobox>
+                    <input id="affiliation_name"
+                           wire:model.live.debounce.150ms="affiliation_name"
+                           type="text"
+                           autocomplete="off"
+                           spellcheck="false"
+                           aria-autocomplete="list"
+                           aria-expanded="false"
+                           class="form-input"
+                           placeholder="Contoh: Universitas Indonesia"
+                           data-affiliation-name-input>
+                    <div class="absolute left-0 right-0 top-full z-50 mt-2 hidden max-h-56 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-1 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-950"
+                         data-affiliation-suggestions
+                         wire:ignore></div>
+                </div>
                 @error('affiliation_name') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
             </div>
 
@@ -340,3 +367,379 @@ new class extends Component
         @endif
     @endif
 </section>
+
+@script
+<script>
+    const affiliationTemplateSuggestions = @js($templateSuggestions);
+
+    const normalizeAffiliationName = (value) => value
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const affiliationTypeLabels = {
+        school: 'Sekolah',
+        university: 'Universitas',
+        institute: 'Institut',
+        polytechnic: 'Politeknik',
+        academy: 'Akademi',
+        organization: 'Organisasi',
+        company: 'Perusahaan',
+        foundation: 'Yayasan',
+        other: 'Lainnya',
+    };
+
+    const preparedAffiliationTemplates = (affiliationTemplateSuggestions || [])
+        .map((template) => {
+            const name = String(template.name || '').trim();
+            const aliases = Array.isArray(template.aliases) ? template.aliases : [];
+            const phrases = [name, ...aliases]
+                .map((phrase) => normalizeAffiliationName(String(phrase || '')))
+                .filter(Boolean);
+
+            return {
+                type: template.type || null,
+                name,
+                normalizedName: normalizeAffiliationName(name),
+                phrases,
+            };
+        })
+        .filter((template) => template.name && template.normalizedName);
+
+    const scoreAffiliationTemplate = (template, value) => {
+        const input = normalizeAffiliationName(value);
+
+        if (!input) {
+            return 0;
+        }
+
+        if (template.normalizedName.startsWith(input)) {
+            return 1000 + input.length;
+        }
+
+        const phraseMatch = template.phrases.some((phrase) => phrase.startsWith(input));
+
+        if (phraseMatch) {
+            return 850 + input.length;
+        }
+
+        const inputTokens = input.split(' ');
+        const templateTokens = template.normalizedName.split(' ');
+        let score = 0;
+
+        for (let index = 0; index < inputTokens.length; index += 1) {
+            const inputToken = inputTokens[index] || '';
+            const templateToken = templateTokens[index] || '';
+
+            if (!inputToken || !templateToken.startsWith(inputToken)) {
+                return 0;
+            }
+
+            score += inputToken.length;
+        }
+
+        return 500 + score;
+    };
+
+    const findAffiliationMatches = (value, limit = 4) => preparedAffiliationTemplates
+        .map((template) => ({
+            ...template,
+            score: scoreAffiliationTemplate(template, value),
+        }))
+        .filter((template) => template.score > 0)
+        .sort((first, second) => second.score - first.score || first.name.localeCompare(second.name))
+        .slice(0, limit);
+
+    const templateTypeSuggestion = (template) => {
+        if (!template?.type || !affiliationTypeLabels[template.type]) {
+            return null;
+        }
+
+        return { value: template.type, label: affiliationTypeLabels[template.type] };
+    };
+
+    const fallbackAffiliationCompletions = [
+        { type: 'institute', name: 'Institut' },
+        { type: 'polytechnic', name: 'Politeknik' },
+        { type: 'university', name: 'Universitas' },
+        { type: 'school', name: 'Sekolah' },
+        { type: 'academy', name: 'Akademi' },
+        { type: 'organization', name: 'Organisasi' },
+        { type: 'company', name: 'Perusahaan' },
+        { type: 'foundation', name: 'Yayasan' },
+    ].map((template) => ({
+        ...template,
+        normalizedName: normalizeAffiliationName(template.name),
+        phrases: [normalizeAffiliationName(template.name)],
+    }));
+
+    const findFallbackAffiliationCompletion = (value) => fallbackAffiliationCompletions
+        .map((template) => ({
+            ...template,
+            score: scoreAffiliationTemplate(template, value),
+        }))
+        .filter((template) => template.score > 0)
+        .sort((first, second) => second.score - first.score)
+        .at(0) || null;
+
+    const inferAffiliationType = (value) => {
+        const text = normalizeAffiliationName(value);
+        const padded = ` ${text} `;
+
+        if (!text) {
+            return null;
+        }
+
+        const hasAny = (patterns) => patterns.some((pattern) => pattern.test(padded));
+
+        if (hasAny([/\bpoliteknik\b/, /\bpoltek\b/, /\bpolytechnic\b/])) {
+            return { value: 'polytechnic', label: 'Politeknik' };
+        }
+
+        if (hasAny([/\binstitut\b/, /\binstitute\b/, /\bsek institut\b/, /\bitb\b/, /\bits\b/])) {
+            return { value: 'institute', label: 'Institut' };
+        }
+
+        if (hasAny([/\bakademi\b/, /\bacademy\b/, /\bakper\b/, /\bakbid\b/])) {
+            return { value: 'academy', label: 'Akademi' };
+        }
+
+        if (hasAny([/\buniversitas\b/, /\buniversity\b/, /\buniv\b/, /\buin\b/, /\bugm\b/, /\bunesa\b/, /\bundip\b/, /\bunair\b/, /\bunhas\b/, /\bunpad\b/])) {
+            return { value: 'university', label: 'Universitas' };
+        }
+
+        if (hasAny([/\bsmk\b/, /\bsma\b/, /\bma\b/, /\bmts\b/, /\bsmp\b/, /\bsd\b/, /\bsekolah\b/, /\bmadrasah\b/, /\bpesantren\b/])) {
+            return { value: 'school', label: 'Sekolah' };
+        }
+
+        if (hasAny([/\byayasan\b/, /\bfoundation\b/])) {
+            return { value: 'foundation', label: 'Yayasan' };
+        }
+
+        if (hasAny([/\bpt\b/, /\bcv\b/, /\bcompany\b/, /\bperusahaan\b/, /\bcorp\b/, /\bcorporation\b/, /\binc\b/, /\bltd\b/])) {
+            return { value: 'company', label: 'Perusahaan' };
+        }
+
+        if (hasAny([/\borganisasi\b/, /\borganization\b/, /\bkomunitas\b/, /\bcommunity\b/, /\bhimpunan\b/, /\bukm\b/, /\bormawa\b/])) {
+            return { value: 'organization', label: 'Organisasi' };
+        }
+
+        return null;
+    };
+
+    const dispatchLivewireInput = (element) => {
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    const setupAffiliationSmartType = () => {
+        document.querySelectorAll('[data-affiliation-smart-type-form]').forEach((form) => {
+            const nameInput = form.querySelector('[data-affiliation-name-input]');
+            const typeSelect = form.querySelector('[data-affiliation-type-select]');
+            const hint = form.querySelector('[data-affiliation-type-hint]');
+            const suggestionsPanel = form.querySelector('[data-affiliation-suggestions]');
+
+            if (!nameInput || !typeSelect) {
+                return;
+            }
+
+            if (
+                nameInput.dataset.smartTypeReady === '1'
+                && typeSelect.dataset.smartTypeReady === '1'
+                && nameInput.dataset.smartAutocompleteReady === '1'
+            ) {
+                return;
+            }
+
+            nameInput.dataset.smartTypeReady = '1';
+            typeSelect.dataset.smartTypeReady = '1';
+            nameInput.dataset.smartAutocompleteReady = '1';
+
+            let userChangedType = typeSelect.dataset.affiliationManualType === '1';
+            let applyingSmartType = false;
+            let activeSuggestionIndex = -1;
+
+            const updateHint = (suggestion, applied) => {
+                if (!hint) {
+                    return;
+                }
+
+                if (!suggestion) {
+                    hint.textContent = '';
+                    hint.classList.add('hidden');
+                    return;
+                }
+
+                hint.textContent = applied
+                    ? `Jenis disarankan otomatis: ${suggestion.label}.`
+                    : `Saran jenis: ${suggestion.label}. Pilihan manual kamu tetap dipakai.`;
+                hint.classList.remove('hidden');
+            };
+
+            const setNameValue = (value) => {
+                nameInput.value = value;
+                dispatchLivewireInput(nameInput);
+                nameInput.focus();
+                const position = nameInput.value.length;
+                nameInput.setSelectionRange(position, position);
+            };
+
+            const closeSuggestions = () => {
+                activeSuggestionIndex = -1;
+
+                if (suggestionsPanel) {
+                    suggestionsPanel.innerHTML = '';
+                    suggestionsPanel.classList.add('hidden');
+                }
+
+                nameInput.setAttribute('aria-expanded', 'false');
+            };
+
+            const applyTemplate = (template) => {
+                setNameValue(template.name);
+
+                if (template.type && typeSelect.querySelector(`option[value="${template.type}"]`)) {
+                    applyingSmartType = true;
+                    typeSelect.value = template.type;
+                    dispatchLivewireInput(typeSelect);
+                    applyingSmartType = false;
+                    updateHint(templateTypeSuggestion(template), true);
+                }
+
+                closeSuggestions();
+            };
+
+            const markActiveSuggestion = (buttons) => {
+                buttons.forEach((button, index) => {
+                    const active = index === activeSuggestionIndex;
+                    button.classList.toggle('bg-indigo-50', active);
+                    button.classList.toggle('dark:bg-indigo-500/15', active);
+                });
+            };
+
+            const renderSuggestions = () => {
+                if (!suggestionsPanel) {
+                    return [];
+                }
+
+                const matches = findAffiliationMatches(nameInput.value, 6);
+                suggestionsPanel.innerHTML = '';
+
+                if (matches.length === 0 || !nameInput.value.trim()) {
+                    closeSuggestions();
+                    return [];
+                }
+
+                matches.forEach((match) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-slate-700 hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none dark:text-slate-100 dark:hover:bg-indigo-500/15 dark:focus:bg-indigo-500/15';
+                    button.innerHTML = '<span class="min-w-0 truncate font-semibold"></span><span class="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-200"></span>';
+                    button.querySelector('span:first-child').textContent = match.name;
+                    button.querySelector('span:last-child').textContent = affiliationTypeLabels[match.type] || 'Afiliasi';
+                    button.addEventListener('mousedown', (event) => event.preventDefault());
+                    button.addEventListener('click', () => applyTemplate(match));
+                    suggestionsPanel.appendChild(button);
+                });
+
+                activeSuggestionIndex = -1;
+                suggestionsPanel.classList.remove('hidden');
+                nameInput.setAttribute('aria-expanded', 'true');
+
+                return matches;
+            };
+
+            const maybeApplySuggestion = () => {
+                const match = findAffiliationMatches(nameInput.value, 1)[0] || null;
+                const suggestion = templateTypeSuggestion(match) || inferAffiliationType(nameInput.value);
+
+                if (!suggestion || !typeSelect.querySelector(`option[value="${suggestion.value}"]`)) {
+                    updateHint(null, false);
+                    return;
+                }
+
+                if (userChangedType) {
+                    updateHint(suggestion, false);
+                    return;
+                }
+
+                if (typeSelect.value !== suggestion.value) {
+                    applyingSmartType = true;
+                    typeSelect.value = suggestion.value;
+                    dispatchLivewireInput(typeSelect);
+                    applyingSmartType = false;
+                }
+
+                updateHint(suggestion, true);
+            };
+
+            typeSelect.addEventListener('change', () => {
+                if (applyingSmartType) {
+                    return;
+                }
+
+                userChangedType = true;
+                typeSelect.dataset.affiliationManualType = '1';
+                const suggestion = inferAffiliationType(nameInput.value);
+                updateHint(suggestion, suggestion?.value === typeSelect.value);
+            });
+
+            nameInput.addEventListener('input', () => {
+                maybeApplySuggestion();
+                renderSuggestions();
+            });
+            nameInput.addEventListener('change', () => {
+                maybeApplySuggestion();
+                renderSuggestions();
+            });
+            nameInput.addEventListener('focus', renderSuggestions);
+            nameInput.addEventListener('keydown', (event) => {
+                if (!suggestionsPanel || suggestionsPanel.classList.contains('hidden')) {
+                    return;
+                }
+
+                const buttons = Array.from(suggestionsPanel.querySelectorAll('button'));
+
+                if (event.key === 'Escape') {
+                    closeSuggestions();
+                    return;
+                }
+
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    activeSuggestionIndex = Math.min(activeSuggestionIndex + 1, buttons.length - 1);
+                    markActiveSuggestion(buttons);
+                    return;
+                }
+
+                if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    activeSuggestionIndex = Math.max(activeSuggestionIndex - 1, 0);
+                    markActiveSuggestion(buttons);
+                    return;
+                }
+
+                if (event.key === 'Enter' && activeSuggestionIndex >= 0) {
+                    event.preventDefault();
+                    buttons[activeSuggestionIndex]?.click();
+                }
+            });
+            nameInput.addEventListener('blur', () => {
+                window.setTimeout(closeSuggestions, 120);
+            });
+
+            maybeApplySuggestion();
+        });
+    };
+
+    setupAffiliationSmartType();
+
+    document.addEventListener('livewire:navigated', setupAffiliationSmartType);
+    document.addEventListener('livewire:initialized', () => {
+        Livewire.hook('morph.updated', setupAffiliationSmartType);
+    });
+</script>
+@endscript
