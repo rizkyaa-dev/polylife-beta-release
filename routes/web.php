@@ -151,6 +151,8 @@ Route::prefix('endmin')
         Route::get('affiliations/manage', [EndminAffiliationController::class, 'manage'])->name('affiliations.manage.index');
         Route::get('affiliations/manage/create', [EndminAffiliationController::class, 'create'])->name('affiliations.manage.create');
         Route::post('affiliations/manage', [EndminAffiliationController::class, 'store'])->middleware($userWriteMiddleware)->name('affiliations.manage.store');
+        Route::get('affiliations/manage/{template}/merge', [EndminAffiliationController::class, 'mergeForm'])->name('affiliations.manage.merge');
+        Route::post('affiliations/manage/{template}/merge', [EndminAffiliationController::class, 'merge'])->middleware($userWriteMiddleware)->name('affiliations.manage.merge.store');
         Route::get('affiliations/manage/{template}/edit', [EndminAffiliationController::class, 'edit'])->name('affiliations.manage.edit');
         Route::put('affiliations/manage/{template}', [EndminAffiliationController::class, 'update'])->middleware($userWriteMiddleware)->name('affiliations.manage.update');
         Route::delete('affiliations/manage/{template}', [EndminAffiliationController::class, 'destroy'])->middleware($userWriteMiddleware)->name('affiliations.manage.destroy');

@@ -108,6 +108,12 @@
             </label>
 
             <div class="flex flex-wrap items-center justify-end gap-2">
+                @if ($isEdit)
+                    <a href="{{ route('endmin.affiliations.manage.merge', $template) }}"
+                       class="inline-flex items-center rounded-xl border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50 dark:border-amber-500/30 dark:text-amber-200 dark:hover:bg-amber-500/10">
+                        Merge
+                    </a>
+                @endif
                 <a href="{{ route('endmin.affiliations.manage.index') }}"
                    class="inline-flex items-center rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300">
                     Batal

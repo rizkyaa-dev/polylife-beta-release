@@ -414,3 +414,141 @@ test('editing affiliation template syncs linked runtime records', function () {
         ]);
     }
 });
+
+test('normalized affiliation template duplicate is rejected', function () {
+    $superAdmin = User::factory()->create(['is_admin' => User::ADMIN_LEVEL_SUPER_ADMIN]);
+
+    AffiliationTemplate::query()->create([
+        'affiliation_type' => 'institute',
+        'affiliation_name' => 'Institut Teknologi Bandung',
+        'aliases' => [],
+        'is_active' => true,
+        'created_by' => $superAdmin->id,
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->from(route('endmin.affiliations.manage.create'))
+        ->post(route('endmin.affiliations.manage.store'), [
+            'affiliation_type' => 'institute',
+            'affiliation_name' => 'institut   teknologi, bandung',
+            'aliases_text' => '',
+            'is_active' => '1',
+        ])
+        ->assertRedirect(route('endmin.affiliations.manage.create'))
+        ->assertSessionHasErrors('affiliation_name');
+
+    expect(AffiliationTemplate::query()
+        ->where('affiliation_type', 'institute')
+        ->where('normalized_name', 'institut teknologi bandung')
+        ->count())->toBe(1);
+});
+
+test('super admin can merge duplicate affiliation template into canonical template', function () {
+    $superAdmin = User::factory()->create(['is_admin' => User::ADMIN_LEVEL_SUPER_ADMIN]);
+    $source = AffiliationTemplate::query()->create([
+        'affiliation_type' => 'institute',
+        'affiliation_name' => 'Institut-Teknologi Bandung',
+        'aliases' => [],
+        'is_active' => true,
+        'created_by' => $superAdmin->id,
+    ]);
+    $target = AffiliationTemplate::query()->create([
+        'affiliation_type' => 'institute',
+        'affiliation_name' => 'Institut Teknologi Bandung',
+        'aliases' => ['ITB'],
+        'is_active' => true,
+        'created_by' => $superAdmin->id,
+    ]);
+    $user = User::factory()->create([
+        'affiliation_template_id' => $source->id,
+        'affiliation_type' => $source->affiliation_type,
+        'affiliation_name' => $source->affiliation_name,
+        'affiliation_status' => 'verified',
+    ]);
+    AdminAssignment::query()->create([
+        'user_id' => $user->id,
+        'affiliation_template_id' => $source->id,
+        'affiliation_type' => $source->affiliation_type,
+        'affiliation_name' => $source->affiliation_name,
+        'status' => 'active',
+        'contact_email' => $user->email,
+    ]);
+    $broadcast = AffiliationBroadcast::query()->create([
+        'created_by' => $superAdmin->id,
+        'title' => 'Info Merge',
+        'body' => 'Isi',
+        'target_mode' => AffiliationBroadcast::TARGET_MODE_AFFILIATION,
+        'send_push' => false,
+        'status' => AffiliationBroadcast::STATUS_DRAFT,
+    ]);
+    $broadcast->targets()->create([
+        'affiliation_template_id' => $source->id,
+        'affiliation_type' => $source->affiliation_type,
+        'affiliation_name' => $source->affiliation_name,
+    ]);
+    $request = AffiliationRequest::query()->create([
+        'user_id' => $user->id,
+        'affiliation_template_id' => $source->id,
+        'affiliation_type' => $source->affiliation_type,
+        'affiliation_name' => $source->affiliation_name,
+        'student_id_type' => 'nim',
+        'student_id_number' => '220001',
+        'status' => AffiliationRequest::STATUS_APPROVED,
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->post(route('endmin.affiliations.manage.merge.store', $source), [
+            'target_template_id' => $target->id,
+        ])
+        ->assertRedirect(route('endmin.affiliations.manage.edit', $target));
+
+    $this->assertDatabaseHas('affiliation_templates', [
+        'id' => $source->id,
+        'is_active' => false,
+        'merged_into_id' => $target->id,
+        'merged_by' => $superAdmin->id,
+    ]);
+
+    foreach (['users', 'admin_assignments', 'affiliation_broadcast_targets', 'affiliation_requests'] as $table) {
+        $this->assertDatabaseHas($table, [
+            $table === 'affiliation_requests' ? 'id' : 'affiliation_template_id' => $table === 'affiliation_requests' ? $request->id : $target->id,
+            'affiliation_type' => 'institute',
+            'affiliation_name' => 'Institut Teknologi Bandung',
+        ]);
+    }
+
+    $this->assertDatabaseHas('endmin_audit_logs', [
+        'actor_id' => $superAdmin->id,
+        'module' => 'affiliation',
+        'action' => 'template_merge',
+    ]);
+});
+
+test('manage page can filter ghost affiliation templates', function () {
+    $superAdmin = User::factory()->create(['is_admin' => User::ADMIN_LEVEL_SUPER_ADMIN]);
+    AffiliationTemplate::query()->create([
+        'affiliation_type' => 'university',
+        'affiliation_name' => 'Universitas Hantu',
+        'aliases' => [],
+        'is_active' => true,
+        'created_by' => $superAdmin->id,
+    ]);
+    $used = AffiliationTemplate::query()->create([
+        'affiliation_type' => 'university',
+        'affiliation_name' => 'Universitas Terpakai',
+        'aliases' => [],
+        'is_active' => true,
+        'created_by' => $superAdmin->id,
+    ]);
+    User::factory()->create([
+        'affiliation_template_id' => $used->id,
+        'affiliation_type' => $used->affiliation_type,
+        'affiliation_name' => $used->affiliation_name,
+    ]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('endmin.affiliations.manage.index', ['quality' => 'ghost']))
+        ->assertOk()
+        ->assertSee('Universitas Hantu')
+        ->assertDontSee('Universitas Terpakai');
+});

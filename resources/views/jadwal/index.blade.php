@@ -442,7 +442,7 @@
                         <article class="rounded-2xl border border-gray-100 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
                             <header class="flex items-start justify-between gap-3">
                                 <div>
-                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $event->catatan_tambahan ?: 'Tidak ada catatan' }}</p>
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $event->catatan_tambahan ?: 'Matkul hari ini' }}</p>
                                     <p class="text-xs text-gray-500 dark:text-slate-400">{{ $rangeLabel }}</p>
                                 </div>
                                 <span class="inline-flex items-center gap-2 rounded-full {{ $badgeClass }} px-3 py-1 text-[11px] font-semibold text-white dark:text-white/90">
@@ -516,76 +516,6 @@
                             </p>
                         </div>
                     @endforelse
-
-                    @if($selectedDayEvents->isNotEmpty() && $selectedDayMatkulEntries->isNotEmpty())
-                        <div class="rounded-2xl border border-indigo-50 bg-indigo-50/40 p-4 space-y-2 dark:border-indigo-500/20 dark:bg-indigo-500/10">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs font-semibold uppercase tracking-wide text-indigo-500 dark:text-indigo-200">Matkul hari ini</p>
-                                <span class="text-xs font-semibold text-indigo-600 dark:text-indigo-100">{{ $selectedDayMatkulEntries->count() }} matkul</span>
-                            </div>
-                            <ul class="space-y-2 text-sm text-gray-700 dark:text-slate-100">
-                                @foreach($selectedDayMatkulEntries as $detail)
-                                    @php
-                                        $matkul = $detail['instance'];
-                                        $slot = $detail['slot'] ?? null;
-                                        $startTime = $slot['jam_mulai']
-                                            ?? (method_exists($matkul, 'primaryStartTime')
-                                                ? $matkul->primaryStartTime()
-                                                : $formatLegacyTime($matkul->jam_mulai ?? null));
-                                        $endTime = $slot['jam_selesai']
-                                            ?? (method_exists($matkul, 'primaryEndTime')
-                                                ? $matkul->primaryEndTime()
-                                                : $formatLegacyTime($matkul->jam_selesai ?? null));
-                                        $timeLabel = $startTime && $endTime ? $startTime . ' - ' . $endTime : ($startTime ?: null);
-                                        $kelasLabel = $slot['kelas']
-                                            ?? (method_exists($matkul, 'primaryClass') ? $matkul->primaryClass() : ($matkul->kelas ?? null));
-                                        $ruanganLabel = $slot['ruangan']
-                                            ?? (method_exists($matkul, 'primaryRoom') ? $matkul->primaryRoom() : null)
-                                            ?? ($matkul->ruangan ?? null);
-                                    @endphp
-                                    <li class="rounded-2xl bg-white px-4 py-3 shadow-sm dark:bg-slate-900/60 dark:border dark:border-slate-800">
-                                        <div class="flex items-center justify-between gap-3">
-                                            <div>
-                                                <p class="font-semibold text-gray-900 dark:text-white">{{ $matkul->nama ?? 'Matkul' }}</p>
-                                                <div class="mt-1 flex flex-wrap gap-3 text-[11px] text-gray-600 dark:text-slate-300">
-                                                    @if($timeLabel)
-                                                        <span class="inline-flex items-center gap-1">
-                                                            <svg class="h-3.5 w-3.5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                                      d="M12 6v6l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            {{ $timeLabel }}
-                                                        </span>
-                                                    @endif
-                                                    @if($kelasLabel)
-                                                        <span class="inline-flex items-center gap-1">
-                                                            <svg class="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                                      d="M5 12h14M5 12a5 5 0 010-10h14a5 5 0 010 10M5 12a5 5 0 000 10h14a5 5 0 000-10" />
-                                                            </svg>
-                                                            Kelas {{ $kelasLabel }}
-                                                        </span>
-                                                    @endif
-                                                    @if($ruanganLabel)
-                                                        <span class="inline-flex items-center gap-1">
-                                                            <svg class="h-3.5 w-3.5 text-rose-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                                      d="M12 21c-4.418 0-8-3.134-8-7s3.582-7 8-7 8 3.134 8 7-3.582 7-8 7z" />
-                                                            </svg>
-                                                            {{ $ruanganLabel }}
-                                                        </span>
-                                                    @endif
-                                                </div>
-                                            </div>
-                                            <span class="rounded-full bg-indigo-100 px-3 py-1 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-100">
-                                                Matkul
-                                            </span>
-                                        </div>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
 
                     @if($kegiatanList->isNotEmpty())
                         <div class="rounded-2xl border border-gray-100 bg-gray-50/80 p-4 space-y-2 dark:border-slate-800 dark:bg-slate-900/50">

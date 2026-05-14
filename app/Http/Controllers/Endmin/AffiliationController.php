@@ -9,6 +9,8 @@ use App\Models\AffiliationRequest;
 use App\Models\AffiliationTemplate;
 use App\Models\User;
 use App\Queries\User\AffiliationIndexQuery;
+use App\Support\Affiliation\AffiliationNormalizer;
+use App\Support\Endmin\AuditLogger;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -22,7 +24,8 @@ class AffiliationController extends Controller
     public function __construct(
         private readonly AffiliationIndexQuery $affiliationIndexQuery,
         private readonly ApproveAffiliationRequestAction $approveAffiliationRequestAction,
-        private readonly RejectAffiliationRequestAction $rejectAffiliationRequestAction
+        private readonly RejectAffiliationRequestAction $rejectAffiliationRequestAction,
+        private readonly AffiliationNormalizer $affiliationNormalizer
     ) {}
 
     public function index(Request $request)
@@ -58,17 +61,53 @@ class AffiliationController extends Controller
     {
         $search = trim((string) $request->query('q', ''));
         $status = trim((string) $request->query('status', 'active'));
+        $quality = trim((string) $request->query('quality', ''));
+
+        $duplicateKeys = AffiliationTemplate::query()
+            ->select('affiliation_type', 'normalized_name')
+            ->whereNotNull('normalized_name')
+            ->where('normalized_name', '!=', '')
+            ->groupBy('affiliation_type', 'normalized_name')
+            ->havingRaw('COUNT(*) > 1')
+            ->get()
+            ->map(fn (AffiliationTemplate $template): string => $this->duplicateKey($template->affiliation_type, $template->normalized_name))
+            ->all();
 
         $templates = AffiliationTemplate::query()
             ->withCount(['users', 'adminAssignments', 'broadcastTargets'])
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $searchQuery) use ($search): void {
                     $searchQuery->where('affiliation_name', 'like', '%'.$search.'%')
-                        ->orWhere('affiliation_type', 'like', '%'.$search.'%');
+                        ->orWhere('affiliation_type', 'like', '%'.$search.'%')
+                        ->orWhere('normalized_name', 'like', '%'.$this->affiliationNormalizer->nameKey($search).'%');
                 });
             })
             ->when($status === 'active', fn (Builder $query) => $query->where('is_active', true))
             ->when($status === 'inactive', fn (Builder $query) => $query->where('is_active', false))
+            ->when($quality === 'ghost', function (Builder $query): void {
+                $query->doesntHave('users')
+                    ->doesntHave('adminAssignments')
+                    ->doesntHave('broadcastTargets')
+                    ->whereDoesntHave('requests', fn (Builder $requestQuery) => $requestQuery->whereIn('status', [
+                        AffiliationRequest::STATUS_PENDING,
+                        AffiliationRequest::STATUS_APPROVED,
+                    ]));
+            })
+            ->when($quality === 'duplicate' && $duplicateKeys !== [], function (Builder $query) use ($duplicateKeys): void {
+                $query->where(function (Builder $duplicateQuery) use ($duplicateKeys): void {
+                    foreach ($duplicateKeys as $key) {
+                        [$type, $name] = explode('|', $key, 2);
+                        $duplicateQuery->orWhere(function (Builder $itemQuery) use ($type, $name): void {
+                            $type === '__NULL__'
+                                ? $itemQuery->whereNull('affiliation_type')
+                                : $itemQuery->where('affiliation_type', $type);
+
+                            $itemQuery->where('normalized_name', $name);
+                        });
+                    }
+                });
+            })
+            ->when($quality === 'duplicate' && $duplicateKeys === [], fn (Builder $query) => $query->whereRaw('1 = 0'))
             ->orderByDesc('is_active')
             ->orderBy('affiliation_name')
             ->paginate(20)
@@ -79,7 +118,9 @@ class AffiliationController extends Controller
             'filters' => [
                 'q' => $search,
                 'status' => $status,
+                'quality' => $quality,
             ],
+            'duplicateKeys' => $duplicateKeys,
             'sidebarView' => 'layouts.components.endmin-sidebar',
         ]);
     }
@@ -106,6 +147,20 @@ class AffiliationController extends Controller
             'created_by' => $request->user()->id,
         ]);
 
+        AuditLogger::log(
+            actor: $request->user(),
+            module: 'affiliation',
+            action: 'template_create',
+            after: $template->only([
+                'id',
+                'affiliation_type',
+                'affiliation_name',
+                'normalized_name',
+                'aliases',
+                'is_active',
+            ])
+        );
+
         return redirect()
             ->route('endmin.affiliations.manage.edit', $template)
             ->with('success', 'Afiliasi berhasil dibuat.');
@@ -127,10 +182,33 @@ class AffiliationController extends Controller
         $validated = $this->validatedTemplatePayload($request, $template);
         $oldType = $template->affiliation_type;
         $oldName = $template->affiliation_name;
+        $before = $template->only([
+            'affiliation_type',
+            'affiliation_name',
+            'normalized_name',
+            'aliases',
+            'is_active',
+            'merged_into_id',
+        ]);
 
-        DB::transaction(function () use ($template, $validated, $oldType, $oldName): void {
+        DB::transaction(function () use ($request, $template, $validated, $oldType, $oldName, $before): void {
             $template->forceFill($validated)->save();
             $this->syncTemplateToRuntimeRecords($template, $oldType, $oldName);
+
+            AuditLogger::log(
+                actor: $request->user(),
+                module: 'affiliation',
+                action: 'template_update',
+                before: $before,
+                after: $template->fresh()->only([
+                    'affiliation_type',
+                    'affiliation_name',
+                    'normalized_name',
+                    'aliases',
+                    'is_active',
+                    'merged_into_id',
+                ])
+            );
         });
 
         return redirect()
@@ -138,8 +216,124 @@ class AffiliationController extends Controller
             ->with('success', 'Afiliasi berhasil diperbarui dan disinkronkan.');
     }
 
+    public function mergeForm(AffiliationTemplate $template)
+    {
+        $template->loadCount(['users', 'adminAssignments', 'broadcastTargets', 'requests']);
+
+        $targets = AffiliationTemplate::query()
+            ->whereKeyNot($template->id)
+            ->where('is_active', true)
+            ->whereNull('merged_into_id')
+            ->orderBy('affiliation_name')
+            ->get(['id', 'affiliation_type', 'affiliation_name']);
+
+        return view('endmin.affiliations.manage.merge', [
+            'template' => $template,
+            'targets' => $targets,
+            'sidebarView' => 'layouts.components.endmin-sidebar',
+        ]);
+    }
+
+    public function merge(Request $request, AffiliationTemplate $template)
+    {
+        $validated = $request->validate([
+            'target_template_id' => [
+                'required',
+                'integer',
+                Rule::exists('affiliation_templates', 'id')->where('is_active', true),
+            ],
+        ]);
+
+        if ((int) $validated['target_template_id'] === (int) $template->id) {
+            throw ValidationException::withMessages([
+                'target_template_id' => 'Template tujuan harus berbeda.',
+            ]);
+        }
+
+        $target = AffiliationTemplate::query()
+            ->whereKey($validated['target_template_id'])
+            ->where('is_active', true)
+            ->whereNull('merged_into_id')
+            ->firstOrFail();
+
+        $before = $template->only([
+            'id',
+            'affiliation_type',
+            'affiliation_name',
+            'normalized_name',
+            'is_active',
+            'merged_into_id',
+        ]);
+
+        $counts = [
+            'users' => $template->users()->count(),
+            'admin_assignments' => $template->adminAssignments()->count(),
+            'broadcast_targets' => $template->broadcastTargets()->count(),
+            'requests' => $template->requests()->count(),
+        ];
+
+        DB::transaction(function () use ($request, $template, $target, $before, $counts): void {
+            $payload = [
+                'affiliation_template_id' => $target->id,
+                'affiliation_type' => $target->affiliation_type,
+                'affiliation_name' => $target->affiliation_name,
+                'updated_at' => now(),
+            ];
+
+            DB::table('users')->where('affiliation_template_id', $template->id)->update($payload);
+
+            $this->deleteCollidingAdminAssignments($template, $target);
+            $this->deleteCollidingBroadcastTargets($template, $target);
+
+            DB::table('admin_assignments')->where('affiliation_template_id', $template->id)->update($payload);
+            DB::table('affiliation_broadcast_targets')->where('affiliation_template_id', $template->id)->update($payload);
+
+            DB::table('affiliation_requests')
+                ->where('affiliation_template_id', $template->id)
+                ->update([
+                    'affiliation_template_id' => $target->id,
+                    'affiliation_type' => $target->affiliation_type,
+                    'affiliation_name' => $target->affiliation_name,
+                    'updated_at' => now(),
+                ]);
+
+            $template->forceFill([
+                'is_active' => false,
+                'merged_into_id' => $target->id,
+                'merged_by' => $request->user()->id,
+                'merged_at' => now(),
+            ])->save();
+
+            AuditLogger::log(
+                actor: $request->user(),
+                module: 'affiliation',
+                action: 'template_merge',
+                before: $before,
+                after: $template->fresh()->only([
+                    'id',
+                    'affiliation_type',
+                    'affiliation_name',
+                    'normalized_name',
+                    'is_active',
+                    'merged_into_id',
+                    'merged_by',
+                    'merged_at',
+                ]),
+                context: [
+                    'target_template' => $target->only(['id', 'affiliation_type', 'affiliation_name', 'normalized_name']),
+                    'moved_counts' => $counts,
+                ]
+            );
+        });
+
+        return redirect()
+            ->route('endmin.affiliations.manage.edit', $target)
+            ->with('success', 'Afiliasi berhasil digabungkan ke '.$target->affiliation_name.'.');
+    }
+
     public function destroy(AffiliationTemplate $template)
     {
+        $before = $template->only(['id', 'affiliation_type', 'affiliation_name', 'normalized_name', 'is_active']);
         $relatedCount = $template->users()->count()
             + $template->adminAssignments()->count()
             + $template->broadcastTargets()->count()
@@ -147,6 +341,14 @@ class AffiliationController extends Controller
 
         if ($relatedCount > 0) {
             $template->forceFill(['is_active' => false])->save();
+            AuditLogger::log(
+                actor: request()->user(),
+                module: 'affiliation',
+                action: 'template_deactivate',
+                before: $before,
+                after: $template->fresh()->only(['id', 'affiliation_type', 'affiliation_name', 'normalized_name', 'is_active']),
+                context: ['related_count' => $relatedCount]
+            );
 
             return redirect()
                 ->route('endmin.affiliations.manage.index')
@@ -154,6 +356,12 @@ class AffiliationController extends Controller
         }
 
         $template->delete();
+        AuditLogger::log(
+            actor: request()->user(),
+            module: 'affiliation',
+            action: 'template_delete',
+            before: $before
+        );
 
         return redirect()
             ->route('endmin.affiliations.manage.index')
@@ -320,11 +528,13 @@ class AffiliationController extends Controller
             'is_active' => ['nullable', 'boolean'],
         ]);
 
-        $type = $this->nullableString($validated['affiliation_type'] ?? null);
-        $name = $this->normalizeName((string) $validated['affiliation_name']);
+        $type = $this->affiliationNormalizer->type($validated['affiliation_type'] ?? null);
+        $name = $this->affiliationNormalizer->displayName((string) $validated['affiliation_name']);
+        $normalizedName = $this->affiliationNormalizer->nameKey($name);
 
         $duplicate = AffiliationTemplate::query()
-            ->where('affiliation_name', $name)
+            ->where('normalized_name', $normalizedName)
+            ->whereNull('merged_into_id')
             ->when($type === null, fn (Builder $query) => $query->whereNull('affiliation_type'), fn (Builder $query) => $query->where('affiliation_type', $type))
             ->when($template, fn (Builder $query) => $query->whereKeyNot($template->id))
             ->exists();
@@ -338,6 +548,7 @@ class AffiliationController extends Controller
         return [
             'affiliation_type' => $type,
             'affiliation_name' => $name,
+            'normalized_name' => $normalizedName,
             'aliases' => $this->parseAliases((string) ($validated['aliases_text'] ?? '')),
             'is_active' => $request->boolean('is_active'),
         ];
@@ -368,6 +579,54 @@ class AffiliationController extends Controller
         }
     }
 
+    private function deleteCollidingAdminAssignments(AffiliationTemplate $source, AffiliationTemplate $target): void
+    {
+        DB::table('admin_assignments')
+            ->where('affiliation_template_id', $source->id)
+            ->orderBy('id')
+            ->chunkById(100, function ($assignments) use ($target): void {
+                foreach ($assignments as $assignment) {
+                    $exists = DB::table('admin_assignments')
+                        ->where('user_id', $assignment->user_id)
+                        ->where('affiliation_name', $target->affiliation_name)
+                        ->when(
+                            $target->affiliation_type === null,
+                            fn ($query) => $query->whereNull('affiliation_type'),
+                            fn ($query) => $query->where('affiliation_type', $target->affiliation_type)
+                        )
+                        ->exists();
+
+                    if ($exists) {
+                        DB::table('admin_assignments')->where('id', $assignment->id)->delete();
+                    }
+                }
+            });
+    }
+
+    private function deleteCollidingBroadcastTargets(AffiliationTemplate $source, AffiliationTemplate $target): void
+    {
+        DB::table('affiliation_broadcast_targets')
+            ->where('affiliation_template_id', $source->id)
+            ->orderBy('id')
+            ->chunkById(100, function ($targets) use ($target): void {
+                foreach ($targets as $broadcastTarget) {
+                    $exists = DB::table('affiliation_broadcast_targets')
+                        ->where('broadcast_id', $broadcastTarget->broadcast_id)
+                        ->where('affiliation_name', $target->affiliation_name)
+                        ->when(
+                            $target->affiliation_type === null,
+                            fn ($query) => $query->whereNull('affiliation_type'),
+                            fn ($query) => $query->where('affiliation_type', $target->affiliation_type)
+                        )
+                        ->exists();
+
+                    if ($exists) {
+                        DB::table('affiliation_broadcast_targets')->where('id', $broadcastTarget->id)->delete();
+                    }
+                }
+            });
+    }
+
     private function findTemplateId(?string $type, ?string $name): ?int
     {
         $name = $this->normalizeName((string) $name);
@@ -375,9 +634,11 @@ class AffiliationController extends Controller
             return null;
         }
 
-        $type = $this->nullableString($type);
+        $type = $this->affiliationNormalizer->type($type);
+        $normalizedName = $this->affiliationNormalizer->nameKey($name);
         $query = AffiliationTemplate::query()
-            ->where('affiliation_name', $name)
+            ->where('normalized_name', $normalizedName)
+            ->whereNull('merged_into_id')
             ->when($type === null, fn (Builder $builder) => $builder->whereNull('affiliation_type'), fn (Builder $builder) => $builder->where('affiliation_type', $type));
 
         return $query->value('id');
@@ -395,21 +656,24 @@ class AffiliationController extends Controller
         $items = preg_split('/[\r\n,]+/', $value) ?: [];
 
         return array_values(array_unique(array_filter(
-            array_map(fn (string $item): string => $this->normalizeName($item), $items),
+            array_map(fn (string $item): string => $this->affiliationNormalizer->displayName($item), $items),
             fn (string $item): bool => $item !== ''
         )));
     }
 
     private function normalizeName(string $value): string
     {
-        return preg_replace('/\s+/', ' ', trim($value)) ?: trim($value);
+        return $this->affiliationNormalizer->displayName($value);
     }
 
     private function nullableString(?string $value): ?string
     {
-        $value = trim((string) $value);
+        return $this->affiliationNormalizer->type($value);
+    }
 
-        return $value === '' ? null : $value;
+    private function duplicateKey(?string $type, ?string $normalizedName): string
+    {
+        return ($type ?: '__NULL__').'|'.($normalizedName ?: '');
     }
 
     /**
