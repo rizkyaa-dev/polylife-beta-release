@@ -32,6 +32,10 @@ Route::prefix('v1')->group(function () use ($userWriteMiddleware) {
         Route::post('auth/logout', [AuthController::class, 'logout'])->name('api.v1.auth.logout');
         Route::post('auth/logout-all', [AuthController::class, 'logoutAll'])->name('api.v1.auth.logout-all');
         Route::patch('profile', [ProfileController::class, 'update'])->middleware($userWriteMiddleware)->name('api.v1.profile.update');
+        Route::patch('profile/password', [ProfileController::class, 'updatePassword'])->middleware($userWriteMiddleware)->name('api.v1.profile.password.update');
+        Route::delete('profile/account', [ProfileController::class, 'deleteAccount'])->middleware($userWriteMiddleware)->name('api.v1.profile.account.destroy');
+        Route::post('profile/affiliation-request', [ProfileController::class, 'submitAffiliationRequest'])->middleware($userWriteMiddleware)->name('api.v1.profile.affiliation-request.store');
+        Route::delete('profile/affiliation-request', [ProfileController::class, 'cancelAffiliationRequest'])->middleware($userWriteMiddleware)->name('api.v1.profile.affiliation-request.destroy');
         Route::post('profile/avatar', [ProfileController::class, 'uploadAvatar'])->middleware($userWriteMiddleware)->name('api.v1.profile.avatar.store');
         Route::delete('profile/avatar', [ProfileController::class, 'deleteAvatar'])->middleware($userWriteMiddleware)->name('api.v1.profile.avatar.destroy');
         Route::get('profile/avatar', ProfileAvatarController::class)->name('api.v1.profile.avatar');

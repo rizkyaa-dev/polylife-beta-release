@@ -4,7 +4,6 @@ namespace App\Actions\Auth;
 
 use App\Models\User;
 use App\Notifications\PasswordChangedNotification;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
@@ -13,7 +12,7 @@ class SecurePasswordUpdateAction
 {
     public function __invoke(User $user, string $currentPassword, string $newPassword): void
     {
-        Auth::logoutOtherDevices($currentPassword);
+        $this->logoutOtherWebSessions($currentPassword);
 
         $user->forceFill([
             'password' => Hash::make($newPassword),
@@ -26,6 +25,15 @@ class SecurePasswordUpdateAction
             ipAddress: request()->ip(),
             userAgent: request()->userAgent()
         ));
+    }
+
+    private function logoutOtherWebSessions(string $currentPassword): void
+    {
+        $guard = auth()->guard('web');
+
+        if (method_exists($guard, 'logoutOtherDevices')) {
+            $guard->logoutOtherDevices($currentPassword);
+        }
     }
 
     private function deleteOtherDatabaseSessions(User $user, string $currentSessionId): void
@@ -53,10 +61,6 @@ class SecurePasswordUpdateAction
 
     private function revokeApiTokens(User $user): void
     {
-        if (! method_exists($user, 'tokens')) {
-            return;
-        }
-
         $user->tokens()->delete();
     }
 }

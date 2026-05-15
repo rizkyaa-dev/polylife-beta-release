@@ -30,6 +30,25 @@ class AppDatabase {
     return db.transaction(action);
   }
 
+  Future<void> clearUserData(int userId) async {
+    if (userId <= 0) {
+      return;
+    }
+
+    await transaction((txn) async {
+      for (final table in const [
+        'catatan_local',
+        'keuangan_local',
+        'todo_local',
+        'jadwal_local',
+        'pengumuman_local',
+        'sync_outbox',
+      ]) {
+        await txn.delete(table, where: 'user_id = ?', whereArgs: [userId]);
+      }
+    });
+  }
+
   Future<void> _create(Database db, int version) async {
     await db.execute('''
       CREATE TABLE sync_metadata (

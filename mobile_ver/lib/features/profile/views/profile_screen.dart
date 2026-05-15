@@ -27,12 +27,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _dateOfBirthController = TextEditingController();
   final _locationController = TextEditingController();
   final _timezoneController = TextEditingController();
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _affiliationNameController = TextEditingController();
+  final _studentIdNumberController = TextEditingController();
   String _gender = '';
   String _themePreference = 'system';
   String _locale = 'id';
-  bool _isEditing = false;
+  String _affiliationType = 'university';
+  String _studentIdType = 'nim';
   bool _isSaving = false;
   bool _isAvatarBusy = false;
+  bool _isPasswordSaving = false;
+  bool _isAffiliationEditing = false;
+  bool _isAffiliationSaving = false;
+  bool _isDeletingAccount = false;
+  String? _lastProfileFormSignature;
 
   @override
   void initState() {
@@ -52,12 +63,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _dateOfBirthController.dispose();
     _locationController.dispose();
     _timezoneController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    _affiliationNameController.dispose();
+    _studentIdNumberController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(userProvider);
+    if (user != null) {
+      _hydrateProfileFormIfNeeded(user);
+    }
 
     return Scaffold(
       backgroundColor: ProfileScreen._background,
@@ -79,9 +98,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   context.go('/');
                 },
                 onRefresh: _refreshProfile,
-                onEdit: user == null ? null : () => _startEditing(user),
-                onCancelEdit: _isEditing ? _stopEditing : null,
-                isEditing: _isEditing,
+                onEdit: null,
+                onCancelEdit: null,
+                isEditing: false,
               ),
               const SizedBox(height: 16),
               if (user == null)
@@ -96,114 +115,85 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onDeleteAvatar: _deleteAvatar,
                 ),
                 const SizedBox(height: 14),
-                if (_isEditing)
-                  _ProfileEditSection(
-                    isSaving: _isSaving,
-                    displayNameController: _displayNameController,
-                    bioController: _bioController,
-                    phoneController: _phoneController,
-                    dateOfBirthController: _dateOfBirthController,
-                    locationController: _locationController,
-                    timezoneController: _timezoneController,
-                    gender: _gender,
-                    themePreference: _themePreference,
-                    locale: _locale,
-                    onGenderChanged: (value) =>
-                        setState(() => _gender = value ?? ''),
-                    onThemeChanged: (value) =>
-                        setState(() => _themePreference = value ?? 'system'),
-                    onLocaleChanged: (value) =>
-                        setState(() => _locale = value ?? 'id'),
-                    onSave: _saveProfile,
-                    onCancel: _stopEditing,
-                  )
-                else ...[
-                  _InfoSection(
-                    title: 'Akun',
-                    rows: [
-                      _InfoRowData(
-                        icon: Icons.badge_outlined,
-                        label: 'Nama akun',
-                        value: user.name,
-                      ),
-                      _InfoRowData(
-                        icon: Icons.mail_outline_rounded,
-                        label: 'Email',
-                        value: user.email,
-                      ),
-                      _InfoRowData(
-                        icon: Icons.verified_user_outlined,
-                        label: 'Status akun',
-                        value: _accountStatusLabel(user.accountStatus),
-                      ),
-                      _InfoRowData(
-                        icon: Icons.mark_email_read_outlined,
-                        label: 'Verifikasi email',
-                        value: user.hasVerifiedEmail
-                            ? 'Terverifikasi'
-                            : 'Belum terverifikasi',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _InfoSection(
-                    title: 'Profil',
-                    rows: [
-                      _InfoRowData(
-                        icon: Icons.person_outline_rounded,
-                        label: 'Nama tampilan',
-                        value: _displayValue(user.profile?.displayName),
-                      ),
-                      _InfoRowData(
-                        icon: Icons.phone_outlined,
-                        label: 'Telepon',
-                        value: _displayValue(user.profile?.phone),
-                      ),
-                      _InfoRowData(
-                        icon: Icons.place_outlined,
-                        label: 'Lokasi',
-                        value: _displayValue(user.profile?.location),
-                      ),
-                      _InfoRowData(
-                        icon: Icons.palette_outlined,
-                        label: 'Tema profil',
-                        value: _themeLabel(user.profile?.themePreference),
-                      ),
-                      _InfoRowData(
-                        icon: Icons.schedule_rounded,
-                        label: 'Zona waktu',
-                        value: _displayValue(user.profile?.timezone),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                ],
                 _InfoSection(
-                  title: 'Kampus',
+                  title: 'Akun',
                   rows: [
                     _InfoRowData(
-                      icon: Icons.school_outlined,
-                      label: 'Institusi',
-                      value: _displayValue(user.affiliation?.name),
+                      icon: Icons.badge_outlined,
+                      label: 'Nama akun',
+                      value: user.name,
                     ),
                     _InfoRowData(
-                      icon: Icons.account_tree_outlined,
-                      label: 'Tipe',
-                      value: _affiliationTypeLabel(user.affiliation?.type),
+                      icon: Icons.mail_outline_rounded,
+                      label: 'Email',
+                      value: user.email,
                     ),
                     _InfoRowData(
-                      icon: Icons.confirmation_number_outlined,
-                      label: _studentIdLabel(user.affiliation?.studentIdType),
-                      value: _displayValue(user.affiliation?.studentIdNumber),
+                      icon: Icons.verified_user_outlined,
+                      label: 'Status akun',
+                      value: _accountStatusLabel(user.accountStatus),
                     ),
                     _InfoRowData(
-                      icon: Icons.fact_check_outlined,
-                      label: 'Status',
-                      value: _affiliationStatusLabel(user.affiliation?.status),
+                      icon: Icons.mark_email_read_outlined,
+                      label: 'Verifikasi email',
+                      value: user.hasVerifiedEmail
+                          ? 'Terverifikasi'
+                          : 'Belum terverifikasi',
                     ),
                   ],
                 ),
+                const SizedBox(height: 14),
+                _ProfileEditSection(
+                  isSaving: _isSaving,
+                  displayNameController: _displayNameController,
+                  bioController: _bioController,
+                  phoneController: _phoneController,
+                  dateOfBirthController: _dateOfBirthController,
+                  locationController: _locationController,
+                  timezoneController: _timezoneController,
+                  gender: _gender,
+                  themePreference: _themePreference,
+                  locale: _locale,
+                  onGenderChanged: (value) =>
+                      setState(() => _gender = value ?? ''),
+                  onThemeChanged: (value) =>
+                      setState(() => _themePreference = value ?? 'system'),
+                  onLocaleChanged: (value) =>
+                      setState(() => _locale = value ?? 'id'),
+                  onSave: _saveProfile,
+                ),
+                const SizedBox(height: 14),
+                _AffiliationSection(
+                  user: user,
+                  isEditing: _isAffiliationEditing,
+                  isSaving: _isAffiliationSaving,
+                  affiliationNameController: _affiliationNameController,
+                  studentIdNumberController: _studentIdNumberController,
+                  affiliationType: _affiliationType,
+                  studentIdType: _studentIdType,
+                  onTypeChanged: (value) =>
+                      setState(() => _affiliationType = value ?? 'university'),
+                  onStudentIdTypeChanged: (value) =>
+                      setState(() => _studentIdType = value ?? 'nim'),
+                  onShowForm: () => _startAffiliationEditing(user),
+                  onCancelForm: _stopAffiliationEditing,
+                  onSubmit: _submitAffiliationRequest,
+                  onCancelPending: _cancelAffiliationRequest,
+                ),
                 const SizedBox(height: 16),
+                _SecuritySection(
+                  currentPasswordController: _currentPasswordController,
+                  newPasswordController: _newPasswordController,
+                  confirmPasswordController: _confirmPasswordController,
+                  isSaving: _isPasswordSaving,
+                  onSubmit: _updatePassword,
+                ),
+                const SizedBox(height: 14),
+                _DangerZoneSection(
+                  isDeleting: _isDeletingAccount,
+                  onDeleteAccount: _confirmDeleteAccount,
+                ),
+                const SizedBox(height: 14),
                 _LogoutButton(onTap: _logout),
               ],
             ],
@@ -229,7 +219,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  void _startEditing(User user) {
+  void _hydrateProfileFormIfNeeded(User user) {
+    if (_isSaving) {
+      return;
+    }
+
+    final profile = user.profile;
+    final signature = [
+      profile?.displayName ?? '',
+      profile?.bio ?? '',
+      profile?.phone ?? '',
+      profile?.dateOfBirth ?? '',
+      profile?.location ?? '',
+      profile?.timezone ?? '',
+      profile?.gender ?? '',
+      profile?.themePreference ?? '',
+      profile?.locale ?? '',
+    ].join('\u001F');
+
+    if (_lastProfileFormSignature == signature) {
+      return;
+    }
+
+    _lastProfileFormSignature = signature;
+    _fillProfileControllers(user);
+  }
+
+  void _fillProfileControllers(User user) {
     final profile = user.profile;
 
     _displayNameController.text = profile?.displayName ?? '';
@@ -251,13 +267,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       'dark',
     }, 'system');
     _locale = _allowedValue(profile?.locale, const {'id', 'en'}, 'id');
-
-    setState(() => _isEditing = true);
-  }
-
-  void _stopEditing() {
-    if (_isSaving) return;
-    setState(() => _isEditing = false);
   }
 
   Future<void> _saveProfile() async {
@@ -284,7 +293,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     setState(() {
       _isSaving = false;
       if (result.isSuccess) {
-        _isEditing = false;
+        final updatedUser = ref.read(userProvider);
+        if (updatedUser != null) {
+          _lastProfileFormSignature = null;
+          _hydrateProfileFormIfNeeded(updatedUser);
+        }
       }
     });
 
@@ -327,6 +340,159 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     setState(() => _isAvatarBusy = false);
     messenger.showSnackBar(SnackBar(content: Text(result.message)));
   }
+
+  void _startAffiliationEditing(User user) {
+    final affiliation = user.affiliation;
+
+    _affiliationType = _allowedValue(
+      affiliation?.type,
+      _affiliationTypeOptions.keys.toSet(),
+      'university',
+    );
+    _studentIdType = _allowedValue(
+      affiliation?.studentIdType,
+      _identityTypeOptions.keys.toSet(),
+      'nim',
+    );
+    _affiliationNameController.text = affiliation?.name ?? '';
+    _studentIdNumberController.text = affiliation?.studentIdNumber ?? '';
+
+    setState(() => _isAffiliationEditing = true);
+  }
+
+  void _stopAffiliationEditing() {
+    if (_isAffiliationSaving) return;
+    setState(() => _isAffiliationEditing = false);
+  }
+
+  Future<void> _submitAffiliationRequest() async {
+    if (_isAffiliationSaving) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isAffiliationSaving = true);
+
+    final result = await ref
+        .read(authProvider.notifier)
+        .submitAffiliationRequest(
+          affiliationType: _affiliationType,
+          affiliationName: _affiliationNameController.text,
+          studentIdType: _studentIdType,
+          studentIdNumber: _studentIdNumberController.text,
+        );
+
+    if (!mounted) return;
+    setState(() {
+      _isAffiliationSaving = false;
+      if (result.isSuccess) {
+        _isAffiliationEditing = false;
+      }
+    });
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
+  }
+
+  Future<void> _cancelAffiliationRequest() async {
+    if (_isAffiliationSaving) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isAffiliationSaving = true);
+    final result = await ref
+        .read(authProvider.notifier)
+        .cancelAffiliationRequest();
+
+    if (!mounted) return;
+    setState(() => _isAffiliationSaving = false);
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
+  }
+
+  Future<void> _updatePassword() async {
+    if (_isPasswordSaving) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    setState(() => _isPasswordSaving = true);
+
+    final result = await ref
+        .read(authProvider.notifier)
+        .updatePassword(
+          currentPassword: _currentPasswordController.text,
+          password: _newPasswordController.text,
+          passwordConfirmation: _confirmPasswordController.text,
+        );
+
+    if (!mounted) return;
+    setState(() => _isPasswordSaving = false);
+    _currentPasswordController.clear();
+    _newPasswordController.clear();
+    _confirmPasswordController.clear();
+
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
+    if (result.isSuccess) {
+      router.go('/login');
+    }
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    if (_isDeletingAccount) return;
+
+    final passwordController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Hapus akun?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Akun dan data workspace terkait akan dihapus permanen. Masukkan password untuk konfirmasi.',
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Batal'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFE25555),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Hapus akun'),
+            ),
+          ],
+        );
+      },
+    );
+
+    final password = passwordController.text;
+    passwordController.dispose();
+    if (confirmed != true) return;
+    if (!mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+    setState(() => _isDeletingAccount = true);
+    final result = await ref
+        .read(authProvider.notifier)
+        .deleteAccount(password: password);
+
+    if (!mounted) return;
+    setState(() => _isDeletingAccount = false);
+    messenger.showSnackBar(SnackBar(content: Text(result.message)));
+    if (result.isSuccess) {
+      router.go('/login');
+    }
+  }
 }
 
 class _TitleBar extends StatelessWidget {
@@ -361,11 +527,13 @@ class _TitleBar extends StatelessWidget {
           ),
         ),
         _CircleActionButton(icon: Icons.refresh_rounded, onTap: onRefresh),
-        const SizedBox(width: 8),
-        _CircleActionButton(
-          icon: isEditing ? Icons.close_rounded : Icons.edit_outlined,
-          onTap: isEditing ? onCancelEdit : onEdit,
-        ),
+        if (onEdit != null || onCancelEdit != null) ...[
+          const SizedBox(width: 8),
+          _CircleActionButton(
+            icon: isEditing ? Icons.close_rounded : Icons.edit_outlined,
+            onTap: isEditing ? onCancelEdit : onEdit,
+          ),
+        ],
       ],
     );
   }
@@ -537,6 +705,32 @@ class _ProfileTextField extends StatelessWidget {
   }
 }
 
+class _ProfilePasswordField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+
+  const _ProfilePasswordField({required this.label, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        obscureText: true,
+        enableSuggestions: false,
+        autocorrect: false,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: ProfileScreen._text,
+        ),
+        decoration: _fieldDecoration(label, null),
+      ),
+    );
+  }
+}
+
 class _ProfileSelectField extends StatelessWidget {
   final String label;
   final String value;
@@ -597,7 +791,6 @@ class _ProfileEditSection extends StatelessWidget {
   final ValueChanged<String?> onThemeChanged;
   final ValueChanged<String?> onLocaleChanged;
   final VoidCallback onSave;
-  final VoidCallback onCancel;
 
   const _ProfileEditSection({
     required this.isSaving,
@@ -614,7 +807,6 @@ class _ProfileEditSection extends StatelessWidget {
     required this.onThemeChanged,
     required this.onLocaleChanged,
     required this.onSave,
-    required this.onCancel,
   });
 
   @override
@@ -707,23 +899,349 @@ class _ProfileEditSection extends StatelessWidget {
             maxLines: 4,
           ),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: _SmallActionButton(
-                  label: 'Batal',
-                  onTap: isSaving ? null : onCancel,
+          _SmallActionButton(
+            label: isSaving ? 'Menyimpan...' : 'Simpan profil',
+            isPrimary: true,
+            onTap: isSaving ? null : onSave,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AffiliationSection extends StatelessWidget {
+  final User user;
+  final bool isEditing;
+  final bool isSaving;
+  final TextEditingController affiliationNameController;
+  final TextEditingController studentIdNumberController;
+  final String affiliationType;
+  final String studentIdType;
+  final ValueChanged<String?> onTypeChanged;
+  final ValueChanged<String?> onStudentIdTypeChanged;
+  final VoidCallback onShowForm;
+  final VoidCallback onCancelForm;
+  final VoidCallback onSubmit;
+  final VoidCallback onCancelPending;
+
+  const _AffiliationSection({
+    required this.user,
+    required this.isEditing,
+    required this.isSaving,
+    required this.affiliationNameController,
+    required this.studentIdNumberController,
+    required this.affiliationType,
+    required this.studentIdType,
+    required this.onTypeChanged,
+    required this.onStudentIdTypeChanged,
+    required this.onShowForm,
+    required this.onCancelForm,
+    required this.onSubmit,
+    required this.onCancelPending,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final affiliation = user.affiliation;
+    final pendingRequest = affiliation?.pendingRequest;
+    final hasVerifiedAffiliation =
+        affiliation?.status == 'verified' &&
+        ((affiliation?.name ?? '').trim().isNotEmpty);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F0F172A),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Kampus dan Identitas',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: ProfileScreen._text,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _InfoRow(
+            data: _InfoRowData(
+              icon: Icons.school_outlined,
+              label: 'Afiliasi aktif',
+              value:
+                  '${_displayValue(affiliation?.name)} · ${_affiliationStatusLabel(affiliation?.status)}',
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFF0EEF6)),
+          _InfoRow(
+            data: _InfoRowData(
+              icon: Icons.confirmation_number_outlined,
+              label: _studentIdLabel(affiliation?.studentIdType),
+              value: _displayValue(affiliation?.studentIdNumber),
+            ),
+          ),
+          if (pendingRequest != null) ...[
+            const SizedBox(height: 12),
+            _InlineNotice(
+              icon: Icons.hourglass_top_rounded,
+              title: 'Pengajuan menunggu review',
+              message:
+                  '${_affiliationTypeLabel(pendingRequest.type)} - ${_displayValue(pendingRequest.name)}',
+              foreground: const Color(0xFFB45309),
+              background: const Color(0xFFFFF7E6),
+            ),
+            const SizedBox(height: 10),
+            _SmallActionButton(
+              label: isSaving ? 'Membatalkan...' : 'Batalkan pengajuan',
+              isDanger: true,
+              onTap: isSaving ? null : onCancelPending,
+            ),
+          ] else if (!isEditing) ...[
+            const SizedBox(height: 12),
+            _SmallActionButton(
+              label: hasVerifiedAffiliation
+                  ? 'Ajukan pindah afiliasi'
+                  : 'Ajukan afiliasi',
+              isPrimary: true,
+              onTap: onShowForm,
+            ),
+          ],
+          if (isEditing) ...[
+            const SizedBox(height: 14),
+            _ProfileSelectField(
+              label: 'Jenis afiliasi',
+              value: affiliationType,
+              items: _affiliationTypeOptions,
+              onChanged: onTypeChanged,
+            ),
+            _ProfileTextField(
+              label: 'Nama afiliasi',
+              controller: affiliationNameController,
+              maxLength: 160,
+            ),
+            _ProfileSelectField(
+              label: 'Tipe identitas',
+              value: studentIdType,
+              items: _identityTypeOptions,
+              onChanged: onStudentIdTypeChanged,
+            ),
+            _ProfileTextField(
+              label: 'Nomor identitas',
+              controller: studentIdNumberController,
+              maxLength: 64,
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: _SmallActionButton(
+                    label: 'Batal',
+                    onTap: isSaving ? null : onCancelForm,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _SmallActionButton(
-                  label: isSaving ? 'Menyimpan...' : 'Simpan',
-                  isPrimary: true,
-                  onTap: isSaving ? null : onSave,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _SmallActionButton(
+                    label: isSaving ? 'Mengirim...' : 'Submit',
+                    isPrimary: true,
+                    onTap: isSaving ? null : onSubmit,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SecuritySection extends StatelessWidget {
+  final TextEditingController currentPasswordController;
+  final TextEditingController newPasswordController;
+  final TextEditingController confirmPasswordController;
+  final bool isSaving;
+  final VoidCallback onSubmit;
+
+  const _SecuritySection({
+    required this.currentPasswordController,
+    required this.newPasswordController,
+    required this.confirmPasswordController,
+    required this.isSaving,
+    required this.onSubmit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F0F172A),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Keamanan',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: ProfileScreen._text,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Ubah password akan memutus token API, lalu kamu perlu login kembali.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: ProfileScreen._muted,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _ProfilePasswordField(
+            label: 'Password saat ini',
+            controller: currentPasswordController,
+          ),
+          _ProfilePasswordField(
+            label: 'Password baru',
+            controller: newPasswordController,
+          ),
+          _ProfilePasswordField(
+            label: 'Konfirmasi password baru',
+            controller: confirmPasswordController,
+          ),
+          const SizedBox(height: 4),
+          _SmallActionButton(
+            label: isSaving ? 'Menyimpan...' : 'Simpan password',
+            isPrimary: true,
+            onTap: isSaving ? null : onSubmit,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DangerZoneSection extends StatelessWidget {
+  final bool isDeleting;
+  final VoidCallback onDeleteAccount;
+
+  const _DangerZoneSection({
+    required this.isDeleting,
+    required this.onDeleteAccount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFFD4D4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Area Berbahaya',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFFE25555),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Hapus akun akan membersihkan sesi dan data lokal akun ini dari perangkat.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: ProfileScreen._muted,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _SmallActionButton(
+            label: isDeleting ? 'Menghapus...' : 'Hapus akun',
+            isDanger: true,
+            onTap: isDeleting ? null : onDeleteAccount,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlineNotice extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+  final Color foreground;
+  final Color background;
+
+  const _InlineNotice({
+    required this.icon,
+    required this.title,
+    required this.message,
+    required this.foreground,
+    required this.background,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: foreground, size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w800,
+                    color: foreground,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: foreground,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1076,6 +1594,27 @@ class _InfoRowData {
   });
 }
 
+const Map<String, String> _affiliationTypeOptions = {
+  'school': 'Sekolah',
+  'university': 'Universitas',
+  'institute': 'Institut',
+  'polytechnic': 'Politeknik',
+  'academy': 'Akademi',
+  'organization': 'Organisasi',
+  'company': 'Perusahaan',
+  'foundation': 'Yayasan',
+  'other': 'Lainnya',
+};
+
+const Map<String, String> _identityTypeOptions = {
+  'nim': 'NIM',
+  'nrp': 'NRP',
+  'nisn': 'NISN',
+  'nidn': 'NIDN',
+  'nip': 'NIP',
+  'other': 'Lainnya',
+};
+
 String _displayValue(String? value) {
   final text = value?.trim() ?? '';
   return text.isEmpty ? 'Belum diisi' : text;
@@ -1108,36 +1647,13 @@ String _affiliationStatusLabel(String? value) {
 }
 
 String _affiliationTypeLabel(String? value) {
-  switch ((value ?? '').toLowerCase()) {
-    case 'university':
-      return 'Universitas';
-    case 'school':
-      return 'Sekolah';
-    case 'organization':
-      return 'Organisasi';
-    case 'other':
-      return 'Lainnya';
-  }
-
-  return _displayValue(value);
+  final normalized = (value ?? '').toLowerCase().trim();
+  return _affiliationTypeOptions[normalized] ?? _displayValue(value);
 }
 
 String _studentIdLabel(String? value) {
   final normalized = (value ?? '').trim().toUpperCase();
   return normalized.isEmpty ? 'Identitas' : normalized;
-}
-
-String _themeLabel(String? value) {
-  switch ((value ?? '').toLowerCase()) {
-    case 'light':
-      return 'Light';
-    case 'dark':
-      return 'Dark';
-    case 'system':
-      return 'System';
-  }
-
-  return _displayValue(value);
 }
 
 InputDecoration _fieldDecoration(String label, String? hintText) {

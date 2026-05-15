@@ -85,6 +85,9 @@ class UserAffiliation {
   final String? studentIdType;
   final String? studentIdNumber;
   final String status;
+  final String? verifiedAt;
+  final UserAffiliationRequest? pendingRequest;
+  final UserAffiliationRequest? latestRejectedRequest;
 
   const UserAffiliation({
     this.type,
@@ -92,15 +95,36 @@ class UserAffiliation {
     this.studentIdType,
     this.studentIdNumber,
     this.status = 'pending',
+    this.verifiedAt,
+    this.pendingRequest,
+    this.latestRejectedRequest,
   });
 
   factory UserAffiliation.fromJson(Map<String, dynamic> json) {
+    final rawPendingRequest = json['pending_request'];
+    final rawLatestRejectedRequest = json['latest_rejected_request'];
+
     return UserAffiliation(
       type: _nullableString(json['type']),
       name: _nullableString(json['name']),
       studentIdType: _nullableString(json['student_id_type']),
       studentIdNumber: _nullableString(json['student_id_number']),
       status: json['status']?.toString() ?? 'pending',
+      verifiedAt: _nullableString(json['verified_at']),
+      pendingRequest: rawPendingRequest is Map<String, dynamic>
+          ? UserAffiliationRequest.fromJson(rawPendingRequest)
+          : rawPendingRequest is Map
+          ? UserAffiliationRequest.fromJson(
+              Map<String, dynamic>.from(rawPendingRequest),
+            )
+          : null,
+      latestRejectedRequest: rawLatestRejectedRequest is Map<String, dynamic>
+          ? UserAffiliationRequest.fromJson(rawLatestRejectedRequest)
+          : rawLatestRejectedRequest is Map
+          ? UserAffiliationRequest.fromJson(
+              Map<String, dynamic>.from(rawLatestRejectedRequest),
+            )
+          : null,
     );
   }
 
@@ -120,6 +144,63 @@ class UserAffiliation {
       'student_id_type': studentIdType,
       'student_id_number': studentIdNumber,
       'status': status,
+      'verified_at': verifiedAt,
+      'pending_request': pendingRequest?.toJson(),
+      'latest_rejected_request': latestRejectedRequest?.toJson(),
+    };
+  }
+}
+
+class UserAffiliationRequest {
+  final int id;
+  final String? type;
+  final String? name;
+  final String? studentIdType;
+  final String? studentIdNumber;
+  final String status;
+  final String? rejectionReason;
+  final String? createdAt;
+  final String? reviewedAt;
+
+  const UserAffiliationRequest({
+    required this.id,
+    this.type,
+    this.name,
+    this.studentIdType,
+    this.studentIdNumber,
+    this.status = 'pending',
+    this.rejectionReason,
+    this.createdAt,
+    this.reviewedAt,
+  });
+
+  factory UserAffiliationRequest.fromJson(Map<String, dynamic> json) {
+    return UserAffiliationRequest(
+      id: json['id'] is int
+          ? json['id'] as int
+          : int.tryParse((json['id'] ?? '').toString()) ?? 0,
+      type: _nullableString(json['type']),
+      name: _nullableString(json['name']),
+      studentIdType: _nullableString(json['student_id_type']),
+      studentIdNumber: _nullableString(json['student_id_number']),
+      status: json['status']?.toString() ?? 'pending',
+      rejectionReason: _nullableString(json['rejection_reason']),
+      createdAt: _nullableString(json['created_at']),
+      reviewedAt: _nullableString(json['reviewed_at']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'type': type,
+      'name': name,
+      'student_id_type': studentIdType,
+      'student_id_number': studentIdNumber,
+      'status': status,
+      'rejection_reason': rejectionReason,
+      'created_at': createdAt,
+      'reviewed_at': reviewedAt,
     };
   }
 }

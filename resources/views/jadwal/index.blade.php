@@ -2,6 +2,26 @@
 
 @section('page_title', 'Jadwal Kuliah')
 
+@push('styles')
+    <script>
+        (() => {
+            const params = new URLSearchParams(window.location.search);
+            const shouldFocusAgenda = params.get('focus') === 'agenda'
+                || window.location.hash === '#agenda-akademik'
+                || window.location.hash === '#kalender-interaktif';
+
+            if (!shouldFocusAgenda) {
+                return;
+            }
+
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
+
+        })();
+    </script>
+@endpush
+
 @section('content')
     <style>
         .calendar-kegiatan-dot {
@@ -232,6 +252,20 @@
             $selectedDayMatkulEntries = collect();
         }
 
+        $selectedAgendaCount = $selectedDayEvents->sum(function ($event) use ($selectedDayIndex, $selectedDayName, $matchesMatkulDay, $hasMatkulDayData) {
+            $details = collect($event->matkul_details ?? []);
+            if ($details->isEmpty()) {
+                return 1;
+            }
+
+            $matched = $details->filter(fn ($matkul) => $matchesMatkulDay($matkul, $selectedDayIndex, $selectedDayName));
+            if ($matched->isEmpty()) {
+                $matched = $details->filter(fn ($matkul) => ! $hasMatkulDayData($matkul));
+            }
+
+            return max(1, $matched->count());
+        }) + $kegiatanList->count();
+
         $todayRoute = route($jadwalRouteName, array_merge(request()->except(['tanggal', 'bulan']), [
             'tanggal' => now()->toDateString(),
             'bulan' => now()->format('Y-m'),
@@ -239,7 +273,7 @@
     @endphp
 
     <div class="min-w-0 space-y-8 overflow-x-hidden">
-        <section class="min-w-0 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-white p-6 shadow-sm dark:border-slate-800 dark:from-[#111827] dark:via-[#0f172a] dark:to-[#0f172a] dark:shadow-none">
+        <section id="agenda-akademik" data-jadwal-hero class="min-w-0 scroll-mt-6 rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-white p-6 shadow-sm dark:border-slate-800 dark:from-[#111827] dark:via-[#0f172a] dark:to-[#0f172a] dark:shadow-none">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                     <p class="text-sm uppercase tracking-wide text-indigo-500 font-semibold dark:text-indigo-300">Agenda akademik</p>
@@ -279,11 +313,11 @@
             </div>
         </section>
 
-        <section class="grid min-w-0 gap-6 xl:grid-cols-[2fr_1.1fr]">
-            <div class="min-w-0 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm">
+        <section id="kalender-interaktif" data-jadwal-calendar class="grid min-w-0 scroll-mt-6 gap-6 xl:grid-cols-[2fr_1.1fr]">
+            <div class="min-w-0 rounded-3xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
                 <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h2 class="text-lg font-semibold text-gray-900">Kalender interaktif</h2>
-                    <div class="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-wider text-gray-500">
+                    <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Kalender interaktif</h2>
+                    <div class="flex flex-wrap items-center gap-3 text-[11px] uppercase tracking-wider text-gray-500 dark:text-slate-300">
                         <span class="inline-flex items-center gap-1">
                             <span class="h-1.5 w-5 rounded-full bg-emerald-500"></span> Kuliah
                         </span>
@@ -300,7 +334,7 @@
                 </div>
                 <div class="-mx-1 overflow-x-auto overscroll-x-contain px-1 pb-2 [scrollbar-gutter:stable] sm:mx-0 sm:overflow-visible sm:px-0 sm:pb-0">
                     <div class="min-w-[44rem] sm:min-w-0">
-                <div class="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-gray-500">
+                <div class="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-gray-500 dark:text-slate-300">
                     @foreach(['Sen','Sel','Rab','Kam','Jum','Sab','Min'] as $hari)
                         <div class="py-2">{{ $hari }}</div>
                     @endforeach
@@ -322,7 +356,7 @@
                                 ->values()
                                 ->when($isKuliahWeekend, fn ($colors) => $colors->prepend($jenisColor['libur'] ?? 'bg-rose-500'))
                                 ->take(3);
-                            $textColor = $isCurrentMonth ? 'text-gray-900' : 'text-gray-400';
+                            $textColor = $isCurrentMonth ? 'text-gray-900 dark:text-slate-100' : 'text-gray-400 dark:text-slate-500';
                             $dayIndex = $day->dayOfWeek;
                             $dayNameLookup = $dayNameMap[$dayIndex] ?? $day->format('l');
                             $dayKeyName = Str::lower($dayNameLookup);
@@ -343,11 +377,14 @@
                                 $dayMatkulInstances = collect();
                             }
 
+                            $displayMatkulLimit = 2;
+                            $hiddenMatkulCount = max(0, $dayMatkulInstances->count() - $displayMatkulLimit);
                             $hasMatkulEntries = $eventsCount > 0 && $dayMatkulInstances->isNotEmpty() && ! $isKuliahWeekend;
                             $hasKegiatan = !empty($kegiatanDays[$dayKey] ?? false);
                         @endphp
-                        <a href="{{ route($jadwalRouteName, array_merge(request()->except(['tanggal','bulan']), ['tanggal' => $dayKey, 'bulan' => $day->format('Y-m')])) }}"
-                           class="relative flex min-h-[90px] flex-col rounded-2xl border px-3 pb-3 pt-2 {{ $textColor }} {{ $isSelected ? 'ring-2 ring-inset ring-indigo-400 bg-indigo-50' : 'bg-white hover:bg-gray-50' }}">
+                        <a href="{{ route($jadwalRouteName, array_merge(request()->except(['tanggal','bulan','focus']), ['tanggal' => $dayKey, 'bulan' => $day->format('Y-m'), 'focus' => 'agenda'])) }}"
+                           data-calendar-day-link
+                           class="relative flex min-h-[90px] flex-col rounded-2xl border px-3 pb-3 pt-2 {{ $textColor }} {{ $isSelected ? 'border-indigo-300 bg-indigo-50 ring-2 ring-inset ring-indigo-400 dark:border-indigo-400 dark:bg-indigo-500/10' : 'border-gray-100 bg-white hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:bg-slate-800/70' }}">
                             <div class="flex items-center justify-between text-xs font-semibold">
                                 <span>{{ $day->format('d') }}</span>
                                 <div class="flex gap-1">
@@ -360,8 +397,8 @@
                                 </div>
                             </div>
                             @if($hasMatkulEntries)
-                                <ul class="mt-3 space-y-0.5 text-[11px] text-gray-600 text-left">
-                                    @foreach($dayMatkulInstances->take(3) as $matkulEntry)
+                                <ul class="mt-3 space-y-1 text-left text-[11px] text-gray-600 dark:text-slate-300">
+                                    @foreach($dayMatkulInstances->take($displayMatkulLimit) as $matkulEntry)
                                         @php
                                             $name = $matkulEntry->nama;
                                             $entry = method_exists($matkulEntry, 'firstScheduleEntryByIndex')
@@ -369,11 +406,10 @@
                                                 : null;
 
                                             $start = $entry['jam_mulai'] ?? $matkulEntry->primaryStartTime() ?? $formatLegacyTime($matkulEntry->jam_mulai ?? null);
-                                            $end = $entry['jam_selesai'] ?? $matkulEntry->primaryEndTime() ?? $formatLegacyTime($matkulEntry->jam_selesai ?? null);
                                             $room = $entry['ruangan'] ?? ($matkulEntry->primaryRoom() ?? $matkulEntry->ruangan ?? null);
-                                            $timeLabel = $start && $end ? $start . ' - ' . $end : ($start ?: null);
+                                            $timeLabel = $start ?: null;
                                         @endphp
-                                        <li class="truncate">
+                                        <li class="truncate rounded-lg bg-gray-50/70 px-2 py-1 dark:bg-slate-800/60">
                                             <span class="font-semibold">{{ $name }}</span>
                                             @if($timeLabel)
                                                 <span class="text-gray-400"> • {{ $timeLabel }}</span>
@@ -383,8 +419,8 @@
                                             @endif
                                         </li>
                                     @endforeach
-                                    @if($dayMatkulInstances->count() > 3)
-                                        <li class="text-indigo-500">+{{ $dayMatkulInstances->count() - 3 }} lainnya</li>
+                                    @if($hiddenMatkulCount > 0)
+                                        <li class="text-indigo-500 dark:text-indigo-300">+{{ $hiddenMatkulCount }} lagi</li>
                                     @endif
                                 </ul>
                             @else
@@ -400,13 +436,13 @@
             </div>
 
             <div class="min-w-0 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60">
-                <div class="flex items-center justify-between">
+                <div class="flex items-start justify-between gap-4">
                     <div>
                         <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-300">Agenda tanggal</p>
                         <h3 class="text-xl font-semibold text-gray-900 dark:text-white">{{ $selectedDate->translatedFormat('l, d F Y') }}</h3>
                     </div>
-                    <span class="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-200">
-                        {{ $selectedDayEvents->count() }} agenda
+                    <span class="shrink-0 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-200">
+                        {{ $selectedAgendaCount }} agenda
                     </span>
                 </div>
 
@@ -437,18 +473,32 @@
                                     ];
                                 })
                                 ->filter(fn ($detail) => isset($detail['instance']))
+                                ->sortBy(function ($detail) use ($selectedDayIndex, $selectedDayName, $resolveMatkulStartTime, $normalizeTimeForSort) {
+                                    $matkul = $detail['instance'];
+                                    return $normalizeTimeForSort($resolveMatkulStartTime($matkul, $selectedDayIndex, $selectedDayName, $detail['slot'] ?? null));
+                                })
                                 ->values();
+                            $eventTitle = $matkulDetails->isNotEmpty()
+                                ? 'Matkul hari ini'
+                                : ($event->title ?: ($event->catatan_tambahan ?: ucfirst($event->jenis ?? 'Agenda')));
+                            $eventNote = $matkulDetails->isNotEmpty() ? trim((string) ($event->catatan_tambahan ?? '')) : '';
                         @endphp
                         <article class="rounded-2xl border border-gray-100 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
                             <header class="flex items-start justify-between gap-3">
                                 <div>
-                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $event->catatan_tambahan ?: 'Matkul hari ini' }}</p>
+                                    <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ $eventTitle }}</p>
                                     <p class="text-xs text-gray-500 dark:text-slate-400">{{ $rangeLabel }}</p>
                                 </div>
                                 <span class="inline-flex items-center gap-2 rounded-full {{ $badgeClass }} px-3 py-1 text-[11px] font-semibold text-white dark:text-white/90">
                                     {{ strtoupper($event->jenis ?? 'AGENDA') }}
                                 </span>
                             </header>
+
+                            @if($eventNote !== '')
+                                <p class="mt-3 rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2 text-xs leading-5 text-gray-600 dark:border-slate-800 dark:bg-slate-800/40 dark:text-slate-300">
+                                    {{ $eventNote }}
+                                </p>
+                            @endif
 
                             @if($matkulDetails->isNotEmpty())
                                 <div class="mt-3 space-y-2">
@@ -471,17 +521,18 @@
                                                 ?? ($matkul->ruangan ?? null);
                                         @endphp
                                         <div class="rounded-xl border border-gray-100 bg-gray-50/60 p-3 text-sm dark:border-slate-800 dark:bg-slate-800/60">
-                                            <p class="font-semibold text-gray-900 dark:text-white">{{ $matkul->nama ?? 'Matkul' }}</p>
-                                            <div class="mt-2 flex flex-wrap gap-3 text-[11px] text-gray-600 dark:text-slate-300">
-                                                @if($timeLabel)
-                                                    <span class="inline-flex items-center gap-1">
-                                                        <svg class="h-3.5 w-3.5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                                  d="M12 6v6l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        {{ $timeLabel }}
-                                                    </span>
+                                            <div class="flex items-start justify-between gap-3">
+                                                <div class="min-w-0">
+                                                    <p class="font-semibold text-gray-900 dark:text-white">{{ $matkul->nama ?? 'Matkul' }}</p>
+                                                    @if($timeLabel)
+                                                        <p class="mt-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300">{{ $timeLabel }}</p>
+                                                    @endif
+                                                </div>
+                                                @if($isSelectedWeekend)
+                                                    <span class="rounded-full bg-rose-100 px-2.5 py-1 text-[10px] font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-100">Diliburkan</span>
                                                 @endif
+                                            </div>
+                                            <div class="mt-2 flex flex-wrap gap-3 text-[11px] text-gray-600 dark:text-slate-300">
                                                 @if($kelasLabel)
                                                     <span class="inline-flex items-center gap-1">
                                                         <svg class="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -509,10 +560,10 @@
                     @empty
                         <div class="rounded-2xl border border-dashed border-gray-200 p-6 text-center dark:border-slate-700">
                             <p class="text-sm font-semibold text-gray-700 dark:text-white">
-                                {{ $isSelectedWeekend ? ($getHolidayReason($selectedDate) ?: 'Libur kuliah') . '.' : 'Belum ada jadwal pada tanggal ini.' }}
+                                {{ $kegiatanList->isNotEmpty() ? 'Tidak ada jadwal utama pada tanggal ini.' : ($isSelectedWeekend ? ($getHolidayReason($selectedDate) ?: 'Libur kuliah') . '.' : 'Belum ada jadwal pada tanggal ini.') }}
                             </p>
                             <p class="text-xs text-gray-500 dark:text-slate-400">
-                                {{ $isSelectedWeekend ? ($getHolidayReason($selectedDate) ?: 'Libur rutin') . ' otomatis bebas perkuliahan.' : 'Tambahkan agenda baru atau pilih tanggal berbeda.' }}
+                                {{ $kegiatanList->isNotEmpty() ? 'Kegiatan terkait tetap ditampilkan di bawah.' : ($isSelectedWeekend ? ($getHolidayReason($selectedDate) ?: 'Libur rutin') . ' otomatis bebas perkuliahan.' : 'Tambahkan agenda baru atau pilih tanggal berbeda.') }}
                             </p>
                         </div>
                     @endforelse
@@ -632,3 +683,85 @@
         </section>
     </div>
 @endsection
+
+@push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const shouldFocusAgenda = params.get('focus') === 'agenda'
+                || window.location.hash === '#agenda-akademik'
+                || window.location.hash === '#kalender-interaktif';
+
+            document.addEventListener('click', async (event) => {
+                const clickedElement = event.target instanceof Element ? event.target : event.target.parentElement;
+                const link = clickedElement?.closest('[data-calendar-day-link]');
+                if (!link) {
+                    return;
+                }
+
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                const targetUrl = new URL(link.href);
+                const currentUrl = new URL(window.location.href);
+
+                if (targetUrl.origin !== currentUrl.origin) {
+                    window.location.href = link.href;
+                    return;
+                }
+
+                try {
+                    const response = await fetch(targetUrl.toString(), {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Calendar request failed: ${response.status}`);
+                    }
+
+                    const html = await response.text();
+                    const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+                    const nextHero = nextDocument.querySelector('[data-jadwal-hero]');
+                    const nextCalendar = nextDocument.querySelector('[data-jadwal-calendar]');
+                    const currentHero = document.querySelector('[data-jadwal-hero]');
+                    const currentCalendar = document.querySelector('[data-jadwal-calendar]');
+
+                    if (!nextHero || !nextCalendar || !currentHero || !currentCalendar) {
+                        throw new Error('Calendar markup is incomplete.');
+                    }
+
+                    currentHero.replaceWith(nextHero);
+                    currentCalendar.replaceWith(nextCalendar);
+                    window.history.pushState({}, '', targetUrl.toString());
+                } catch (error) {
+                    console.warn(error);
+                    window.location.href = link.href;
+                }
+            });
+
+            if (!shouldFocusAgenda) {
+                return;
+            }
+
+            const targetSection = document.getElementById('agenda-akademik');
+            if (!targetSection) {
+                return;
+            }
+
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                targetSection.scrollIntoView({ block: 'start' });
+                return;
+            }
+
+            window.setTimeout(() => {
+                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 80);
+        });
+    </script>
+@endpush

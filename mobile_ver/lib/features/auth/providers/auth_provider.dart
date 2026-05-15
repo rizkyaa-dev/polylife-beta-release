@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_ver/core/config/app_mode.dart';
+import 'package:mobile_ver/core/database/app_database.dart';
 import 'package:mobile_ver/core/network/api_client.dart';
 import 'package:mobile_ver/core/storage/local_storage.dart';
 import 'package:mobile_ver/core/sync/sync_service.dart';
@@ -318,6 +319,141 @@ class AuthController extends StateNotifier<bool> {
         successFallback: 'Foto profil berhasil dihapus.',
         failureFallback: 'Foto profil gagal dihapus.',
       );
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure('Network error occurred');
+    }
+  }
+
+  Future<AuthActionResult> updatePassword({
+    required String currentPassword,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    if (AppMode.uiOnly) {
+      return const AuthActionResult.success(
+        'Password berhasil diperbarui. Silakan login kembali.',
+      );
+    }
+
+    try {
+      final response = await ApiClient.patch('/profile/password', {
+        'current_password': currentPassword,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      });
+
+      final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+      final message = _messageFromResponse(
+        response.body,
+        isSuccess
+            ? 'Password berhasil diperbarui. Silakan login kembali.'
+            : 'Password gagal diperbarui.',
+      );
+
+      if (!isSuccess) {
+        return AuthActionResult.failure(message);
+      }
+
+      await LocalStorage.removeToken();
+      await LocalStorage.removeUser();
+      ref.read(userProvider.notifier).state = null;
+      state = false;
+
+      return AuthActionResult.success(message);
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure('Network error occurred');
+    }
+  }
+
+  Future<AuthActionResult> submitAffiliationRequest({
+    required String affiliationType,
+    required String affiliationName,
+    required String studentIdType,
+    required String studentIdNumber,
+  }) async {
+    if (AppMode.uiOnly) {
+      return const AuthActionResult.success(
+        'Pengajuan afiliasi berhasil dikirim.',
+      );
+    }
+
+    try {
+      final response = await ApiClient.post('/profile/affiliation-request', {
+        'affiliation_type': affiliationType,
+        'affiliation_name': affiliationName,
+        'student_id_type': studentIdType,
+        'student_id_number': studentIdNumber,
+      });
+
+      return _persistUserActionResponse(
+        response.body,
+        response.statusCode,
+        successFallback: 'Pengajuan afiliasi berhasil dikirim.',
+        failureFallback: 'Pengajuan afiliasi gagal dikirim.',
+      );
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure('Network error occurred');
+    }
+  }
+
+  Future<AuthActionResult> cancelAffiliationRequest() async {
+    if (AppMode.uiOnly) {
+      return const AuthActionResult.success('Pengajuan afiliasi dibatalkan.');
+    }
+
+    try {
+      final response = await ApiClient.delete('/profile/affiliation-request');
+
+      return _persistUserActionResponse(
+        response.body,
+        response.statusCode,
+        successFallback: 'Pengajuan afiliasi dibatalkan.',
+        failureFallback: 'Pengajuan afiliasi gagal dibatalkan.',
+      );
+    } on StateError catch (e) {
+      return AuthActionResult.failure(e.message);
+    } catch (_) {
+      return const AuthActionResult.failure('Network error occurred');
+    }
+  }
+
+  Future<AuthActionResult> deleteAccount({required String password}) async {
+    if (AppMode.uiOnly) {
+      return const AuthActionResult.success('Akun berhasil dihapus.');
+    }
+
+    final currentUser = ref.read(userProvider);
+
+    try {
+      final response = await ApiClient.deleteWithBody('/profile/account', {
+        'password': password,
+      });
+
+      final isSuccess = response.statusCode >= 200 && response.statusCode < 300;
+      final message = _messageFromResponse(
+        response.body,
+        isSuccess ? 'Akun berhasil dihapus.' : 'Akun gagal dihapus.',
+      );
+
+      if (!isSuccess) {
+        return AuthActionResult.failure(message);
+      }
+
+      if (currentUser != null) {
+        await AppDatabase.instance.clearUserData(currentUser.id);
+      }
+      await LocalStorage.removeToken();
+      await LocalStorage.removeUser();
+      ref.read(userProvider.notifier).state = null;
+      state = false;
+
+      return AuthActionResult.success(message);
     } on StateError catch (e) {
       return AuthActionResult.failure(e.message);
     } catch (_) {

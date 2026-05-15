@@ -1,10 +1,13 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:mobile_ver/core/config/api_config.dart';
 import 'package:mobile_ver/core/storage/local_storage.dart';
 import 'package:mobile_ver/features/auth/models/user_model.dart';
 
-class ProfileAvatar extends StatelessWidget {
+class ProfileAvatar extends StatefulWidget {
   final User? user;
   final String fallbackName;
   final double size;
@@ -25,65 +28,62 @@ class ProfileAvatar extends StatelessWidget {
   });
 
   @override
+  State<ProfileAvatar> createState() => _ProfileAvatarState();
+}
+
+class _ProfileAvatarState extends State<ProfileAvatar> {
+  String? _lastAvatarUrl;
+  Future<Uint8List?>? _avatarBytesFuture;
+
+  @override
   Widget build(BuildContext context) {
-    final avatarUrl = _resolveAvatarUrl(user);
+    final avatarUrl = _resolveAvatarUrl(widget.user);
+    if (avatarUrl != _lastAvatarUrl) {
+      _lastAvatarUrl = avatarUrl;
+      _avatarBytesFuture = avatarUrl == null
+          ? null
+          : _loadAvatarBytes(avatarUrl);
+    }
 
     return Container(
-      height: size,
-      width: size,
-      padding: EdgeInsets.all(borderWidth),
+      height: widget.size,
+      width: widget.size,
+      padding: EdgeInsets.all(widget.borderWidth),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white,
-        boxShadow: boxShadow,
+        boxShadow: widget.boxShadow,
       ),
       child: ClipOval(
         child: avatarUrl == null
             ? _InitialsAvatar(
-                name: fallbackName,
-                style: initialsStyle,
-                gradientColors: gradientColors,
+                name: widget.fallbackName,
+                style: widget.initialsStyle,
+                gradientColors: widget.gradientColors,
               )
-            : FutureBuilder<String?>(
-                future: LocalStorage.getToken(),
+            : FutureBuilder<Uint8List?>(
+                future: _avatarBytesFuture,
                 builder: (context, snapshot) {
-                  final token = snapshot.data?.trim();
-
                   if (snapshot.connectionState != ConnectionState.done ||
-                      token == null ||
-                      token.isEmpty) {
+                      snapshot.data == null ||
+                      snapshot.data!.isEmpty) {
                     return _InitialsAvatar(
-                      name: fallbackName,
-                      style: initialsStyle,
-                      gradientColors: gradientColors,
+                      name: widget.fallbackName,
+                      style: widget.initialsStyle,
+                      gradientColors: widget.gradientColors,
                     );
                   }
 
-                  return Image.network(
-                    avatarUrl,
-                    headers: {
-                      'Authorization': 'Bearer $token',
-                      'Accept': 'image/webp,image/*',
-                    },
+                  return Image.memory(
+                    snapshot.data!,
                     fit: BoxFit.cover,
-                    width: size,
-                    height: size,
+                    width: widget.size,
+                    height: widget.size,
                     errorBuilder: (context, error, stackTrace) {
                       return _InitialsAvatar(
-                        name: fallbackName,
-                        style: initialsStyle,
-                        gradientColors: gradientColors,
-                      );
-                    },
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) {
-                        return child;
-                      }
-
-                      return _InitialsAvatar(
-                        name: fallbackName,
-                        style: initialsStyle,
-                        gradientColors: gradientColors,
+                        name: widget.fallbackName,
+                        style: widget.initialsStyle,
+                        gradientColors: widget.gradientColors,
                       );
                     },
                   );
@@ -91,6 +91,34 @@ class ProfileAvatar extends StatelessWidget {
               ),
       ),
     );
+  }
+
+  Future<Uint8List?> _loadAvatarBytes(String avatarUrl) async {
+    final token = (await LocalStorage.getToken())?.trim();
+    if (token == null || token.isEmpty) {
+      return null;
+    }
+
+    final uri = Uri.tryParse(avatarUrl);
+    if (uri == null) {
+      return null;
+    }
+
+    final response = await http
+        .get(
+          uri,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'image/webp,image/*',
+          },
+        )
+        .timeout(const Duration(seconds: 20));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      return null;
+    }
+
+    return response.bodyBytes;
   }
 
   String? _resolveAvatarUrl(User? user) {

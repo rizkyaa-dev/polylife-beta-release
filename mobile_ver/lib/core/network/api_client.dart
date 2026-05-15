@@ -94,6 +94,20 @@ class ApiClient {
         .delete(ApiConfig.endpointUri(endpoint), headers: headers)
         .timeout(_timeout);
   }
+
+  static Future<http.Response> deleteWithBody(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    final headers = await _getHeaders();
+    return http
+        .delete(
+          ApiConfig.endpointUri(endpoint),
+          headers: headers,
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
+  }
 }
 
 abstract class HttpApiClient {
