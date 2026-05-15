@@ -1,10 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile_ver/core/network/api_client.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/reminder/models/reminder_target_option.dart';
 import 'package:mobile_ver/features/reminder/providers/reminder_list_provider.dart';
 import 'package:mobile_ver/features/reminder/providers/upcoming_reminder_provider.dart';
@@ -50,38 +48,9 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
     });
 
     try {
-      final response = await ApiClient.get('/reminder/options');
-      if (response.statusCode != 200) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Gagal memuat opsi reminder.';
-        });
-        return;
-      }
-
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) {
-        setState(() {
-          _isLoading = false;
-          _targets = const <ReminderTargetOption>[];
-        });
-        return;
-      }
-
-      final rawData = decoded['data'];
-      final rawTargets = rawData is Map<String, dynamic>
-          ? rawData['targets']
-          : null;
-      final targets = rawTargets is List
-          ? rawTargets
-                .whereType<Map>()
-                .map(
-                  (item) => ReminderTargetOption.fromJson(
-                    Map<String, dynamic>.from(item),
-                  ),
-                )
-                .toList()
-          : const <ReminderTargetOption>[];
+      final targets = await ref
+          .read(reminderListProvider.notifier)
+          .loadOptions();
 
       final firstTarget = targets.isEmpty ? null : targets.first;
 
@@ -164,18 +133,16 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
       _errorMessage = null;
     });
 
-    final payload = <String, dynamic>{
-      'reminder_target': target.key,
-      '${target.key}_id': _selectedOptionId,
-      'waktu_reminder': _scheduledAt.toIso8601String(),
-    };
-    if (_active) {
-      payload['aktif'] = true;
-    }
-
     try {
-      final response = await ApiClient.post('/reminder', payload);
-      if (response.statusCode != 201) {
+      final success = await ref
+          .read(reminderListProvider.notifier)
+          .createReminder(
+            target: target,
+            targetId: _selectedOptionId!,
+            scheduledAt: _scheduledAt,
+            active: _active,
+          );
+      if (!success) {
         setState(() {
           _isSubmitting = false;
           _errorMessage = 'Gagal menyimpan reminder.';
@@ -208,10 +175,10 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
     final selectedOptionId = _selectedOptionId;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4FA),
+      backgroundColor: context.appBackground,
       extendBody: true,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F4FA),
+        backgroundColor: context.appBackground,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: Text(
@@ -219,7 +186,7 @@ class _ReminderCreateScreenState extends ConsumerState<ReminderCreateScreen> {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF211C31),
+            color: context.appText,
           ),
         ),
       ),

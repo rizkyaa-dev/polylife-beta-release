@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_ver/core/config/api_config.dart';
 import 'package:mobile_ver/core/media/local_image_cache.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/pengumuman/models/pengumuman_model.dart';
 import 'package:mobile_ver/features/pengumuman/providers/pengumuman_provider.dart';
 import 'dart:typed_data';
@@ -16,13 +17,13 @@ class PengumumanListScreen extends ConsumerWidget {
     final pengumumanAsync = ref.watch(pengumumanProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4FA),
+      backgroundColor: context.appBackground,
       body: SafeArea(
         child: pengumumanAsync.when(
           data: (list) {
             if (list.isEmpty) {
               return RefreshIndicator(
-                color: const Color(0xFF4B3FF2),
+                color: context.appPrimary,
                 onRefresh: () =>
                     ref.read(pengumumanProvider.notifier).fetchPengumuman(),
                 child: ListView(
@@ -35,10 +36,10 @@ class PengumumanListScreen extends ConsumerWidget {
                           .fetchPengumuman(),
                     ),
                     SizedBox(height: 18),
-                    const Text(
+                    Text(
                       'Kegiatan Kampus',
                       style: TextStyle(
-                        color: Color(0xFF1E1A2D),
+                        color: context.appText,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
@@ -51,7 +52,7 @@ class PengumumanListScreen extends ConsumerWidget {
             }
 
             return RefreshIndicator(
-              color: const Color(0xFF4B3FF2),
+              color: context.appPrimary,
               onRefresh: () =>
                   ref.read(pengumumanProvider.notifier).fetchPengumuman(),
               child: ListView.separated(
@@ -73,7 +74,7 @@ class PengumumanListScreen extends ConsumerWidget {
                     return Text(
                       'Kegiatan Kampus',
                       style: GoogleFonts.plusJakartaSans(
-                        color: const Color(0xFF1E1A2D),
+                        color: context.appText,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
@@ -88,7 +89,7 @@ class PengumumanListScreen extends ConsumerWidget {
           },
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) => _PengumumanErrorState(
-            message: err.toString(),
+            message: _safeErrorMessage(err),
             onRetry: () =>
                 ref.read(pengumumanProvider.notifier).fetchPengumuman(),
           ),
@@ -112,21 +113,16 @@ class _HeaderRow extends StatelessWidget {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 20,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF1F1A2F),
+            color: context.appText,
           ),
         ),
         const Spacer(),
         Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x120F172A),
-                blurRadius: 12,
-                offset: Offset(0, 6),
-              ),
-            ],
+            border: Border.all(color: context.appBorder),
+            boxShadow: context.appCardShadow,
           ),
           child: IconButton(
             tooltip: 'Muat ulang',
@@ -156,15 +152,10 @@ class _ActivityCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F172A),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: context.appBorder),
+        boxShadow: context.appCardShadow,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(22),
@@ -197,7 +188,7 @@ class _ActivityCard extends StatelessWidget {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF4F46E5),
+                            color: context.appPrimary,
                             letterSpacing: 1.0,
                           ),
                         ),
@@ -210,7 +201,7 @@ class _ActivityCard extends StatelessWidget {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEEEBFF),
+                            color: context.appPrimarySoft,
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -231,7 +222,7 @@ class _ActivityCard extends StatelessWidget {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1F1A2F),
+                      color: context.appText,
                       height: 1.2,
                     ),
                   ),
@@ -243,17 +234,17 @@ class _ActivityCard extends StatelessWidget {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 13.5,
                       fontWeight: FontWeight.w500,
-                      color: const Color(0xFF6C7186),
+                      color: context.appMuted,
                       height: 1.5,
                     ),
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.calendar_today_outlined,
                         size: 16,
-                        color: Color(0xFF848A9C),
+                        color: context.appFaint,
                       ),
                       const SizedBox(width: 6),
                       Text(
@@ -261,7 +252,7 @@ class _ActivityCard extends StatelessWidget {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF70778C),
+                          color: context.appMuted,
                         ),
                       ),
                     ],
@@ -522,9 +513,10 @@ class _EmptyActivityState extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE7E5F3)),
+        border: Border.all(color: context.appBorder),
+        boxShadow: context.appCardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,7 +604,7 @@ class _EmptyActivityState extends StatelessWidget {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF4F46E5),
+                  color: context.appPrimary,
                   letterSpacing: 1.0,
                 ),
               ),
@@ -623,7 +615,7 @@ class _EmptyActivityState extends StatelessWidget {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEEBFF),
+                  color: context.appPrimarySoft,
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -644,7 +636,7 @@ class _EmptyActivityState extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF1F1A2F),
+              color: context.appText,
             ),
           ),
           const SizedBox(height: 8),
@@ -653,7 +645,7 @@ class _EmptyActivityState extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 13.5,
               fontWeight: FontWeight.w500,
-              color: const Color(0xFF6C7186),
+              color: context.appMuted,
               height: 1.5,
             ),
           ),
@@ -680,7 +672,7 @@ class _PengumumanErrorState extends StatelessWidget {
             const Icon(
               Icons.campaign_outlined,
               size: 58,
-              color: Color(0xFF4B3FF2),
+              color: Color(0xFF6C63FF),
             ),
             const SizedBox(height: 14),
             Text(
@@ -689,7 +681,7 @@ class _PengumumanErrorState extends StatelessWidget {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: const Color(0xFF1F1A2F),
+                color: context.appText,
               ),
             ),
             const SizedBox(height: 8),
@@ -699,7 +691,7 @@ class _PengumumanErrorState extends StatelessWidget {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF747A90),
+                color: context.appMuted,
                 height: 1.4,
               ),
             ),
@@ -726,6 +718,24 @@ String _publishedDateLabel(String raw) {
   } catch (_) {
     return raw.trim().isEmpty ? 'Tanggal belum tersedia' : raw;
   }
+}
+
+String _safeErrorMessage(Object error) {
+  final message = error.toString();
+  final lower = message.toLowerCase();
+  final looksInternal =
+      lower.contains('exception') ||
+      lower.contains('http://') ||
+      lower.contains('https://') ||
+      lower.contains('/api/') ||
+      lower.contains('errno') ||
+      lower.contains('failed host lookup');
+
+  if (!looksInternal) {
+    return message;
+  }
+
+  return 'Kamu sedang offline atau koneksi sedang bermasalah. Kegiatan kampus akan dimuat lagi saat jaringan tersedia.';
 }
 
 String _organizerLabel(Pengumuman item) {

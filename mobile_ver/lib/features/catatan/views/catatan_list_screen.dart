@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/auth/models/user_model.dart';
 import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/catatan/models/catatan_model.dart';
@@ -27,7 +28,7 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
     final catatanAsyncValue = ref.watch(catatanProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4FA),
+      backgroundColor: context.appBackground,
       body: SafeArea(
         child: catatanAsyncValue.when(
           data: (rows) {
@@ -38,7 +39,7 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
               ..sort((a, b) => b.tanggalAsDate.compareTo(a.tanggalAsDate));
 
             return RefreshIndicator(
-              color: const Color(0xFF4B3FF2),
+              color: context.appPrimary,
               onRefresh: () async {
                 await ref
                     .read(catatanProvider.notifier)
@@ -60,7 +61,7 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF2A233A),
+                      color: context.appText,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -338,9 +339,9 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
                         return Container(
                           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: context.appSurface,
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: const Color(0xFFE7EAF4)),
+                            border: Border.all(color: context.appBorder),
                           ),
                           child: Row(
                             children: [
@@ -364,20 +365,18 @@ class _CatatanListScreenState extends ConsumerState<CatatanListScreen> {
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w800,
-                                        color: const Color(0xFF201B31),
+                                        color: context.appText,
                                       ),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      item.listPreview.isEmpty
-                                          ? '(Tanpa isi)'
-                                          : item.listPreview,
+                                      _catatanPreviewLabel(item),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF7B8197),
+                                        color: context.appMuted,
                                       ),
                                     ),
                                   ],
@@ -550,9 +549,7 @@ class _CatatanFeedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = _resolveCatatanTone(item);
-    final preview = item.listPreview.isEmpty
-        ? 'Catatan tanpa isi.'
-        : item.listPreview;
+    final preview = _catatanPreviewLabel(item);
 
     return Material(
       color: Colors.transparent,
@@ -563,15 +560,9 @@ class _CatatanFeedCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(20),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x100F172A),
-                blurRadius: 14,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: context.appCardShadow,
           ),
           child: Stack(
             children: [
@@ -603,7 +594,7 @@ class _CatatanFeedCard extends StatelessWidget {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF201B31),
+                              color: context.appText,
                             ),
                           ),
                         ),
@@ -638,16 +629,16 @@ class _CatatanFeedCard extends StatelessWidget {
                         fontSize: 13.5,
                         height: 1.5,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF6D748E),
+                        color: context.appMuted,
                       ),
                     ),
                     const SizedBox(height: 14),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.schedule_rounded,
                           size: 15,
-                          color: Color(0xFFA0A5B8),
+                          color: context.appFaint,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -658,7 +649,7 @@ class _CatatanFeedCard extends StatelessWidget {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFFA0A5B8),
+                              color: context.appFaint,
                             ),
                           ),
                         ),
@@ -725,9 +716,9 @@ class _OutlineActionButton extends StatelessWidget {
     return OutlinedButton.icon(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFF5A50E8),
-        side: const BorderSide(color: Color(0xFFD9D6F9)),
-        backgroundColor: Colors.white,
+        foregroundColor: context.appPrimary,
+        side: BorderSide(color: context.appBorder),
+        backgroundColor: context.appSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       ),
@@ -797,15 +788,9 @@ class _CatatanEmptyStateCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x100F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        boxShadow: context.appCardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -815,7 +800,7 @@ class _CatatanEmptyStateCard extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 15,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF201B31),
+              color: context.appText,
             ),
           ),
           const SizedBox(height: 8),
@@ -825,7 +810,7 @@ class _CatatanEmptyStateCard extends StatelessWidget {
               fontSize: 12.5,
               height: 1.45,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF8D91A5),
+              color: context.appMuted,
             ),
           ),
         ],
@@ -886,7 +871,7 @@ class _IconCapsuleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: context.appSurface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -897,9 +882,7 @@ class _IconCapsuleButton extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Center(
-                child: Icon(icon, color: const Color(0xFF202033), size: 22),
-              ),
+              Center(child: Icon(icon, color: context.appText, size: 22)),
               if (showDot)
                 Positioned(
                   top: 9,
@@ -910,7 +893,7 @@ class _IconCapsuleButton extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF4D4F),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(color: context.appSurface, width: 1.5),
                     ),
                   ),
                 ),
@@ -999,6 +982,14 @@ _CatatanTone _resolveCatatanTone(Catatan item) {
 
 bool _containsAny(String text, List<String> keywords) {
   return keywords.any(text.contains);
+}
+
+String _catatanPreviewLabel(Catatan item) {
+  if (!item.showPreview) {
+    return 'Preview disembunyikan';
+  }
+
+  return item.listPreview.isEmpty ? 'Catatan tanpa isi.' : item.listPreview;
 }
 
 String _catatanTimeLabel(Catatan item) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/pengumuman/providers/pengumuman_provider.dart';
 import 'package:mobile_ver/features/reminder/providers/upcoming_reminder_provider.dart';
 import 'package:mobile_ver/features/todo/providers/todo_provider.dart';
@@ -15,9 +16,6 @@ class MainLayout extends ConsumerStatefulWidget {
 
 class _MainLayoutState extends ConsumerState<MainLayout>
     with WidgetsBindingObserver {
-  static const Color _activeNavColor = Color(0xFF4E44F2);
-  static const Color _inactiveNavColor = Color(0xFF9CA3AF);
-
   @override
   void initState() {
     super.initState();
@@ -98,6 +96,8 @@ class _MainLayoutState extends ConsumerState<MainLayout>
   @override
   Widget build(BuildContext context) {
     final selectedIndex = _calculateSelectedIndex(context);
+    final activeNavColor = context.appPrimary;
+    final inactiveNavColor = context.appFaint;
     const items = <_BottomNavItem>[
       _BottomNavItem(
         label: 'Beranda',
@@ -134,9 +134,9 @@ class _MainLayoutState extends ConsumerState<MainLayout>
     return Scaffold(
       body: widget.child,
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE5E7EB))),
+        decoration: BoxDecoration(
+          color: context.appSurface,
+          border: Border(top: BorderSide(color: context.appBorder)),
         ),
         child: SafeArea(
           top: false,
@@ -149,8 +149,8 @@ class _MainLayoutState extends ConsumerState<MainLayout>
                     child: _BottomNavButton(
                       item: items[i],
                       isSelected: selectedIndex == i,
-                      activeColor: _activeNavColor,
-                      inactiveColor: _inactiveNavColor,
+                      activeColor: activeNavColor,
+                      inactiveColor: inactiveNavColor,
                       onTap: () => _onItemTapped(i, context),
                     ),
                   ),

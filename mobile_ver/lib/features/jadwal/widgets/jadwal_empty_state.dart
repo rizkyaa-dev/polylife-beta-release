@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 
 class JadwalEmptyState extends StatelessWidget {
   final String title;
@@ -16,19 +17,19 @@ class JadwalEmptyState extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.calendar_month_outlined, color: Color(0xFF64748B)),
+          Icon(Icons.calendar_month_outlined, color: context.appMuted),
           const SizedBox(height: 10),
           Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
+            style: TextStyle(
+              color: context.appText,
               fontWeight: FontWeight.w700,
               fontSize: 15,
             ),
@@ -36,7 +37,7 @@ class JadwalEmptyState extends StatelessWidget {
           const SizedBox(height: 5),
           Text(
             subtitle,
-            style: const TextStyle(color: Color(0xFF64748B), height: 1.3),
+            style: TextStyle(color: context.appMuted, height: 1.3),
           ),
         ],
       ),

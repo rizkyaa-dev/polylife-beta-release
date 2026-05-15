@@ -8,6 +8,8 @@ void main() {
     test('parses reminder list item with active wire variants', () {
       final activeFromString = ReminderListItem.fromJson({
         'id': 7,
+        'sync_uuid': 'reminder-uuid',
+        'server_version': 4,
         'title': 'Kumpulkan tugas',
         'target_type': 'todo',
         'target_label': 'Tugas UI',
@@ -20,6 +22,9 @@ void main() {
       final inactive = ReminderListItem.fromJson({'active': 0});
 
       expect(activeFromString.id, 7);
+      expect(activeFromString.serverId, 7);
+      expect(activeFromString.localUuid, 'reminder-uuid');
+      expect(activeFromString.serverVersion, 4);
       expect(activeFromString.active, isTrue);
       expect(activeFromString.scheduledAt, isNotNull);
       expect(inactive.active, isFalse);

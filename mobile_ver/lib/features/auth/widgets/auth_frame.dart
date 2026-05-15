@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 
 enum AuthMessageTone { error, success }
 
@@ -18,19 +19,34 @@ class AuthFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
+    final panelBackground = isDark
+        ? const Color(0xFF111827).withValues(alpha: 0.96)
+        : const Color(0xFFFDFBFF).withValues(alpha: 0.96);
+    final textColor = context.appText;
+    final mutedColor = isDark
+        ? const Color(0xFFA5B4FC)
+        : const Color(0xFF6D6797);
+
     return Scaffold(
       body: Stack(
         children: [
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFFFFF7FB),
-                  Color(0xFFF7F4FF),
-                  Color(0xFFFDF8FF),
-                ],
+                colors: isDark
+                    ? const [
+                        Color(0xFF020617),
+                        Color(0xFF111827),
+                        Color(0xFF1E1B4B),
+                      ]
+                    : const [
+                        Color(0xFFFFF7FB),
+                        Color(0xFFF7F4FF),
+                        Color(0xFFFDF8FF),
+                      ],
               ),
             ),
           ),
@@ -40,7 +56,9 @@ class AuthFrame extends StatelessWidget {
                 opacity: 0.3,
                 child: CustomPaint(
                   painter: _GridPainter(
-                    lineColor: const Color(0xFF8181FF).withValues(alpha: 0.2),
+                    lineColor: const Color(
+                      0xFF8181FF,
+                    ).withValues(alpha: isDark ? 0.12 : 0.2),
                     step: 32,
                   ),
                 ),
@@ -54,11 +72,15 @@ class AuthFrame extends StatelessWidget {
               height: 180,
               width: 180,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFCCE1).withValues(alpha: 0.55),
-                boxShadow: const [
+                color:
+                    (isDark ? const Color(0xFF4C1D95) : const Color(0xFFFFCCE1))
+                        .withValues(alpha: 0.55),
+                boxShadow: [
                   BoxShadow(
-                    color: Color.fromRGBO(255, 255, 255, 0.7),
-                    offset: Offset(12, 12),
+                    color: isDark
+                        ? const Color.fromRGBO(2, 6, 23, 0.8)
+                        : const Color.fromRGBO(255, 255, 255, 0.7),
+                    offset: const Offset(12, 12),
                     blurRadius: 0,
                   ),
                 ],
@@ -72,11 +94,15 @@ class AuthFrame extends StatelessWidget {
               height: 220,
               width: 220,
               decoration: BoxDecoration(
-                color: const Color(0xFFC9E5FF).withValues(alpha: 0.55),
-                boxShadow: const [
+                color:
+                    (isDark ? const Color(0xFF164E63) : const Color(0xFFC9E5FF))
+                        .withValues(alpha: 0.55),
+                boxShadow: [
                   BoxShadow(
-                    color: Color.fromRGBO(255, 255, 255, 0.45),
-                    offset: Offset(-12, -12),
+                    color: isDark
+                        ? const Color.fromRGBO(2, 6, 23, 0.65)
+                        : const Color.fromRGBO(255, 255, 255, 0.45),
+                    offset: const Offset(-12, -12),
                     blurRadius: 0,
                   ),
                 ],
@@ -96,11 +122,13 @@ class AuthFrame extends StatelessWidget {
                         color: const Color(0xFF8181FF),
                         width: 4,
                       ),
-                      color: const Color(0xFFFDFBFF).withValues(alpha: 0.96),
-                      boxShadow: const [
+                      color: panelBackground,
+                      boxShadow: [
                         BoxShadow(
-                          color: Color(0xFFC5D4FF),
-                          offset: Offset(12, 12),
+                          color: isDark
+                              ? const Color(0xFF000000)
+                              : const Color(0xFFC5D4FF),
+                          offset: const Offset(12, 12),
                           blurRadius: 0,
                         ),
                       ],
@@ -119,21 +147,19 @@ class AuthFrame extends StatelessWidget {
                               Text(
                                 title,
                                 style: const TextStyle(
-                                  color: Color(0xFF2D2D3C),
                                   fontSize: 30,
                                   height: 1.15,
                                   fontWeight: FontWeight.w800,
-                                ),
+                                ).copyWith(color: textColor),
                               ),
                               const SizedBox(height: 10),
                               Text(
                                 subtitle,
                                 style: const TextStyle(
-                                  color: Color(0xFF6D6797),
                                   fontSize: 15,
                                   height: 1.4,
                                   fontWeight: FontWeight.w500,
-                                ),
+                                ).copyWith(color: mutedColor),
                               ),
                               const SizedBox(height: 22),
                               ...children,
@@ -179,13 +205,17 @@ class AuthTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final muted = context.isDarkMode
+        ? const Color(0xFFA5B4FC)
+        : const Color(0xFF4C4C63);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF4C4C63),
+          style: TextStyle(
+            color: muted,
             fontSize: 14,
             fontWeight: FontWeight.w700,
           ),
@@ -197,7 +227,11 @@ class AuthTextField extends StatelessWidget {
           obscureText: obscureText,
           textInputAction: textInputAction,
           autofillHints: autofillHints,
-          decoration: _inputDecoration(hintText: hintText, icon: icon),
+          decoration: _inputDecoration(
+            context: context,
+            hintText: hintText,
+            icon: icon,
+          ),
           onFieldSubmitted: onSubmitted,
         ),
       ],
@@ -205,32 +239,35 @@ class AuthTextField extends StatelessWidget {
   }
 
   InputDecoration _inputDecoration({
+    required BuildContext context,
     required String hintText,
     required IconData icon,
   }) {
+    final isDark = context.isDarkMode;
+    final borderColor = const Color(
+      0xFF8181FF,
+    ).withValues(alpha: isDark ? 0.55 : 0.4);
+
     return InputDecoration(
       hintText: hintText,
-      prefixIcon: Icon(icon, color: const Color(0xFF6D6797)),
+      prefixIcon: Icon(
+        icon,
+        color: isDark ? const Color(0xFFA5B4FC) : const Color(0xFF6D6797),
+      ),
       filled: true,
-      fillColor: const Color(0xFFF6F4FF),
+      fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF6F4FF),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      hintStyle: const TextStyle(
-        color: Color(0xFFA7A6C9),
+      hintStyle: TextStyle(
+        color: isDark ? const Color(0xFF64748B) : const Color(0xFFA7A6C9),
         fontWeight: FontWeight.w600,
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(
-          color: const Color(0xFF8181FF).withValues(alpha: 0.4),
-          width: 2,
-        ),
+        borderSide: BorderSide(color: borderColor, width: 2),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(
-          color: const Color(0xFF8181FF).withValues(alpha: 0.4),
-          width: 2,
-        ),
+        borderSide: BorderSide(color: borderColor, width: 2),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
@@ -349,8 +386,8 @@ class AuthFooterLink extends StatelessWidget {
           if (prefix.isNotEmpty)
             Text(
               prefix,
-              style: const TextStyle(
-                color: Color(0xFF6D6797),
+              style: TextStyle(
+                color: context.appMuted,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -385,6 +422,8 @@ class _AuthBrandHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
+
     return Row(
       children: [
         Container(
@@ -413,13 +452,13 @@ class _AuthBrandHeader extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 14),
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'PolyLife',
               style: TextStyle(
-                color: Color(0xFF2D2D3C),
+                color: context.appText,
                 fontSize: 24,
                 fontWeight: FontWeight.w900,
               ),
@@ -428,7 +467,9 @@ class _AuthBrandHeader extends StatelessWidget {
             Text(
               'WORKSPACE',
               style: TextStyle(
-                color: Color(0xFF6D6797),
+                color: isDark
+                    ? const Color(0xFFA5B4FC)
+                    : const Color(0xFF6D6797),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 3.4,
@@ -445,7 +486,7 @@ class _AuthBrandHeader extends StatelessWidget {
               color: const Color(0xFF2B2250).withValues(alpha: 0.2),
               width: 2,
             ),
-            color: Colors.white,
+            color: isDark ? const Color(0xFF0F172A) : Colors.white,
           ),
           child: Text(
             badgeText,

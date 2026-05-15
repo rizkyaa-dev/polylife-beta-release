@@ -29,7 +29,9 @@ class _CatatanNoteCardState extends State<CatatanNoteCard> {
       'id_ID',
     ).format(widget.item.tanggalAsDate);
     final content = widget.item.listPreview.isEmpty
-        ? '(Tanpa isi)'
+        ? widget.item.showPreview
+              ? '(Tanpa isi)'
+              : 'Preview disembunyikan'
         : widget.item.listPreview;
 
     return Container(

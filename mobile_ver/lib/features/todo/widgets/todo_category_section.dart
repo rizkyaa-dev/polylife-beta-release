@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/todo/models/todo_item.dart';
 import 'package:mobile_ver/features/todo/widgets/todo_task_tile.dart';
 
@@ -36,9 +37,9 @@ class TodoCategorySection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -58,8 +59,8 @@ class TodoCategorySection extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
+                  style: TextStyle(
+                    color: context.appText,
                     fontWeight: FontWeight.w800,
                     fontSize: 30 / 2,
                   ),
@@ -89,7 +90,7 @@ class TodoCategorySection extends StatelessWidget {
                   expanded
                       ? Icons.keyboard_arrow_up_rounded
                       : Icons.keyboard_arrow_down_rounded,
-                  color: const Color(0xFF94A3B8),
+                  color: context.appFaint,
                 ),
               ),
             ],
@@ -134,23 +135,23 @@ class _EmptyBox extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFCFDFE),
+        color: context.appSurfaceAlt,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         children: [
           CircleAvatar(
             radius: 18,
-            backgroundColor: const Color(0xFFEEF2FF),
-            child: Icon(icon, color: const Color(0xFF6366F1), size: 18),
+            backgroundColor: context.appPrimarySoft,
+            child: Icon(icon, color: context.appPrimary, size: 18),
           ),
           const SizedBox(height: 10),
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFF334155),
+            style: TextStyle(
+              color: context.appText,
               fontWeight: FontWeight.w600,
               height: 1.3,
             ),
@@ -160,7 +161,7 @@ class _EmptyBox extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF64748B), height: 1.3),
+              style: TextStyle(color: context.appMuted, height: 1.3),
             ),
           ],
         ],

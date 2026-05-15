@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
 
 class JadwalMonthCalendarCard extends StatelessWidget {
@@ -25,9 +26,9 @@ class JadwalMonthCalendarCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         children: [
@@ -71,12 +72,12 @@ class JadwalMonthCalendarCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isSelected
-                          ? const Color(0xFF4F46E5)
+                          ? context.appPrimary
                           : Colors.transparent,
                       width: 1.5,
                     ),
                     color: isSelected
-                        ? const Color(0xFFEEF2FF)
+                        ? context.appPrimarySoft
                         : Colors.transparent,
                   ),
                   child: Column(
@@ -86,8 +87,8 @@ class JadwalMonthCalendarCard extends StatelessWidget {
                         '${day.day}',
                         style: TextStyle(
                           color: inCurrentMonth
-                              ? const Color(0xFF0F172A)
-                              : const Color(0xFFCBD5E1),
+                              ? context.appText
+                              : context.appFaint,
                           fontWeight: isSelected
                               ? FontWeight.w800
                               : FontWeight.w600,
@@ -174,8 +175,8 @@ class _LegendItem extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF64748B),
+          style: TextStyle(
+            color: context.appMuted,
             fontWeight: FontWeight.w700,
             fontSize: 11,
           ),
@@ -196,8 +197,8 @@ class _WeekdayLabel extends StatelessWidget {
       child: Center(
         child: Text(
           text,
-          style: const TextStyle(
-            color: Color(0xFF94A3B8),
+          style: TextStyle(
+            color: context.appFaint,
             fontWeight: FontWeight.w700,
             fontSize: 12,
           ),

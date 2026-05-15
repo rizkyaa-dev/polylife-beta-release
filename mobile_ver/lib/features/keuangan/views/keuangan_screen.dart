@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/auth/models/user_model.dart';
 import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/keuangan/models/keuangan_model.dart';
@@ -28,12 +29,12 @@ class KeuanganScreen extends ConsumerWidget {
     final notifier = ref.read(keuanganProvider.notifier);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4FA),
+      backgroundColor: context.appBackground,
       body: SafeArea(
         child: state.isLoading && state.items.isEmpty
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
-                color: const Color(0xFF4B3FF2),
+                color: context.appPrimary,
                 onRefresh: () => notifier.fetchKeuangan(showLoader: false),
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -52,7 +53,7 @@ class KeuanganScreen extends ConsumerWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF221D33),
+                        color: context.appText,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -61,7 +62,7 @@ class KeuanganScreen extends ConsumerWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF7A819C),
+                        color: context.appMuted,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -113,7 +114,7 @@ class KeuanganScreen extends ConsumerWidget {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF221D33),
+                              color: context.appText,
                             ),
                           ),
                         ),
@@ -244,9 +245,9 @@ class _MonthlyTransactionListScreen extends ConsumerWidget {
     final total = rows.fold<double>(0, (sum, item) => sum + item.nominal);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4FA),
+      backgroundColor: context.appBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F4FA),
+        backgroundColor: context.appBackground,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: Text(
@@ -254,7 +255,7 @@ class _MonthlyTransactionListScreen extends ConsumerWidget {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 20,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF221D33),
+            color: context.appText,
           ),
         ),
       ),
@@ -278,7 +279,7 @@ class _MonthlyTransactionListScreen extends ConsumerWidget {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF221D33),
+                          color: context.appText,
                         ),
                       ),
                     ),
@@ -560,15 +561,9 @@ class _SummaryMetricCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x120F172A),
-                blurRadius: 16,
-                offset: Offset(0, 8),
-              ),
-            ],
+            boxShadow: context.appCardShadow,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -598,7 +593,7 @@ class _SummaryMetricCard extends StatelessWidget {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF221D33),
+                  color: context.appText,
                 ),
               ),
             ],
@@ -627,15 +622,9 @@ class _FilteredTransactionHeroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F172A),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
+        boxShadow: context.appCardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -671,7 +660,7 @@ class _FilteredTransactionHeroCard extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF7A819C),
+                        color: context.appMuted,
                       ),
                     ),
                   ],
@@ -685,7 +674,7 @@ class _FilteredTransactionHeroCard extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF221D33),
+              color: context.appText,
             ),
           ),
           const SizedBox(height: 6),
@@ -726,15 +715,9 @@ class _TransactionCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x110F172A),
-                blurRadius: 14,
-                offset: Offset(0, 6),
-              ),
-            ],
+            boxShadow: context.appCardShadow,
           ),
           child: Row(
             children: [
@@ -767,7 +750,7 @@ class _TransactionCard extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF221D33),
+                        color: context.appText,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -830,15 +813,9 @@ class _EmptyTransactionCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x100F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        boxShadow: context.appCardShadow,
       ),
       child: Text(
         message,
@@ -866,7 +843,7 @@ class _IconCapsuleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: context.appSurface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -877,9 +854,7 @@ class _IconCapsuleButton extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Center(
-                child: Icon(icon, color: const Color(0xFF202033), size: 22),
-              ),
+              Center(child: Icon(icon, color: context.appText, size: 22)),
               if (showDot)
                 Positioned(
                   top: 9,
@@ -890,7 +865,7 @@ class _IconCapsuleButton extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF4D4F),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(color: context.appSurface, width: 1.5),
                     ),
                   ),
                 ),

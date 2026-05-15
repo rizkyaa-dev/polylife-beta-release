@@ -12,13 +12,15 @@ class LocalImageCache {
   static Future<File?> getOrFetch(
     String url, {
     bool forceRefresh = false,
+    Map<String, String>? headers,
+    String cacheNamespace = _directoryName,
   }) async {
     try {
       if (!ApiConfig.isAllowedAbsoluteUrl(url)) {
         return null;
       }
 
-      final file = await _resolveFile(url);
+      final file = await _resolveFile(url, cacheNamespace: cacheNamespace);
 
       if (forceRefresh && await file.exists()) {
         await file.delete();
@@ -32,7 +34,9 @@ class LocalImageCache {
         await file.delete();
       }
 
-      final response = await http.get(Uri.parse(url)).timeout(_timeout);
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(_timeout);
       final contentType = (response.headers['content-type'] ?? '')
           .toLowerCase();
 
@@ -60,9 +64,16 @@ class LocalImageCache {
   static Future<Uint8List?> getOrFetchBytes(
     String url, {
     bool forceRefresh = false,
+    Map<String, String>? headers,
+    String cacheNamespace = _directoryName,
   }) async {
     try {
-      final file = await getOrFetch(url, forceRefresh: forceRefresh);
+      final file = await getOrFetch(
+        url,
+        forceRefresh: forceRefresh,
+        headers: headers,
+        cacheNamespace: cacheNamespace,
+      );
       if (file == null || !await file.exists()) {
         return null;
       }
@@ -78,9 +89,12 @@ class LocalImageCache {
     }
   }
 
-  static Future<File?> getIfExists(String url) async {
+  static Future<File?> getIfExists(
+    String url, {
+    String cacheNamespace = _directoryName,
+  }) async {
     try {
-      final file = await _resolveFile(url);
+      final file = await _resolveFile(url, cacheNamespace: cacheNamespace);
       if (await file.exists() && await file.length() > 0) {
         return file;
       }
@@ -91,15 +105,23 @@ class LocalImageCache {
     return null;
   }
 
-  static Future<File> _resolveFile(String url) async {
+  static Future<File> _resolveFile(
+    String url, {
+    required String cacheNamespace,
+  }) async {
     final root = await getApplicationSupportDirectory();
     final directory = Directory(
-      '${root.path}${Platform.pathSeparator}$_directoryName',
+      '${root.path}${Platform.pathSeparator}${_safeDirectoryName(cacheNamespace)}',
     );
     final extension = _extensionFromUrl(url);
     final fileName = '${_stableHash(url)}$extension';
 
     return File('${directory.path}${Platform.pathSeparator}$fileName');
+  }
+
+  static String _safeDirectoryName(String value) {
+    final normalized = value.trim().replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_');
+    return normalized.isEmpty ? _directoryName : normalized;
   }
 
   static Future<bool> _looksLikeImageFile(File file) async {

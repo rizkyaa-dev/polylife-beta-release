@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
 import 'package:mobile_ver/features/jadwal/widgets/jadwal_item_card.dart';
 
@@ -33,17 +34,17 @@ class JadwalDayAgendaSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'AGENDA TANGGAL',
             style: TextStyle(
-              color: Color(0xFF64748B),
+              color: context.appMuted,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.5,
               fontSize: 12,
@@ -55,8 +56,8 @@ class JadwalDayAgendaSection extends StatelessWidget {
               Expanded(
                 child: Text(
                   dateLabel[0].toUpperCase() + dateLabel.substring(1),
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
+                  style: TextStyle(
+                    color: context.appText,
                     fontWeight: FontWeight.w800,
                     fontSize: 32 / 2,
                   ),
@@ -83,7 +84,7 @@ class JadwalDayAgendaSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(height: 1),
+          Divider(height: 1, color: context.appBorder),
           if (isWeekend) ...[
             const SizedBox(height: 12),
             Container(
@@ -154,25 +155,22 @@ class _EmptyAgendaCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: context.appSurfaceAlt,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFCBD5E1),
-          style: BorderStyle.solid,
-        ),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: const Color(0xFFE2E8F0),
-            child: Icon(icon, color: const Color(0xFF64748B)),
+            backgroundColor: context.appSubtle,
+            child: Icon(icon, color: context.appMuted),
           ),
           const SizedBox(height: 10),
           Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF0F172A),
+            style: TextStyle(
+              color: context.appText,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -180,7 +178,7 @@ class _EmptyAgendaCard extends StatelessWidget {
           Text(
             subtitle,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Color(0xFF64748B), height: 1.3),
+            style: TextStyle(color: context.appMuted, height: 1.3),
           ),
         ],
       ),

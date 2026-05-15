@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
 
 class JadwalNextAgendaCard extends StatelessWidget {
@@ -19,9 +20,9 @@ class JadwalNextAgendaCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: context.appBorder),
       ),
       child: item == null
           ? const _EmptyCard()
@@ -56,10 +57,10 @@ class _FilledCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'AGENDA BERIKUTNYA',
           style: TextStyle(
-            color: Color(0xFF4F46E5),
+            color: context.appPrimary,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.6,
             fontSize: 12,
@@ -68,8 +69,8 @@ class _FilledCard extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           item.title,
-          style: const TextStyle(
-            color: Color(0xFF0F172A),
+          style: TextStyle(
+            color: context.appText,
             fontWeight: FontWeight.w800,
             fontSize: 20,
           ),
@@ -77,17 +78,14 @@ class _FilledCard extends StatelessWidget {
         const SizedBox(height: 6),
         Text(
           '$startDate • $startTime - $endTime',
-          style: const TextStyle(
-            color: Color(0xFF475569),
+          style: TextStyle(
+            color: context.appMuted,
             fontWeight: FontWeight.w600,
           ),
         ),
         if (item.location.trim().isNotEmpty) ...[
           const SizedBox(height: 4),
-          Text(
-            item.location.trim(),
-            style: const TextStyle(color: Color(0xFF64748B)),
-          ),
+          Text(item.location.trim(), style: TextStyle(color: context.appMuted)),
         ],
         const SizedBox(height: 10),
         Row(
@@ -95,13 +93,13 @@ class _FilledCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFFEEF2FF),
+                color: context.appPrimarySoft,
                 borderRadius: BorderRadius.circular(99),
               ),
               child: Text(
                 countdown,
-                style: const TextStyle(
-                  color: Color(0xFF4F46E5),
+                style: TextStyle(
+                  color: context.appPrimary,
                   fontWeight: FontWeight.w700,
                   fontSize: 12,
                 ),
@@ -125,31 +123,31 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'AGENDA BERIKUTNYA',
           style: TextStyle(
-            color: Color(0xFF4F46E5),
+            color: context.appPrimary,
             fontWeight: FontWeight.w800,
             letterSpacing: 0.6,
             fontSize: 12,
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
           'Belum ada agenda terdekat.',
           style: TextStyle(
-            color: Color(0xFF0F172A),
+            color: context.appText,
             fontWeight: FontWeight.w700,
             fontSize: 17,
           ),
         ),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(
           'Tambahkan jadwal kuliah atau ujian agar ringkasan harian muncul.',
-          style: TextStyle(color: Color(0xFF64748B)),
+          style: TextStyle(color: context.appMuted),
         ),
       ],
     );

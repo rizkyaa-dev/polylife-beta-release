@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
 
 class JadwalFormScreen extends StatefulWidget {
@@ -126,7 +127,9 @@ class _JadwalFormScreenState extends State<JadwalFormScreen> {
     final dateLabel = DateFormat('dd MMM yyyy', 'id_ID').format(_selectedDate);
 
     return Scaffold(
+      backgroundColor: context.appBackground,
       appBar: AppBar(
+        backgroundColor: context.appBackground,
         title: Text(_isEdit ? 'Edit Jadwal' : 'Tambah Jadwal'),
         actions: [TextButton(onPressed: _submit, child: const Text('Simpan'))],
       ),

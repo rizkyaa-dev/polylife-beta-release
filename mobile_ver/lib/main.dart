@@ -154,10 +154,15 @@ class _MyAppState extends ConsumerState<MyApp> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authLoadingProvider);
+    final themeMode = _themeModeFromPreference(
+      ref.watch(userProvider.select((user) => user?.profile?.themePreference)),
+    );
 
     if (isLoading && !AppMode.uiOnly) {
       return MaterialApp(
         theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: themeMode,
         home: const Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
@@ -165,6 +170,8 @@ class _MyAppState extends ConsumerState<MyApp> {
     return MaterialApp.router(
       title: 'PolyLife',
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
     );
@@ -173,4 +180,15 @@ class _MyAppState extends ConsumerState<MyApp> {
 
 class _RouterRefreshNotifier extends ChangeNotifier {
   void refresh() => notifyListeners();
+}
+
+ThemeMode _themeModeFromPreference(String? preference) {
+  switch ((preference ?? 'system').trim().toLowerCase()) {
+    case 'light':
+      return ThemeMode.light;
+    case 'dark':
+      return ThemeMode.dark;
+    default:
+      return ThemeMode.system;
+  }
 }

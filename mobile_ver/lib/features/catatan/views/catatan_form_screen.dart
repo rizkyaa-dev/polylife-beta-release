@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import '../models/catatan_model.dart';
 import '../providers/catatan_provider.dart';
 import 'package:intl/intl.dart';
@@ -20,6 +21,7 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
   late TextEditingController _judulController;
   late TextEditingController _isiController;
   late DateTime _selectedDate;
+  late bool _showPreview;
   bool _isLoading = false;
 
   @override
@@ -27,6 +29,7 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
     super.initState();
     _judulController = TextEditingController(text: widget.catatan?.judul ?? '');
     _isiController = TextEditingController(text: widget.catatan?.isi ?? '');
+    _showPreview = widget.catatan?.showPreview ?? false;
 
     if (widget.catatan != null) {
       try {
@@ -74,6 +77,7 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
         _judulController.text,
         _isiController.text,
         formattedDate,
+        _showPreview,
       );
     } else {
       success = await notifier.updateCatatan(
@@ -81,6 +85,7 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
         _judulController.text,
         _isiController.text,
         formattedDate,
+        _showPreview,
       );
     }
 
@@ -106,7 +111,9 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: context.appBackground,
       appBar: AppBar(
+        backgroundColor: context.appBackground,
         title: Text(widget.catatan == null ? 'Buat Catatan' : 'Edit Catatan'),
         actions: [
           IconButton(
@@ -157,6 +164,32 @@ class _CatatanFormScreenState extends ConsumerState<CatatanFormScreen> {
                         alignLabelWithHint: true,
                       ),
                       maxLines: 12,
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                      decoration: BoxDecoration(
+                        color: context.appSurface,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: context.appBorder),
+                      ),
+                      child: SwitchListTile.adaptive(
+                        value: _showPreview,
+                        onChanged: (value) =>
+                            setState(() => _showPreview = value),
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          'Tampilkan preview di daftar catatan',
+                          style: TextStyle(
+                            color: context.appText,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'Jika dimatikan, isi catatan tidak dipakai sebagai cuplikan di list maupun cache preview lokal.',
+                          style: TextStyle(color: context.appMuted),
+                        ),
+                      ),
                     ),
                   ],
                 ),

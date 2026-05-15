@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_ver/core/config/app_mode.dart';
 import 'package:mobile_ver/core/database/app_database.dart';
 import 'package:mobile_ver/core/network/api_client.dart';
+import 'package:mobile_ver/core/security/local_data_crypto.dart';
 import 'package:mobile_ver/core/sync/sync_models.dart';
 import 'package:mobile_ver/core/sync/sync_service.dart';
 import 'package:mobile_ver/core/sync/sync_uuid.dart';
@@ -26,6 +27,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
       judul: 'Materi Web',
       isi: 'Ringkasan HTML, CSS, JavaScript untuk latihan minggu ini.',
       previewIsi: 'Ringkasan HTML, CSS, JavaScript untuk latihan minggu ini.',
+      showPreview: true,
       hasFullIsi: true,
       tanggal: '2026-02-28',
       statusSampah: false,
@@ -35,6 +37,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
       judul: 'To-Do UTS',
       isi: 'Revisi catatan kuliah, latihan soal, dan cek jadwal ujian.',
       previewIsi: 'Revisi catatan kuliah, latihan soal, dan cek jadwal ujian.',
+      showPreview: true,
       hasFullIsi: true,
       tanggal: '2026-02-27',
       statusSampah: false,
@@ -109,7 +112,12 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     }
   }
 
-  Future<bool> createCatatan(String judul, String isi, String tanggal) async {
+  Future<bool> createCatatan(
+    String judul,
+    String isi,
+    String tanggal,
+    bool showPreview,
+  ) async {
     if (AppMode.uiOnly) {
       final current = state.value ?? <Catatan>[];
       final nextId = current.isEmpty
@@ -119,7 +127,8 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
         id: nextId,
         judul: judul,
         isi: isi,
-        previewIsi: isi,
+        previewIsi: showPreview ? _preview(isi) : '',
+        showPreview: showPreview,
         hasFullIsi: true,
         tanggal: tanggal,
         statusSampah: false,
@@ -135,6 +144,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
           judul: judul,
           isi: isi,
           tanggal: tanggal,
+          showPreview: showPreview,
           statusSampah: false,
           action: 'create',
         );
@@ -145,6 +155,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
       final response = await ApiClient.post('/catatan', {
         'judul': judul,
         'isi': isi,
+        'show_preview': showPreview,
         'tanggal': tanggal,
       });
       if (response.statusCode == 201) {
@@ -161,6 +172,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     String judul,
     String isi,
     String tanggal,
+    bool showPreview,
   ) async {
     if (AppMode.uiOnly) {
       final current = state.value ?? <Catatan>[];
@@ -171,7 +183,8 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
                     id: item.id,
                     judul: judul,
                     isi: isi,
-                    previewIsi: isi,
+                    previewIsi: showPreview ? _preview(isi) : '',
+                    showPreview: showPreview,
                     hasFullIsi: true,
                     tanggal: tanggal,
                     statusSampah: item.statusSampah,
@@ -190,6 +203,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
           judul: judul,
           isi: isi,
           tanggal: tanggal,
+          showPreview: showPreview,
           statusSampah: null,
           action: 'update',
         );
@@ -200,6 +214,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
       final response = await ApiClient.put('/catatan/$id', {
         'judul': judul,
         'isi': isi,
+        'show_preview': showPreview,
         'tanggal': tanggal,
       });
       if (response.statusCode == 200) {
@@ -315,7 +330,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
         return current?.firstWhere((item) => item.id == id);
       } catch (_) {
         final row = await _findLocalRow(id);
-        return row == null ? null : _fromLocalRow(row);
+        return row == null ? null : await _fromLocalRow(row);
       }
     }
 
@@ -375,7 +390,12 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
       orderBy: 'tanggal DESC, local_int_id DESC',
     );
 
-    return rows.map(_fromLocalRow).toList();
+    final items = <Catatan>[];
+    for (final row in rows) {
+      items.add(await _fromLocalRow(row));
+    }
+
+    return items;
   }
 
   Future<void> _upsertLocalCatatan({
@@ -383,6 +403,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     required String judul,
     required String isi,
     required String tanggal,
+    required bool? showPreview,
     required bool? statusSampah,
     required String action,
   }) async {
@@ -402,12 +423,24 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     final now = DateTime.now().toIso8601String();
     final nextTrash =
         statusSampah ?? ((existing?['status_sampah'] as num?)?.toInt() == 1);
+    final nextShowPreview =
+        showPreview ?? ((existing?['show_preview'] as num?)?.toInt() == 1);
     final payload = {
       'judul': judul.trim(),
       'isi': isi,
+      'show_preview': nextShowPreview,
       'tanggal': tanggal,
       'status_sampah': nextTrash,
     };
+    final encryptedIsi = await LocalDataCrypto.encryptString(userId, isi);
+    final encryptedPreview = await LocalDataCrypto.encryptString(
+      userId,
+      nextShowPreview ? _preview(isi) : '',
+    );
+    final encryptedPayload = await LocalDataCrypto.encryptString(
+      userId,
+      jsonEncode(payload),
+    );
 
     await AppDatabase.instance.transaction((txn) async {
       await txn.insert('catatan_local', {
@@ -416,8 +449,9 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
         'user_id': userId,
         'server_id': serverId,
         'judul': judul.trim(),
-        'isi': isi,
-        'preview_isi': _preview(isi),
+        'isi': encryptedIsi,
+        'preview_isi': encryptedPreview,
+        'show_preview': nextShowPreview ? 1 : 0,
         'has_full_isi': 1,
         'tanggal': tanggal,
         'status_sampah': nextTrash ? 1 : 0,
@@ -433,7 +467,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
         await txn.update(
           'sync_outbox',
           {
-            'payload_json': jsonEncode(payload),
+            'payload_json': encryptedPayload,
             'updated_at': now,
             'status': 'pending',
           },
@@ -471,8 +505,9 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
           (row['server_id'] as num?)?.toInt() ??
           (row['local_int_id'] as num?)?.toInt(),
       judul: row['judul']?.toString() ?? '',
-      isi: row['isi']?.toString() ?? '',
+      isi: await _decryptLocalField(row, 'isi'),
       tanggal: row['tanggal']?.toString() ?? '',
+      showPreview: (row['show_preview'] as num?)?.toInt() == 1,
       statusSampah: statusSampah,
       action: 'update',
     );
@@ -539,9 +574,12 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
     return rows.isEmpty ? null : rows.first;
   }
 
-  Catatan _fromLocalRow(Map<String, Object?> row) {
+  Future<Catatan> _fromLocalRow(Map<String, Object?> row) async {
     final localUuid = row['local_uuid']?.toString() ?? '';
     final serverId = (row['server_id'] as num?)?.toInt();
+    final isi = await _decryptLocalField(row, 'isi');
+    final previewIsi = await _decryptLocalField(row, 'preview_isi');
+
     return Catatan(
       id:
           serverId ??
@@ -552,14 +590,25 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
       serverVersion: (row['server_version'] as num?)?.toInt() ?? 0,
       syncStatus: row['sync_status']?.toString() ?? SyncStatus.synced.wireName,
       judul: row['judul']?.toString() ?? '',
-      isi: row['isi']?.toString() ?? '',
-      previewIsi: row['preview_isi']?.toString() ?? '',
+      isi: isi,
+      previewIsi: previewIsi,
+      showPreview: (row['show_preview'] as num?)?.toInt() == 1,
       hasFullIsi: row['has_full_isi'] == 1,
       tanggal: row['tanggal']?.toString() ?? '',
       statusSampah: row['status_sampah'] == 1,
       createdAt: DateTime.tryParse(row['created_at']?.toString() ?? ''),
       updatedAt: DateTime.tryParse(row['updated_at']?.toString() ?? ''),
     );
+  }
+
+  Future<String> _decryptLocalField(
+    Map<String, Object?> row,
+    String field,
+  ) async {
+    final rawValue = row[field]?.toString() ?? '';
+    final decrypted = await LocalDataCrypto.tryDecryptString(userId, rawValue);
+
+    return decrypted ?? '';
   }
 
   String _preview(String value) {

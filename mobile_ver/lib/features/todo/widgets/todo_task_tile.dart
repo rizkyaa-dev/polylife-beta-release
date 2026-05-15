@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/todo/models/todo_item.dart';
 
 class TodoTaskTile extends StatelessWidget {
@@ -26,9 +27,9 @@ class TodoTaskTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: context.appSurfaceAlt,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,7 +50,7 @@ class TodoTaskTile extends StatelessWidget {
                 Text(
                   item.title,
                   style: TextStyle(
-                    color: const Color(0xFF0F172A),
+                    color: context.appText,
                     fontWeight: FontWeight.w700,
                     decoration: item.completed
                         ? TextDecoration.lineThrough
@@ -60,10 +61,7 @@ class TodoTaskTile extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     item.description,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: context.appMuted, fontSize: 12),
                   ),
                 ],
                 if (dueLabel != null) ...[
@@ -74,13 +72,13 @@ class TodoTaskTile extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEEF2FF),
+                      color: context.appPrimarySoft,
                       borderRadius: BorderRadius.circular(99),
                     ),
                     child: Text(
                       dueLabel,
-                      style: const TextStyle(
-                        color: Color(0xFF4F46E5),
+                      style: TextStyle(
+                        color: context.appPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
                       ),

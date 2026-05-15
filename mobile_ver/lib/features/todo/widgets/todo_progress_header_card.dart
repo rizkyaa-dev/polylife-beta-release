@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 
 class TodoProgressHeaderCard extends StatelessWidget {
   final int totalTasks;
@@ -15,27 +16,27 @@ class TodoProgressHeaderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'ATUR TUGAS KAMU DENGAN RAPI',
             style: TextStyle(
-              color: Color(0xFF64748B),
+              color: context.appMuted,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.5,
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Pantau Progress Harian',
             style: TextStyle(
-              color: Color(0xFF0F172A),
+              color: context.appText,
               fontWeight: FontWeight.w800,
               fontSize: 34 / 2,
             ),
@@ -59,9 +60,9 @@ class TodoProgressHeaderCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
+              color: context.appSurfaceAlt,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE2E8F0)),
+              border: Border.all(color: context.appBorder),
             ),
             child: Row(
               children: [
@@ -69,10 +70,10 @@ class TodoProgressHeaderCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Total tugas',
                         style: TextStyle(
-                          color: Color(0xFF64748B),
+                          color: context.appMuted,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),
@@ -80,8 +81,8 @@ class TodoProgressHeaderCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         '$totalTasks',
-                        style: const TextStyle(
-                          color: Color(0xFF0F172A),
+                        style: TextStyle(
+                          color: context.appText,
                           fontSize: 30 / 2,
                           fontWeight: FontWeight.w800,
                         ),
@@ -89,12 +90,12 @@ class TodoProgressHeaderCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Klik kartu kategori di bawah untuk melihat daftar tugas.',
                     textAlign: TextAlign.right,
                     style: TextStyle(
-                      color: Color(0xFF94A3B8),
+                      color: context.appFaint,
                       fontSize: 12,
                       height: 1.3,
                     ),

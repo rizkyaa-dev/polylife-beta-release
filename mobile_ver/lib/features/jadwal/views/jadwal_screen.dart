@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/auth/models/user_model.dart';
 import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
@@ -31,17 +32,17 @@ class _JadwalScreenState extends ConsumerState<JadwalScreen> {
     );
     final monthGrid = _buildMonthGrid(monthAnchor);
     final selectedItems = [...state.dayItems]
-      ..sort((a, b) => a.startAt.compareTo(b.startAt));
+      ..sort((a, b) => _compareAgendaItemsForDate(a, b, state.selectedDate));
     final allItems = [...state.allItems]
       ..sort((a, b) => a.startAt.compareTo(b.startAt));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4FA),
+      backgroundColor: context.appBackground,
       body: SafeArea(
         child: state.isLoading && state.allItems.isEmpty
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
-                color: const Color(0xFF4B3FF2),
+                color: context.appPrimary,
                 onRefresh: notifier.load,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
@@ -269,7 +270,7 @@ class _JadwalScreenState extends ConsumerState<JadwalScreen> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF221D33),
+                        color: ctx.appText,
                       ),
                     ),
                     const Spacer(),
@@ -278,7 +279,7 @@ class _JadwalScreenState extends ConsumerState<JadwalScreen> {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF7A819C),
+                        color: ctx.appMuted,
                       ),
                     ),
                   ],
@@ -293,7 +294,7 @@ class _JadwalScreenState extends ConsumerState<JadwalScreen> {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF7A819C),
+                              color: ctx.appMuted,
                             ),
                           ),
                         )
@@ -393,7 +394,7 @@ class _TopBar extends StatelessWidget {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF3542D4),
+                          color: context.appPrimary,
                         ),
                       ),
                     ),
@@ -436,13 +437,13 @@ class _MonthNavigationRow extends StatelessWidget {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF221D33),
+                  color: context.appText,
                 ),
               ),
               const SizedBox(width: 6),
-              const Icon(
+              Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: Color(0xFF5A50E8),
+                color: context.appPrimary,
                 size: 20,
               ),
             ],
@@ -465,7 +466,7 @@ class _MonthNavButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: context.appSurface,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,
@@ -473,7 +474,7 @@ class _MonthNavButton extends StatelessWidget {
         child: SizedBox(
           width: 38,
           height: 38,
-          child: Icon(icon, color: const Color(0xFF27233A)),
+          child: Icon(icon, color: context.appText),
         ),
       ),
     );
@@ -504,15 +505,10 @@ class _CalendarCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x100F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: context.appBorder),
+        boxShadow: context.appCardShadow,
       ),
       child: Column(
         children: [
@@ -526,7 +522,7 @@ class _CalendarCard extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFFA0A5B8),
+                        color: context.appFaint,
                       ),
                     ),
                   ),
@@ -565,7 +561,7 @@ class _CalendarCard extends StatelessWidget {
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(16),
                       border: isToday && !isSelected
-                          ? Border.all(color: const Color(0xFFD8D7EA))
+                          ? Border.all(color: context.appBorder)
                           : null,
                     ),
                     child: Column(
@@ -579,8 +575,8 @@ class _CalendarCard extends StatelessWidget {
                             color: isSelected
                                 ? Colors.white
                                 : inMonth
-                                ? const Color(0xFF221D33)
-                                : const Color(0xFFCDD3E3),
+                                ? context.appText
+                                : context.appFaint.withValues(alpha: 0.55),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -634,9 +630,9 @@ class _LegendWrap extends StatelessWidget {
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.appSurface,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFFE8EAF3)),
+              border: Border.all(color: context.appBorder),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -655,7 +651,7 @@ class _LegendWrap extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF2E2A3E),
+                    color: context.appText,
                   ),
                 ),
               ],
@@ -693,15 +689,10 @@ class _AgendaSectionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x100F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        border: Border.all(color: context.appBorder),
+        boxShadow: context.appCardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -717,7 +708,7 @@ class _AgendaSectionCard extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF221D33),
+                        color: context.appText,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -726,7 +717,7 @@ class _AgendaSectionCard extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF7A819C),
+                        color: context.appMuted,
                       ),
                     ),
                   ],
@@ -735,7 +726,7 @@ class _AgendaSectionCard extends StatelessWidget {
               TextButton(
                 onPressed: onOpenAll,
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF5A50E8),
+                  foregroundColor: context.appPrimary,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 4,
                     vertical: 2,
@@ -759,16 +750,18 @@ class _AgendaSectionCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
+                color: context.appDangerSoft,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFFDD4D8)),
+                border: Border.all(
+                  color: context.appDanger.withValues(alpha: 0.28),
+                ),
               ),
               child: Text(
                 'Akhir pekan: jadwal kuliah otomatis libur.',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: const Color(0xFFE11D48),
+                  color: context.appDanger,
                 ),
               ),
             ),
@@ -779,24 +772,14 @@ class _AgendaSectionCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(16, 22, 16, 22),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.appSurfaceAlt,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: isWeekend
-                      ? const Color(0xFFEDE7F6)
-                      : const Color(0xFFE8EAF3),
-                  style: BorderStyle.solid,
-                ),
+                border: Border.all(color: context.appBorder),
               ),
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isWeekend
-                        ? const Color(0xFFEDE7F6)
-                        : const Color(0xFFE8EAF3),
-                    style: BorderStyle.solid,
-                  ),
+                  border: Border.all(color: context.appBorder),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(14, 24, 14, 24),
@@ -810,7 +793,7 @@ class _AgendaSectionCard extends StatelessWidget {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: const Color(0xFF2A233A),
+                          color: context.appText,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -822,7 +805,7 @@ class _AgendaSectionCard extends StatelessWidget {
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF7A819C),
+                          color: context.appMuted,
                         ),
                       ),
                     ],
@@ -863,7 +846,8 @@ class _AgendaArticleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final visual = _agendaVisual(item);
-    final matchedMatkuls = _resolveMatkulsForDate(item, selectedDate);
+    final matchedMatkuls = _resolveMatkulsForDate(item, selectedDate)
+      ..sort((a, b) => _compareMatkulPreviewsByTime(a, b));
     final primaryMatkul = matchedMatkuls.isNotEmpty
         ? matchedMatkuls.first
         : item.primaryMatkul;
@@ -892,9 +876,9 @@ class _AgendaArticleCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.appSurfaceAlt,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFFE9EAF4)),
+            border: Border.all(color: context.appBorder),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,7 +897,7 @@ class _AgendaArticleCard extends StatelessWidget {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF201B31),
+                            color: context.appText,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -924,7 +908,7 @@ class _AgendaArticleCard extends StatelessWidget {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
-                            color: const Color(0xFF7A819C),
+                            color: context.appMuted,
                             height: 1.45,
                           ),
                         ),
@@ -1001,14 +985,14 @@ class _AgendaMeta extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: const Color(0xFF7A819C)),
+        Icon(icon, size: 14, color: context.appMuted),
         const SizedBox(width: 5),
         Text(
           text,
           style: GoogleFonts.plusJakartaSans(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: const Color(0xFF7A819C),
+            color: context.appMuted,
           ),
         ),
       ],
@@ -1045,16 +1029,12 @@ class _AgendaMatkulPreviewTile extends StatelessWidget {
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: const Color(0xFF2A233A),
+                  color: context.appText,
                 ),
               ),
               if (!isLast) ...[
                 const SizedBox(height: 8),
-                Container(
-                  width: 1.5,
-                  height: 74,
-                  color: const Color(0xFFE5E7F2),
-                ),
+                Container(width: 1.5, height: 74, color: context.appBorder),
               ],
             ],
           ),
@@ -1063,7 +1043,9 @@ class _AgendaMatkulPreviewTile extends StatelessWidget {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.09),
+              color: context.isDarkMode
+                  ? accent.withValues(alpha: 0.14)
+                  : accent.withValues(alpha: 0.09),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
@@ -1094,7 +1076,7 @@ class _AgendaMatkulPreviewTile extends StatelessWidget {
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w800,
-                                  color: const Color(0xFF211B33),
+                                  color: context.appText,
                                 ),
                               ),
                             ),
@@ -1182,7 +1164,7 @@ class _AgendaMatkulFallbackTile extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF2A233A),
+              color: context.appText,
             ),
           ),
         ),
@@ -1190,7 +1172,9 @@ class _AgendaMatkulFallbackTile extends StatelessWidget {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.09),
+              color: context.isDarkMode
+                  ? accent.withValues(alpha: 0.14)
+                  : accent.withValues(alpha: 0.09),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
@@ -1217,7 +1201,7 @@ class _AgendaMatkulFallbackTile extends StatelessWidget {
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF211B33),
+                            color: context.appText,
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -1269,9 +1253,9 @@ class _CompactAgendaListTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.appSurfaceAlt,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFE8EAF3)),
+            border: Border.all(color: context.appBorder),
           ),
           child: Row(
             children: [
@@ -1295,7 +1279,7 @@ class _CompactAgendaListTile extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF221D33),
+                        color: context.appText,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1306,7 +1290,7 @@ class _CompactAgendaListTile extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF7A819C),
+                        color: context.appMuted,
                       ),
                     ),
                   ],
@@ -1357,7 +1341,7 @@ class _IconCapsuleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: context.appSurface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -1368,9 +1352,7 @@ class _IconCapsuleButton extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Center(
-                child: Icon(icon, color: const Color(0xFF202033), size: 22),
-              ),
+              Center(child: Icon(icon, color: context.appText, size: 22)),
               if (showDot)
                 Positioned(
                   top: 9,
@@ -1381,7 +1363,7 @@ class _IconCapsuleButton extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF4D4F),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(color: context.appSurface, width: 1.5),
                     ),
                   ),
                 ),
@@ -1404,14 +1386,14 @@ class _ErrorBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F2),
-        border: Border.all(color: const Color(0xFFFDA4AF)),
+        color: context.appDangerSoft,
+        border: Border.all(color: context.appDanger.withValues(alpha: 0.35)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         message,
         style: GoogleFonts.plusJakartaSans(
-          color: const Color(0xFFBE123C),
+          color: context.appDanger,
           fontWeight: FontWeight.w700,
           fontSize: 12.5,
         ),
@@ -1701,6 +1683,75 @@ String? _timeLabelFromEntry(JadwalMatkulScheduleEntry entry) {
   }
 
   return null;
+}
+
+int _compareMatkulPreviewsByTime(
+  JadwalMatkulPreview a,
+  JadwalMatkulPreview b,
+) {
+  final aStart = _sortMinutesFromTimeLabel(a.timeLabel);
+  final bStart = _sortMinutesFromTimeLabel(b.timeLabel);
+  if (aStart != bStart) return aStart.compareTo(bStart);
+  return a.name.compareTo(b.name);
+}
+
+int _sortMinutesFromTimeLabel(String? timeLabel) {
+  final start = _startTimeFromLabel(timeLabel);
+  final parsed = start == null ? null : _parseAgendaTimeOfDay(start);
+  if (parsed == null) return 24 * 60;
+
+  return parsed.$1 * 60 + parsed.$2;
+}
+
+int _compareAgendaItemsForDate(
+  JadwalItem a,
+  JadwalItem b,
+  DateTime selectedDate,
+) {
+  final byStart = _agendaSortStart(a, selectedDate).compareTo(
+    _agendaSortStart(b, selectedDate),
+  );
+  if (byStart != 0) return byStart;
+
+  return a.id.compareTo(b.id);
+}
+
+DateTime _agendaSortStart(JadwalItem item, DateTime selectedDate) {
+  final matched = _resolveMatkulsForDate(item, selectedDate);
+  DateTime? earliest;
+
+  for (final preview in matched) {
+    final time = _startTimeFromLabel(preview.timeLabel);
+    if (time == null) continue;
+
+    final parsed = _parseAgendaTimeOfDay(time);
+    if (parsed == null) continue;
+
+    final candidate = DateTime(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+      parsed.$1,
+      parsed.$2,
+    );
+    if (earliest == null || candidate.isBefore(earliest)) {
+      earliest = candidate;
+    }
+  }
+
+  return earliest ?? item.startAt;
+}
+
+(int, int)? _parseAgendaTimeOfDay(String value) {
+  final match = RegExp(r'^(\d{1,2})[:.](\d{2})$').firstMatch(value.trim());
+  if (match == null) return null;
+
+  final hour = int.tryParse(match.group(1) ?? '');
+  final minute = int.tryParse(match.group(2) ?? '');
+  if (hour == null || minute == null) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+  return (hour, minute);
 }
 
 String _weekdayName(int weekday) {

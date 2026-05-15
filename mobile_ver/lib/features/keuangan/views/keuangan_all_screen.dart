@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/keuangan/models/keuangan_model.dart';
 import 'package:mobile_ver/features/keuangan/providers/keuangan_provider.dart';
 import 'package:mobile_ver/features/keuangan/services/keuangan_all_exporter.dart';
@@ -120,7 +121,9 @@ class _KeuanganAllScreenState extends ConsumerState<KeuanganAllScreen> {
     final advancedFilterCount = _advancedFilterCount();
 
     return Scaffold(
+      backgroundColor: context.appBackground,
       appBar: AppBar(
+        backgroundColor: context.appBackground,
         title: const Text('Semua Keuangan'),
         actions: [
           IconButton(

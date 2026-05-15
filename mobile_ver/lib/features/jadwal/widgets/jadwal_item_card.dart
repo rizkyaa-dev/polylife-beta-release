@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/jadwal/models/jadwal_item.dart';
 
 class JadwalItemCard extends StatelessWidget {
@@ -31,9 +32,9 @@ class JadwalItemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,8 +84,8 @@ class JadwalItemCard extends StatelessWidget {
                     ),
                     Text(
                       timeLabel,
-                      style: const TextStyle(
-                        color: Color(0xFF475569),
+                      style: TextStyle(
+                        color: context.appMuted,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
@@ -95,7 +96,7 @@ class JadwalItemCard extends StatelessWidget {
                 Text(
                   item.title,
                   style: TextStyle(
-                    color: const Color(0xFF0F172A),
+                    color: context.appText,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     decoration: item.completed
@@ -109,8 +110,8 @@ class JadwalItemCard extends StatelessWidget {
                     subtitleSegments.join(' • '),
                     style: TextStyle(
                       color: item.completed
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
+                          ? context.appFaint
+                          : context.appMuted,
                       height: 1.25,
                     ),
                   ),

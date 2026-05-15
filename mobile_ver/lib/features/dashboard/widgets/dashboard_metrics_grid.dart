@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 
 class DashboardMetric {
   final String title;
@@ -29,17 +30,17 @@ class DashboardMetricsGrid extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'RINGKASAN MODUL',
             style: TextStyle(
-              color: Color(0xFF64748B),
+              color: context.appMuted,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.5,
               fontSize: 12,
@@ -111,8 +112,8 @@ class _MetricCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               metric.value,
-              style: const TextStyle(
-                color: Color(0xFF0F172A),
+              style: TextStyle(
+                color: context.appText,
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
               ),
@@ -122,7 +123,7 @@ class _MetricCard extends StatelessWidget {
               metric.caption,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Color(0xFF64748B), fontSize: 11),
+              style: TextStyle(color: context.appMuted, fontSize: 11),
             ),
           ],
         ),

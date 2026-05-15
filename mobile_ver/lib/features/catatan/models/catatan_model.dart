@@ -7,6 +7,7 @@ class Catatan {
   final String judul;
   final String isi;
   final String previewIsi;
+  final bool showPreview;
   final bool hasFullIsi;
   final String tanggal;
   final bool statusSampah;
@@ -22,6 +23,7 @@ class Catatan {
     required this.judul,
     required this.isi,
     required this.previewIsi,
+    this.showPreview = false,
     required this.hasFullIsi,
     required this.tanggal,
     required this.statusSampah,
@@ -32,9 +34,17 @@ class Catatan {
   factory Catatan.fromJson(Map<String, dynamic> json) {
     final rawStatus = json['status_sampah'];
     final isTrash = rawStatus == true || rawStatus == 1 || rawStatus == '1';
+    final rawShowPreview = json['show_preview'];
+    final showPreview =
+        rawShowPreview == true ||
+        rawShowPreview == 1 ||
+        rawShowPreview == '1' ||
+        rawShowPreview == 'true';
     final hasFullIsi = json['has_full_isi'] == true || json.containsKey('isi');
-    final previewIsi = (json['preview_isi'] ?? '').toString();
-    final fullIsi = hasFullIsi ? (json['isi'] ?? '').toString() : previewIsi;
+    final previewIsi = showPreview
+        ? (json['preview_isi'] ?? '').toString()
+        : '';
+    final fullIsi = hasFullIsi ? (json['isi'] ?? '').toString() : '';
 
     return Catatan(
       id: int.tryParse((json['id'] ?? '').toString()) ?? 0,
@@ -45,6 +55,7 @@ class Catatan {
       judul: (json['judul'] ?? '').toString(),
       isi: fullIsi,
       previewIsi: previewIsi,
+      showPreview: showPreview,
       hasFullIsi: hasFullIsi,
       tanggal: (json['tanggal'] ?? '').toString(),
       statusSampah: isTrash,
@@ -58,13 +69,15 @@ class Catatan {
   }
 
   String get listPreview {
+    if (!showPreview) {
+      return '';
+    }
+
     final preview = previewIsi.trim();
     if (preview.isNotEmpty) {
       return preview;
     }
-
-    final full = isi.trim();
-    return full.isNotEmpty ? full : '';
+    return '';
   }
 
   Catatan copyWith({
@@ -76,6 +89,7 @@ class Catatan {
     String? judul,
     String? isi,
     String? previewIsi,
+    bool? showPreview,
     bool? hasFullIsi,
     String? tanggal,
     bool? statusSampah,
@@ -91,6 +105,7 @@ class Catatan {
       judul: judul ?? this.judul,
       isi: isi ?? this.isi,
       previewIsi: previewIsi ?? this.previewIsi,
+      showPreview: showPreview ?? this.showPreview,
       hasFullIsi: hasFullIsi ?? this.hasFullIsi,
       tanggal: tanggal ?? this.tanggal,
       statusSampah: statusSampah ?? this.statusSampah,

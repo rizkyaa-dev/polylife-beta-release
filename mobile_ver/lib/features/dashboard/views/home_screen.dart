@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/auth/models/user_model.dart';
 import 'package:mobile_ver/features/auth/providers/auth_provider.dart';
 import 'package:mobile_ver/features/catatan/providers/catatan_provider.dart';
@@ -82,10 +83,10 @@ class HomeScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4FA),
+      backgroundColor: context.appBackground,
       body: SafeArea(
         child: RefreshIndicator(
-          color: const Color(0xFF4B3FF2),
+          color: context.appPrimary,
           onRefresh: refreshAll,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -216,6 +217,8 @@ class _DashboardTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
+
     return Row(
       children: [
         Expanded(
@@ -247,7 +250,7 @@ class _DashboardTopBar extends StatelessWidget {
                       initialsStyle: GoogleFonts.plusJakartaSans(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF3440C8),
+                        color: isDark ? Colors.white : const Color(0xFF3440C8),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -262,7 +265,7 @@ class _DashboardTopBar extends StatelessWidget {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 14,
                               fontWeight: FontWeight.w800,
-                              color: const Color(0xFF3542D4),
+                              color: context.appPrimary,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -271,7 +274,7 @@ class _DashboardTopBar extends StatelessWidget {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF7A7F9A),
+                              color: context.appMuted,
                             ),
                           ),
                         ],
@@ -420,19 +423,17 @@ class _ReminderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: preview.borderColor),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F172A),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
+        border: Border.all(
+          color: isDark ? context.appBorder : preview.borderColor,
+        ),
+        boxShadow: context.appCardShadow,
       ),
       child: Row(
         children: [
@@ -455,7 +456,7 @@ class _ReminderCard extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF2A213A),
+                    color: context.appText,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -466,7 +467,7 @@ class _ReminderCard extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: const Color(0xFF8A6874),
+                    color: context.appMuted,
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -517,6 +518,8 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = context.appText;
+
     return Row(
       children: [
         Expanded(
@@ -525,7 +528,7 @@ class _SectionHeader extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF201A2F),
+              color: textColor,
             ),
           ),
         ),
@@ -589,6 +592,8 @@ class _TodayScheduleEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = _homeScheduleStatus(entry, DateTime.now());
     final isRunning = status.label == 'BERLANGSUNG';
+    final cardColor = isRunning ? context.appPrimarySoft : context.appSurface;
+    final borderColor = isRunning ? context.appPrimary : context.appBorder;
 
     return Material(
       color: Colors.transparent,
@@ -598,21 +603,10 @@ class _TodayScheduleEntryCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           decoration: BoxDecoration(
-            color: isRunning ? const Color(0xFFF7F6FF) : Colors.white,
+            color: cardColor,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: isRunning
-                  ? const Color(0xFFD9D3FF)
-                  : const Color(0xFFE9EAF4),
-              width: isRunning ? 1.4 : 1,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x120F172A),
-                blurRadius: 16,
-                offset: Offset(0, 8),
-              ),
-            ],
+            border: Border.all(color: borderColor, width: isRunning ? 1.4 : 1),
+            boxShadow: context.appCardShadow,
           ),
           child: Row(
             children: [
@@ -638,16 +632,16 @@ class _TodayScheduleEntryCard extends StatelessWidget {
                         fontSize: 13.5,
                         height: 1.25,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF202033),
+                        color: context.appText,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.access_time_rounded,
                           size: 14,
-                          color: Color(0xFF8C90A7),
+                          color: context.appMuted,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -658,7 +652,7 @@ class _TodayScheduleEntryCard extends StatelessWidget {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF7C8096),
+                              color: context.appMuted,
                             ),
                           ),
                         ),
@@ -678,7 +672,7 @@ class _TodayScheduleEntryCard extends StatelessWidget {
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: const Color(0xFF7C8096),
+                      color: context.appMuted,
                       letterSpacing: 0.2,
                     ),
                   ),
@@ -832,16 +826,10 @@ class _CampusHighlightCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFECEAF3)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x120F172A),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
+        border: Border.all(color: context.appBorder),
+        boxShadow: context.appCardShadow,
       ),
       child: Row(
         children: [
@@ -868,7 +856,7 @@ class _CampusHighlightCard extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: const Color(0xFF1F1B2D),
+                    color: context.appText,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -882,16 +870,16 @@ class _CampusHighlightCard extends StatelessWidget {
                     fontSize: 12.5,
                     height: 1.35,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF7B7F94),
+                    color: context.appMuted,
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          const Icon(
+          Icon(
             Icons.arrow_forward_ios_rounded,
-            color: Color(0xFF4E44F2),
+            color: context.appPrimary,
             size: 22,
           ),
         ],
@@ -923,16 +911,10 @@ class _PriorityTodoCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.appSurface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFECEAF3)),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x110F172A),
-                blurRadius: 14,
-                offset: Offset(0, 6),
-              ),
-            ],
+            border: Border.all(color: context.appBorder),
+            boxShadow: context.appCardShadow,
           ),
           child: Row(
             children: [
@@ -944,10 +926,7 @@ class _PriorityTodoCard extends StatelessWidget {
                   width: 20,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: const Color(0xFFD4D1EB),
-                      width: 1.4,
-                    ),
+                    border: Border.all(color: context.appBorder, width: 1.4),
                   ),
                 ),
               ),
@@ -963,7 +942,7 @@ class _PriorityTodoCard extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFF201B31),
+                        color: context.appText,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -974,7 +953,7 @@ class _PriorityTodoCard extends StatelessWidget {
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w600,
-                        color: const Color(0xFF9194A8),
+                        color: context.appMuted,
                       ),
                     ),
                   ],
@@ -1006,7 +985,7 @@ class _RoundActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF4B3FF2),
+      color: context.appPrimary,
       borderRadius: BorderRadius.circular(999),
       child: InkWell(
         borderRadius: BorderRadius.circular(999),
@@ -1035,7 +1014,7 @@ class _IconCapsuleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: context.appSurface,
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -1046,9 +1025,7 @@ class _IconCapsuleButton extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Center(
-                child: Icon(icon, color: const Color(0xFF202033), size: 22),
-              ),
+              Center(child: Icon(icon, color: context.appText, size: 22)),
               if (showDot)
                 Positioned(
                   top: 9,
@@ -1059,7 +1036,7 @@ class _IconCapsuleButton extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF4D4F),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
+                      border: Border.all(color: context.appSurface, width: 1.5),
                     ),
                   ),
                 ),
@@ -1083,9 +1060,9 @@ class _EmptyPanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFECEAF3)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1095,7 +1072,7 @@ class _EmptyPanel extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF201B31),
+              color: context.appText,
             ),
           ),
           const SizedBox(height: 6),
@@ -1105,7 +1082,7 @@ class _EmptyPanel extends StatelessWidget {
               fontSize: 12.5,
               height: 1.35,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF8D91A5),
+              color: context.appMuted,
             ),
           ),
         ],
@@ -1121,27 +1098,29 @@ class _DashboardWarningBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED),
+        color: isDark ? context.appWarningSoft : const Color(0xFFFFF7ED),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFFED7AA)),
+        border: Border.all(
+          color: isDark ? const Color(0xFF92400E) : const Color(0xFFFED7AA),
+        ),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.info_outline_rounded,
-            color: Color(0xFFEA580C),
-            size: 18,
-          ),
+          Icon(Icons.info_outline_rounded, color: context.appWarning, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
               style: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFF9A3412),
+                color: isDark
+                    ? const Color(0xFFFDE68A)
+                    : const Color(0xFF9A3412),
                 fontSize: 12.5,
                 fontWeight: FontWeight.w700,
               ),
@@ -1332,6 +1311,12 @@ List<_HomeScheduleEntry> _buildHomeScheduleEntries(
       ),
     );
   }
+
+  entries.sort((a, b) {
+    final byStart = a.effectiveStartAt.compareTo(b.effectiveStartAt);
+    if (byStart != 0) return byStart;
+    return a.title.compareTo(b.title);
+  });
 
   return entries;
 }

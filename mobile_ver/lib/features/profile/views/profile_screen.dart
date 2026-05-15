@@ -11,11 +11,6 @@ import 'package:mobile_ver/features/profile/widgets/profile_avatar.dart';
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
-  static const Color _background = Color(0xFFF5F4FA);
-  static const Color _primary = Color(0xFF4B3FF2);
-  static const Color _text = Color(0xFF211C31);
-  static const Color _muted = Color(0xFF7A819C);
-
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
@@ -74,15 +69,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(userProvider);
+    final palette = _ProfilePalette.of(context);
     if (user != null) {
       _hydrateProfileFormIfNeeded(user);
     }
 
     return Scaffold(
-      backgroundColor: ProfileScreen._background,
+      backgroundColor: palette.background,
       body: SafeArea(
         child: RefreshIndicator(
-          color: ProfileScreen._primary,
+          color: palette.primary,
           onRefresh: _refreshProfile,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -512,6 +508,8 @@ class _TitleBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Row(
       children: [
         _CircleActionButton(icon: Icons.arrow_back_rounded, onTap: onBack),
@@ -522,7 +520,7 @@ class _TitleBar extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 19,
               fontWeight: FontWeight.w800,
-              color: ProfileScreen._text,
+              color: palette.text,
             ),
           ),
         ),
@@ -554,25 +552,18 @@ class _AvatarActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        boxShadow: palette.cardShadow,
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.photo_camera_outlined,
-            color: ProfileScreen._primary,
-          ),
+          Icon(Icons.photo_camera_outlined, color: palette.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -580,7 +571,7 @@ class _AvatarActionCard extends StatelessWidget {
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: ProfileScreen._text,
+                color: palette.text,
               ),
             ),
           ),
@@ -617,17 +608,18 @@ class _SmallActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
     final disabled = onTap == null;
     final background = isPrimary
-        ? ProfileScreen._primary
+        ? palette.primary
         : isDanger
-        ? const Color(0xFFFFF1F2)
-        : const Color(0xFFF5F4FA);
+        ? palette.dangerSoft
+        : palette.subtle;
     final foreground = isPrimary
         ? Colors.white
         : isDanger
         ? const Color(0xFFE25555)
-        : ProfileScreen._text;
+        : palette.text;
 
     return Material(
       color: Colors.transparent,
@@ -645,10 +637,10 @@ class _SmallActionButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isPrimary
-                    ? ProfileScreen._primary
+                    ? palette.primary
                     : isDanger
-                    ? const Color(0xFFFFD4D4)
-                    : const Color(0xFFE7E3F3),
+                    ? palette.dangerBorder
+                    : palette.border,
               ),
             ),
             child: Text(
@@ -687,6 +679,8 @@ class _ProfileTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -697,9 +691,9 @@ class _ProfileTextField extends StatelessWidget {
         style: GoogleFonts.plusJakartaSans(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: ProfileScreen._text,
+          color: palette.text,
         ),
-        decoration: _fieldDecoration(label, hintText),
+        decoration: _fieldDecoration(context, label, hintText),
       ),
     );
   }
@@ -713,6 +707,8 @@ class _ProfilePasswordField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -723,9 +719,9 @@ class _ProfilePasswordField extends StatelessWidget {
         style: GoogleFonts.plusJakartaSans(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: ProfileScreen._text,
+          color: palette.text,
         ),
-        decoration: _fieldDecoration(label, null),
+        decoration: _fieldDecoration(context, label, null),
       ),
     );
   }
@@ -746,6 +742,8 @@ class _ProfileSelectField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<String>(
@@ -755,9 +753,10 @@ class _ProfileSelectField extends StatelessWidget {
         style: GoogleFonts.plusJakartaSans(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: ProfileScreen._text,
+          color: palette.text,
         ),
-        decoration: _fieldDecoration(label, null),
+        dropdownColor: palette.surface,
+        decoration: _fieldDecoration(context, label, null),
         items: items.entries
             .map(
               (entry) => DropdownMenuItem<String>(
@@ -811,18 +810,14 @@ class _ProfileEditSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        boxShadow: palette.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -832,7 +827,7 @@ class _ProfileEditSection extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: ProfileScreen._text,
+              color: palette.text,
             ),
           ),
           const SizedBox(height: 14),
@@ -943,6 +938,7 @@ class _AffiliationSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
     final affiliation = user.affiliation;
     final pendingRequest = affiliation?.pendingRequest;
     final hasVerifiedAffiliation =
@@ -952,15 +948,9 @@ class _AffiliationSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        boxShadow: palette.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -970,7 +960,7 @@ class _AffiliationSection extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: ProfileScreen._text,
+              color: palette.text,
             ),
           ),
           const SizedBox(height: 12),
@@ -982,7 +972,7 @@ class _AffiliationSection extends StatelessWidget {
                   '${_displayValue(affiliation?.name)} · ${_affiliationStatusLabel(affiliation?.status)}',
             ),
           ),
-          const Divider(height: 1, color: Color(0xFFF0EEF6)),
+          Divider(height: 1, color: palette.border),
           _InfoRow(
             data: _InfoRowData(
               icon: Icons.confirmation_number_outlined,
@@ -1082,18 +1072,14 @@ class _SecuritySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        boxShadow: palette.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1103,7 +1089,7 @@ class _SecuritySection extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: ProfileScreen._text,
+              color: palette.text,
             ),
           ),
           const SizedBox(height: 6),
@@ -1112,7 +1098,7 @@ class _SecuritySection extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: ProfileScreen._muted,
+              color: palette.muted,
             ),
           ),
           const SizedBox(height: 14),
@@ -1151,12 +1137,14 @@ class _DangerZoneSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFFD4D4)),
+        border: Border.all(color: palette.dangerBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1175,7 +1163,7 @@ class _DangerZoneSection extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: ProfileScreen._muted,
+              color: palette.muted,
             ),
           ),
           const SizedBox(height: 12),
@@ -1256,18 +1244,14 @@ class _ProfileHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x100F172A),
-            blurRadius: 18,
-            offset: Offset(0, 8),
-          ),
-        ],
+        boxShadow: palette.cardShadow,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -1303,7 +1287,7 @@ class _ProfileHeaderCard extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
-                    color: ProfileScreen._text,
+                    color: palette.text,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1314,7 +1298,7 @@ class _ProfileHeaderCard extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: ProfileScreen._muted,
+                    color: palette.muted,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1361,18 +1345,14 @@ class _InfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x0F0F172A),
-            blurRadius: 14,
-            offset: Offset(0, 6),
-          ),
-        ],
+        boxShadow: palette.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1382,14 +1362,13 @@ class _InfoSection extends StatelessWidget {
             style: GoogleFonts.plusJakartaSans(
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: ProfileScreen._text,
+              color: palette.text,
             ),
           ),
           const SizedBox(height: 8),
           for (var i = 0; i < rows.length; i++) ...[
             _InfoRow(data: rows[i]),
-            if (i != rows.length - 1)
-              const Divider(height: 1, color: Color(0xFFF0EEF6)),
+            if (i != rows.length - 1) Divider(height: 1, color: palette.border),
           ],
         ],
       ),
@@ -1404,6 +1383,8 @@ class _InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 11),
       child: Row(
@@ -1412,10 +1393,10 @@ class _InfoRow extends StatelessWidget {
             height: 34,
             width: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFF3F1FF),
+              color: palette.subtle,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(data.icon, size: 18, color: ProfileScreen._primary),
+            child: Icon(data.icon, size: 18, color: palette.primary),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -1429,7 +1410,7 @@ class _InfoRow extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: ProfileScreen._muted,
+                    color: palette.muted,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -1440,7 +1421,7 @@ class _InfoRow extends StatelessWidget {
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: ProfileScreen._text,
+                    color: palette.text,
                   ),
                 ),
               ],
@@ -1499,6 +1480,8 @@ class _LogoutButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -1507,9 +1490,9 @@ class _LogoutButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: palette.surface,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFFFFD4D4)),
+            border: Border.all(color: palette.dangerBorder),
           ),
           child: Row(
             children: [
@@ -1536,10 +1519,12 @@ class _EmptySessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
@@ -1547,7 +1532,7 @@ class _EmptySessionCard extends StatelessWidget {
         style: GoogleFonts.plusJakartaSans(
           fontSize: 14,
           fontWeight: FontWeight.w700,
-          color: ProfileScreen._muted,
+          color: palette.muted,
         ),
       ),
     );
@@ -1562,8 +1547,10 @@ class _CircleActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = _ProfilePalette.of(context);
+
     return Material(
-      color: Colors.white,
+      color: palette.surface,
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
@@ -1574,7 +1561,7 @@ class _CircleActionButton extends StatelessWidget {
           child: SizedBox(
             height: 42,
             width: 42,
-            child: Icon(icon, color: const Color(0xFF565C75), size: 21),
+            child: Icon(icon, color: palette.icon, size: 21),
           ),
         ),
       ),
@@ -1656,37 +1643,121 @@ String _studentIdLabel(String? value) {
   return normalized.isEmpty ? 'Identitas' : normalized;
 }
 
-InputDecoration _fieldDecoration(String label, String? hintText) {
+InputDecoration _fieldDecoration(
+  BuildContext context,
+  String label,
+  String? hintText,
+) {
+  final palette = _ProfilePalette.of(context);
+
   return InputDecoration(
     labelText: label,
     hintText: hintText,
     counterText: '',
     filled: true,
-    fillColor: const Color(0xFFF8F7FC),
+    fillColor: palette.fieldFill,
     labelStyle: GoogleFonts.plusJakartaSans(
       fontSize: 12,
       fontWeight: FontWeight.w700,
-      color: ProfileScreen._muted,
+      color: palette.muted,
     ),
     hintStyle: GoogleFonts.plusJakartaSans(
       fontSize: 12,
       fontWeight: FontWeight.w600,
-      color: const Color(0xFF9DA3B8),
+      color: palette.placeholder,
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Color(0xFFE7E3F3)),
+      borderSide: BorderSide(color: palette.border),
     ),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Color(0xFFE7E3F3)),
+      borderSide: BorderSide(color: palette.border),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: ProfileScreen._primary, width: 1.4),
+      borderSide: BorderSide(color: palette.primary, width: 1.4),
     ),
   );
+}
+
+class _ProfilePalette {
+  final Color background;
+  final Color surface;
+  final Color subtle;
+  final Color fieldFill;
+  final Color text;
+  final Color muted;
+  final Color placeholder;
+  final Color primary;
+  final Color border;
+  final Color icon;
+  final Color dangerSoft;
+  final Color dangerBorder;
+  final List<BoxShadow> cardShadow;
+
+  const _ProfilePalette({
+    required this.background,
+    required this.surface,
+    required this.subtle,
+    required this.fieldFill,
+    required this.text,
+    required this.muted,
+    required this.placeholder,
+    required this.primary,
+    required this.border,
+    required this.icon,
+    required this.dangerSoft,
+    required this.dangerBorder,
+    required this.cardShadow,
+  });
+
+  factory _ProfilePalette.of(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    if (isDark) {
+      return _ProfilePalette(
+        background: theme.scaffoldBackgroundColor,
+        surface: scheme.surface,
+        subtle: const Color(0xFF1E293B),
+        fieldFill: const Color(0xFF0F172A),
+        text: const Color(0xFFF8FAFC),
+        muted: const Color(0xFF94A3B8),
+        placeholder: const Color(0xFF64748B),
+        primary: scheme.primary,
+        border: const Color(0xFF334155),
+        icon: const Color(0xFFCBD5E1),
+        dangerSoft: const Color(0xFF3F1D2B),
+        dangerBorder: const Color(0xFF7F1D1D),
+        cardShadow: const [],
+      );
+    }
+
+    return _ProfilePalette(
+      background: theme.scaffoldBackgroundColor,
+      surface: scheme.surface,
+      subtle: const Color(0xFFF5F4FA),
+      fieldFill: const Color(0xFFF8F7FC),
+      text: const Color(0xFF211C31),
+      muted: const Color(0xFF7A819C),
+      placeholder: const Color(0xFF9DA3B8),
+      primary: scheme.primary,
+      border: const Color(0xFFE7E3F3),
+      icon: const Color(0xFF565C75),
+      dangerSoft: const Color(0xFFFFF1F2),
+      dangerBorder: const Color(0xFFFFD4D4),
+      cardShadow: const [
+        BoxShadow(
+          color: Color(0x0F0F172A),
+          blurRadius: 14,
+          offset: Offset(0, 6),
+        ),
+      ],
+    );
+  }
 }
 
 String _allowedValue(String? value, Set<String> allowed, String fallback) {

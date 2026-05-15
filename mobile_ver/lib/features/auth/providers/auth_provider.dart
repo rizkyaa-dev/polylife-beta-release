@@ -337,6 +337,9 @@ class AuthController extends StateNotifier<bool> {
       );
     }
 
+    final currentUser =
+        ref.read(userProvider) ?? await LocalStorage.getCachedUser();
+
     try {
       final response = await ApiClient.patch('/profile/password', {
         'current_password': currentPassword,
@@ -356,6 +359,9 @@ class AuthController extends StateNotifier<bool> {
         return AuthActionResult.failure(message);
       }
 
+      if (currentUser != null) {
+        await AppDatabase.instance.clearUserData(currentUser.id);
+      }
       await LocalStorage.removeToken();
       await LocalStorage.removeUser();
       ref.read(userProvider.notifier).state = null;
@@ -468,10 +474,23 @@ class AuthController extends StateNotifier<bool> {
       return;
     }
 
+    final currentUser =
+        ref.read(userProvider) ?? await LocalStorage.getCachedUser();
+    if (currentUser != null) {
+      try {
+        await const SyncService().syncNow(currentUser.id);
+      } catch (_) {
+        // Logout tetap membersihkan cache lokal walau sync terakhir gagal.
+      }
+    }
+
     try {
       await ApiClient.post('/auth/logout', {});
     } catch (_) {
       // Keep logout local even if server request fails.
+    }
+    if (currentUser != null) {
+      await AppDatabase.instance.clearUserData(currentUser.id);
     }
     await LocalStorage.removeToken();
     await LocalStorage.removeUser();

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 
 class JadwalMonthHeaderCard extends StatelessWidget {
   final DateTime monthAnchor;
@@ -27,17 +28,17 @@ class JadwalMonthHeaderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: context.appBorder),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'AGENDA AKADEMIK',
             style: TextStyle(
-              color: Color(0xFF4F46E5),
+              color: context.appPrimary,
               fontWeight: FontWeight.w800,
               letterSpacing: 0.6,
               fontSize: 12,
@@ -49,8 +50,8 @@ class JadwalMonthHeaderCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   normalized,
-                  style: const TextStyle(
-                    color: Color(0xFF0F172A),
+                  style: TextStyle(
+                    color: context.appText,
                     fontWeight: FontWeight.w800,
                     fontSize: 34 / 2,
                   ),
@@ -95,7 +96,7 @@ class JadwalMonthHeaderCard extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    side: const BorderSide(color: Color(0xFFD1D5DB)),
+                    side: BorderSide(color: context.appBorder),
                   ),
                   child: const Text('Hari Ini'),
                 ),
@@ -111,7 +112,7 @@ class JadwalMonthHeaderCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  side: const BorderSide(color: Color(0xFFD1D5DB)),
+                  side: BorderSide(color: context.appBorder),
                 ),
                 icon: const Icon(Icons.today_outlined, size: 16),
                 label: const Text('Hari Ini'),

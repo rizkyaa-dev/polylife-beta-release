@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/todo/models/todo_item.dart';
 import 'package:mobile_ver/features/todo/providers/todo_provider.dart';
 import 'package:mobile_ver/features/todo/views/todo_task_form_dialog.dart';
@@ -142,16 +143,13 @@ class _ErrorBanner extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F2),
-        border: Border.all(color: const Color(0xFFFDA4AF)),
+        color: context.appDangerSoft,
+        border: Border.all(color: context.appDanger),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
         message,
-        style: const TextStyle(
-          color: Color(0xFFBE123C),
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: context.appDanger, fontWeight: FontWeight.w600),
       ),
     );
   }

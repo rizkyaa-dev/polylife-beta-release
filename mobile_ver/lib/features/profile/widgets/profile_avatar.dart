@@ -1,10 +1,11 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 import 'package:mobile_ver/core/config/api_config.dart';
+import 'package:mobile_ver/core/media/local_image_cache.dart';
 import 'package:mobile_ver/core/storage/local_storage.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/auth/models/user_model.dart';
 
 class ProfileAvatar extends StatefulWidget {
@@ -51,7 +52,7 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
       padding: EdgeInsets.all(widget.borderWidth),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white,
+        color: context.appSurface,
         boxShadow: widget.boxShadow,
       ),
       child: ClipOval(
@@ -94,31 +95,30 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
   }
 
   Future<Uint8List?> _loadAvatarBytes(String avatarUrl) async {
+    final cachedFile = await LocalImageCache.getIfExists(
+      avatarUrl,
+      cacheNamespace: 'profile_avatars',
+    );
+    if (cachedFile != null) {
+      final bytes = await cachedFile.readAsBytes();
+      if (bytes.isNotEmpty) {
+        return bytes;
+      }
+    }
+
     final token = (await LocalStorage.getToken())?.trim();
     if (token == null || token.isEmpty) {
       return null;
     }
 
-    final uri = Uri.tryParse(avatarUrl);
-    if (uri == null) {
-      return null;
-    }
-
-    final response = await http
-        .get(
-          uri,
-          headers: {
-            'Authorization': 'Bearer $token',
-            'Accept': 'image/webp,image/*',
-          },
-        )
-        .timeout(const Duration(seconds: 20));
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      return null;
-    }
-
-    return response.bodyBytes;
+    return LocalImageCache.getOrFetchBytes(
+      avatarUrl,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'image/webp,image/*',
+      },
+      cacheNamespace: 'profile_avatars',
+    );
   }
 
   String? _resolveAvatarUrl(User? user) {

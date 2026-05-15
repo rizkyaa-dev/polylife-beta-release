@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
 import 'package:mobile_ver/features/reminder/models/reminder_list_item.dart';
 import 'package:mobile_ver/features/reminder/providers/reminder_list_provider.dart';
 import 'package:mobile_ver/features/reminder/providers/upcoming_reminder_provider.dart';
@@ -16,9 +17,9 @@ class ReminderScreen extends ConsumerWidget {
     final notifier = ref.read(reminderListProvider.notifier);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F4FA),
+      backgroundColor: context.appBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F4FA),
+        backgroundColor: context.appBackground,
         elevation: 0,
         scrolledUnderElevation: 0,
         title: Text(
@@ -26,7 +27,7 @@ class ReminderScreen extends ConsumerWidget {
           style: GoogleFonts.plusJakartaSans(
             fontSize: 18,
             fontWeight: FontWeight.w800,
-            color: const Color(0xFF211C31),
+            color: context.appText,
           ),
         ),
       ),

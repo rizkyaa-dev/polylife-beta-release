@@ -85,12 +85,12 @@ class PengumumanNotifier extends StateNotifier<AsyncValue<List<Pengumuman>>> {
         unawaited(_prefetchAnnouncementImages(list));
       } else {
         state = AsyncValue.error(
-          'Failed to load pengumuman',
+          'Kegiatan belum bisa dimuat. Periksa koneksi internet lalu coba lagi.',
           StackTrace.current,
         );
       }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      state = AsyncValue.error(_friendlyFetchError(e), st);
     }
   }
 
@@ -113,6 +113,23 @@ class PengumumanNotifier extends StateNotifier<AsyncValue<List<Pengumuman>>> {
 
   String? _resolveImageUrl(String? rawPath) {
     return ApiConfig.resolveMediaUrl(rawPath);
+  }
+
+  String _friendlyFetchError(Object error) {
+    final raw = error.toString().toLowerCase();
+    if (raw.contains('socketexception') ||
+        raw.contains('failed host lookup') ||
+        raw.contains('no address associated') ||
+        raw.contains('connection refused') ||
+        raw.contains('network is unreachable')) {
+      return 'Kamu sedang offline atau koneksi sedang bermasalah. Kegiatan kampus akan dimuat lagi saat jaringan tersedia.';
+    }
+
+    if (raw.contains('timeout')) {
+      return 'Koneksi terlalu lama merespons. Coba lagi beberapa saat.';
+    }
+
+    return 'Kegiatan belum bisa dimuat. Coba lagi beberapa saat.';
   }
 }
 
