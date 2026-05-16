@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'core/config/app_mode.dart';
+import 'core/notifications/reminder_notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/views/forgot_password_screen.dart';
@@ -22,6 +23,7 @@ import 'features/todo/views/todo_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID', null);
+  await ReminderNotificationService.instance.initialize();
 
   runApp(const ProviderScope(child: MyApp()));
 }

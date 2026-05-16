@@ -1629,7 +1629,7 @@ List<JadwalMatkulPreview> _resolveMatkulsForDate(
   }).toList();
 
   if (matched.isNotEmpty) {
-    return matched.map((preview) => _withEntryForDay(preview, dayKey)).toList();
+    return matched.expand((preview) => _withEntriesForDay(preview, dayKey)).toList();
   }
 
   return item.matkulPreviews
@@ -1640,32 +1640,32 @@ List<JadwalMatkulPreview> _resolveMatkulsForDate(
       .toList();
 }
 
-JadwalMatkulPreview _withEntryForDay(
+List<JadwalMatkulPreview> _withEntriesForDay(
   JadwalMatkulPreview preview,
   String dayKey,
 ) {
-  JadwalMatkulScheduleEntry? matchedEntry;
-  for (final entry in preview.scheduleEntries) {
-    if ((entry.hari ?? '').trim().toLowerCase() == dayKey) {
-      matchedEntry = entry;
-      break;
-    }
+  final matchedEntries = preview.scheduleEntries
+      .where((entry) => (entry.hari ?? '').trim().toLowerCase() == dayKey)
+      .toList();
+
+  if (matchedEntries.isEmpty) {
+    return <JadwalMatkulPreview>[preview];
   }
 
-  if (matchedEntry == null) {
-    return preview;
-  }
-
-  return JadwalMatkulPreview(
-    id: preview.id,
-    name: preview.name,
-    kelas: matchedEntry.kelas ?? preview.kelas,
-    ruangan: matchedEntry.ruangan ?? preview.ruangan,
-    timeLabel: _timeLabelFromEntry(matchedEntry) ?? preview.timeLabel,
-    warnaLabel: preview.warnaLabel,
-    scheduleDays: preview.scheduleDays,
-    scheduleEntries: preview.scheduleEntries,
-  );
+  return matchedEntries
+      .map(
+        (entry) => JadwalMatkulPreview(
+          id: preview.id,
+          name: preview.name,
+          kelas: entry.kelas ?? preview.kelas,
+          ruangan: entry.ruangan ?? preview.ruangan,
+          timeLabel: _timeLabelFromEntry(entry) ?? preview.timeLabel,
+          warnaLabel: preview.warnaLabel,
+          scheduleDays: preview.scheduleDays,
+          scheduleEntries: preview.scheduleEntries,
+        ),
+      )
+      .toList();
 }
 
 String? _timeLabelFromEntry(JadwalMatkulScheduleEntry entry) {

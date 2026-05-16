@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_ver/core/config/app_mode.dart';
 import 'package:mobile_ver/core/database/app_database.dart';
 import 'package:mobile_ver/core/network/api_client.dart';
+import 'package:mobile_ver/core/notifications/reminder_notification_service.dart';
 import 'package:mobile_ver/core/storage/local_storage.dart';
 import 'package:mobile_ver/core/sync/sync_service.dart';
 
@@ -74,6 +75,8 @@ class AuthController extends StateNotifier<bool> {
           ref.read(userProvider.notifier).state = user;
           state = true;
           await const SyncService().syncNow(user.id);
+          await ReminderNotificationService.instance
+              .scheduleUserRemindersFromDatabase(user.id);
         } else {
           await logout();
         }
@@ -126,6 +129,8 @@ class AuthController extends StateNotifier<bool> {
         ref.read(userProvider.notifier).state = user;
         state = true;
         await const SyncService().syncNow(user.id);
+        await ReminderNotificationService.instance
+            .scheduleUserRemindersFromDatabase(user.id);
         return null; // success
       } else {
         return _messageFromResponse(response.body, 'Login gagal.');
@@ -360,6 +365,7 @@ class AuthController extends StateNotifier<bool> {
       }
 
       if (currentUser != null) {
+        await ReminderNotificationService.instance.cancelAll();
         await AppDatabase.instance.clearUserData(currentUser.id);
       }
       await LocalStorage.removeToken();
@@ -452,6 +458,7 @@ class AuthController extends StateNotifier<bool> {
       }
 
       if (currentUser != null) {
+        await ReminderNotificationService.instance.cancelAll();
         await AppDatabase.instance.clearUserData(currentUser.id);
       }
       await LocalStorage.removeToken();
@@ -490,6 +497,7 @@ class AuthController extends StateNotifier<bool> {
       // Keep logout local even if server request fails.
     }
     if (currentUser != null) {
+      await ReminderNotificationService.instance.cancelAll();
       await AppDatabase.instance.clearUserData(currentUser.id);
     }
     await LocalStorage.removeToken();

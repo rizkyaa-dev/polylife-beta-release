@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:mobile_ver/core/config/app_mode.dart';
 import 'package:mobile_ver/core/database/app_database.dart';
 import 'package:mobile_ver/core/network/api_client.dart';
+import 'package:mobile_ver/core/notifications/reminder_notification_service.dart';
 import 'package:mobile_ver/core/sync/sync_models.dart';
 import 'package:mobile_ver/core/sync/sync_service.dart';
 import 'package:mobile_ver/core/sync/sync_uuid.dart';
@@ -76,23 +77,30 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
         isLoading: false,
         items: List<ReminderListItem>.from(_mockItems),
       );
+      unawaited(
+        ReminderNotificationService.instance.scheduleAll(state.items),
+      );
       return;
     }
 
     if (userId > 0) {
       try {
         await const SyncService().syncNow(userId);
+        final items = await _readLocalReminders();
         state = state.copyWith(
           isLoading: false,
-          items: await _readLocalReminders(),
+          items: items,
           clearError: true,
         );
+        unawaited(ReminderNotificationService.instance.scheduleAll(items));
       } catch (_) {
+        final items = await _readLocalReminders();
         state = state.copyWith(
           isLoading: false,
-          items: await _readLocalReminders(),
+          items: items,
           errorMessage: 'Memakai cache lokal. Sync reminder belum berhasil.',
         );
+        unawaited(ReminderNotificationService.instance.scheduleAll(items));
       }
       return;
     }
@@ -148,6 +156,7 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
       );
 
       state = state.copyWith(items: [item, ...state.items], clearError: true);
+      unawaited(ReminderNotificationService.instance.schedule(item));
       return true;
     }
 
@@ -224,6 +233,7 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
     });
 
     unawaited(const SyncService().pushPending(userId));
+    unawaited(ReminderNotificationService.instance.schedule(item));
     state = state.copyWith(
       items: await _readLocalReminders(),
       clearError: true,
@@ -235,6 +245,9 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
     if (AppMode.uiOnly) {
       state = state.copyWith(
         items: state.items.where((item) => item.id != id).toList(),
+      );
+      unawaited(
+        ReminderNotificationService.instance.cancelByIdentity(id: id),
       );
       return true;
     }
@@ -248,6 +261,7 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
       return false;
     }
 
+    final reminderToCancel = _fromRow(row);
     final localUuid = row['local_uuid']?.toString() ?? '';
     final serverId = (row['server_id'] as num?)?.toInt();
     final serverVersion = (row['server_version'] as num?)?.toInt() ?? 0;
@@ -294,11 +308,24 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
     });
 
     unawaited(const SyncService().pushPending(userId));
+    unawaited(ReminderNotificationService.instance.cancel(reminderToCancel));
     state = state.copyWith(
       items: await _readLocalReminders(),
       clearError: true,
     );
     return true;
+  }
+
+  Future<String> testNotification() {
+    return ReminderNotificationService.instance.showTestNotification();
+  }
+
+  Future<String> rescheduleNotifications() async {
+    final items = userId > 0 ? await _readLocalReminders() : state.items;
+    await ReminderNotificationService.instance.scheduleAll(items);
+    final pendingCount =
+        await ReminderNotificationService.instance.pendingCountOrZero();
+    return 'Reminder dijadwalkan ulang. Pending notification: $pendingCount.';
   }
 
   Future<void> _loadFromApi() async {
@@ -325,6 +352,7 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
           : const <ReminderListItem>[];
 
       state = state.copyWith(isLoading: false, items: items, clearError: true);
+      unawaited(ReminderNotificationService.instance.scheduleAll(items));
     } catch (_) {
       state = state.copyWith(
         isLoading: false,
@@ -458,6 +486,9 @@ class ReminderListNotifier extends StateNotifier<ReminderListState> {
       state = state.copyWith(
         items: state.items.where((item) => item.id != id).toList(),
         clearError: true,
+      );
+      unawaited(
+        ReminderNotificationService.instance.cancelByIdentity(id: id),
       );
       return true;
     } catch (_) {

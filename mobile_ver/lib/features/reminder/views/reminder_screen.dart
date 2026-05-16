@@ -40,6 +40,8 @@ class ReminderScreen extends ConsumerWidget {
             _ReminderHeroCard(
               total: state.items.length,
               onCreateReminder: () => context.push('/reminder/new'),
+              onTestNotification: () => _testNotification(context, ref),
+              onReschedule: () => _rescheduleNotifications(context, ref),
             ),
             const SizedBox(height: 16),
             if (state.errorMessage != null) ...[
@@ -126,15 +128,44 @@ class ReminderScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _testNotification(BuildContext context, WidgetRef ref) async {
+    final message = await ref
+        .read(reminderListProvider.notifier)
+        .testNotification();
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _rescheduleNotifications(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final message = await ref
+        .read(reminderListProvider.notifier)
+        .rescheduleNotifications();
+    if (!context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
 }
 
 class _ReminderHeroCard extends StatelessWidget {
   final int total;
   final VoidCallback onCreateReminder;
+  final VoidCallback onTestNotification;
+  final VoidCallback onReschedule;
 
   const _ReminderHeroCard({
     required this.total,
     required this.onCreateReminder,
+    required this.onTestNotification,
+    required this.onReschedule,
   });
 
   @override
@@ -187,20 +218,64 @@ class _ReminderHeroCard extends StatelessWidget {
                     _HeroStatsPill(total: total),
                     const SizedBox(height: 12),
                     _CreateReminderButton(onTap: onCreateReminder),
+                    const SizedBox(height: 10),
+                    _ReminderDebugActions(
+                      onTestNotification: onTestNotification,
+                      onReschedule: onReschedule,
+                    ),
                   ],
                 )
               else
-                Row(
+                Column(
                   children: [
-                    Expanded(child: _HeroStatsPill(total: total)),
-                    const SizedBox(width: 14),
-                    _CreateReminderButton(onTap: onCreateReminder),
+                    Row(
+                      children: [
+                        Expanded(child: _HeroStatsPill(total: total)),
+                        const SizedBox(width: 14),
+                        _CreateReminderButton(onTap: onCreateReminder),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _ReminderDebugActions(
+                      onTestNotification: onTestNotification,
+                      onReschedule: onReschedule,
+                    ),
                   ],
                 ),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+class _ReminderDebugActions extends StatelessWidget {
+  final VoidCallback onTestNotification;
+  final VoidCallback onReschedule;
+
+  const _ReminderDebugActions({
+    required this.onTestNotification,
+    required this.onReschedule,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        OutlinedButton.icon(
+          onPressed: onTestNotification,
+          icon: const Icon(Icons.notifications_active_outlined, size: 16),
+          label: const Text('Tes Notif'),
+        ),
+        OutlinedButton.icon(
+          onPressed: onReschedule,
+          icon: const Icon(Icons.schedule_outlined, size: 16),
+          label: const Text('Jadwalkan Ulang'),
+        ),
+      ],
     );
   }
 }

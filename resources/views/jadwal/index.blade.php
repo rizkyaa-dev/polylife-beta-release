@@ -206,6 +206,37 @@
                     : $formatLegacyTime($matkul->jam_mulai ?? null));
         };
 
+        $expandMatkulSlotsForDay = function ($matkul, ?int $dayIndex, ?string $lowerDay) use ($extractSlotForDay) {
+            if (!$matkul) {
+                return collect();
+            }
+
+            if (method_exists($matkul, 'scheduleEntriesForDay') && $lowerDay) {
+                $entries = collect($matkul->scheduleEntriesForDay($lowerDay));
+                if ($entries->isNotEmpty()) {
+                    return $entries->map(fn ($slot) => [
+                        'instance' => $matkul,
+                        'slot' => $slot,
+                    ]);
+                }
+            }
+
+            if (method_exists($matkul, 'scheduleEntries')) {
+                $entries = collect($matkul->scheduleEntries());
+                if ($entries->isNotEmpty()) {
+                    return $entries->map(fn ($slot) => [
+                        'instance' => $matkul,
+                        'slot' => $slot,
+                    ]);
+                }
+            }
+
+            return collect([[
+                'instance' => $matkul,
+                'slot' => $extractSlotForDay($matkul, $dayIndex, $lowerDay),
+            ]]);
+        };
+
         $upcomingKegiatan = collect($kegiatanByDate ?? [])
             ->flatMap(function ($items, $dateKey) {
                 return collect($items)->map(function ($item) use ($dateKey) {
@@ -252,7 +283,7 @@
             $selectedDayMatkulEntries = collect();
         }
 
-        $selectedAgendaCount = $selectedDayEvents->sum(function ($event) use ($selectedDayIndex, $selectedDayName, $matchesMatkulDay, $hasMatkulDayData) {
+        $selectedAgendaCount = $selectedDayEvents->sum(function ($event) use ($selectedDayIndex, $selectedDayName, $matchesMatkulDay, $hasMatkulDayData, $expandMatkulSlotsForDay) {
             $details = collect($event->matkul_details ?? []);
             if ($details->isEmpty()) {
                 return 1;
@@ -263,7 +294,11 @@
                 $matched = $details->filter(fn ($matkul) => ! $hasMatkulDayData($matkul));
             }
 
-            return max(1, $matched->count());
+            $slotCount = $matched
+                ->flatMap(fn ($matkul) => $expandMatkulSlotsForDay($matkul, $selectedDayIndex, $selectedDayName))
+                ->count();
+
+            return max(1, $slotCount);
         }) + $kegiatanList->count();
 
         $todayRoute = route($jadwalRouteName, array_merge(request()->except(['tanggal', 'bulan']), [
@@ -466,12 +501,7 @@
                                 $filteredMatkuls = $matkulDetailsRaw->filter(fn ($matkul) => ! $hasMatkulDayData($matkul));
                             }
                             $matkulDetails = $filteredMatkuls
-                                ->map(function ($matkul) use ($selectedDayIndex, $selectedDayName, $extractSlotForDay) {
-                                    return [
-                                        'instance' => $matkul,
-                                        'slot' => $extractSlotForDay($matkul, $selectedDayIndex, $selectedDayName),
-                                    ];
-                                })
+                                ->flatMap(fn ($matkul) => $expandMatkulSlotsForDay($matkul, $selectedDayIndex, $selectedDayName))
                                 ->filter(fn ($detail) => isset($detail['instance']))
                                 ->sortBy(function ($detail) use ($selectedDayIndex, $selectedDayName, $resolveMatkulStartTime, $normalizeTimeForSort) {
                                     $matkul = $detail['instance'];
