@@ -12,6 +12,14 @@ import 'package:timezone/timezone.dart' as tz;
 class ReminderNotificationService {
   const ReminderNotificationService._();
 
+  static const List<_ReminderMilestone> _milestones = [
+    _ReminderMilestone(secondsBeforeDue: 86400),
+    _ReminderMilestone(secondsBeforeDue: 3600),
+    _ReminderMilestone(secondsBeforeDue: 300),
+    _ReminderMilestone(secondsBeforeDue: 60),
+    _ReminderMilestone(secondsBeforeDue: 0),
+  ];
+
   static const ReminderNotificationService instance =
       ReminderNotificationService._();
 
@@ -76,46 +84,60 @@ class ReminderNotificationService {
       return;
     }
 
-    final notificationId = _notificationId(item);
-    final payload = jsonEncode({
-      'type': 'reminder',
-      'id': item.id,
-      'destination': item.destination,
-      'target_type': item.targetType,
-    });
+    await cancel(item);
+
     final title = item.title.trim().isEmpty ? 'Reminder' : item.title.trim();
     final context = item.targetContext.trim().isNotEmpty
         ? item.targetContext.trim()
         : item.targetLabel.trim();
-    final body = context.isEmpty
-        ? 'Reminder kamu sudah waktunya.'
-        : '$context sudah waktunya.';
-
-    final details = _notificationDetails(body);
-
-    final scheduledDate = tz.TZDateTime.from(scheduledAt, tz.local);
     final scheduleMode = await _preferredScheduleMode();
 
-    try {
-      await _plugin.zonedSchedule(
-        id: notificationId,
-        title: title,
-        body: body,
-        scheduledDate: scheduledDate,
-        notificationDetails: details,
-        androidScheduleMode: scheduleMode,
-        payload: payload,
+    for (final milestone in _milestones) {
+      final fireAt = scheduledAt.subtract(
+        Duration(seconds: milestone.secondsBeforeDue),
       );
-    } catch (_) {
-      await _plugin.zonedSchedule(
-        id: notificationId,
-        title: title,
-        body: body,
-        scheduledDate: scheduledDate,
-        notificationDetails: details,
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        payload: payload,
+      if (!fireAt.isAfter(DateTime.now())) {
+        continue;
+      }
+
+      final body = _bodyForMilestone(
+        context: context,
+        milestone: milestone,
       );
+      final payload = jsonEncode({
+        'type': 'reminder',
+        'id': item.id,
+        'destination': item.destination,
+        'target_type': item.targetType,
+        'milestone_seconds': milestone.secondsBeforeDue,
+      });
+      final scheduledDate = tz.TZDateTime.from(fireAt, tz.local);
+      final notificationId = _notificationId(
+        item,
+        milestone.secondsBeforeDue,
+      );
+
+      try {
+        await _plugin.zonedSchedule(
+          id: notificationId,
+          title: title,
+          body: body,
+          scheduledDate: scheduledDate,
+          notificationDetails: _notificationDetails(body),
+          androidScheduleMode: scheduleMode,
+          payload: payload,
+        );
+      } catch (_) {
+        await _plugin.zonedSchedule(
+          id: notificationId,
+          title: title,
+          body: body,
+          scheduledDate: scheduledDate,
+          notificationDetails: _notificationDetails(body),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          payload: payload,
+        );
+      }
     }
   }
 
@@ -195,7 +217,11 @@ class ReminderNotificationService {
       return;
     }
 
-    await _plugin.cancel(id: _notificationId(item));
+    for (final milestone in _milestones) {
+      await _plugin.cancel(
+        id: _notificationId(item, milestone.secondsBeforeDue),
+      );
+    }
   }
 
   Future<void> cancelByIdentity({
@@ -208,11 +234,14 @@ class ReminderNotificationService {
       return;
     }
 
-    await _plugin.cancel(
-      id: _stableId(
-        localUuid.isNotEmpty ? localUuid : (serverId ?? id).toString(),
-      ),
-    );
+    final stableKey = localUuid.isNotEmpty
+        ? localUuid
+        : (serverId ?? id).toString();
+    for (final milestone in _milestones) {
+      await _plugin.cancel(
+        id: _stableId('$stableKey:${milestone.secondsBeforeDue}'),
+      );
+    }
   }
 
   Future<void> cancelAll() async {
@@ -247,6 +276,20 @@ class ReminderNotificationService {
         presentSound: true,
       ),
     );
+  }
+
+  String _bodyForMilestone({
+    required String context,
+    required _ReminderMilestone milestone,
+  }) {
+    final target = context.isEmpty ? 'Reminder kamu' : context;
+    return switch (milestone.secondsBeforeDue) {
+      86400 => '$target jatuh tempo 1 hari lagi.',
+      3600 => '$target jatuh tempo 1 jam lagi.',
+      300 => '$target jatuh tempo 5 menit lagi.',
+      60 => '$target jatuh tempo 1 menit lagi.',
+      _ => '$target sudah waktunya.',
+    };
   }
 
   Future<bool> _ensureNotificationPermission() async {
@@ -360,11 +403,11 @@ class ReminderNotificationService {
     );
   }
 
-  int _notificationId(ReminderListItem item) {
+  int _notificationId(ReminderListItem item, int milestoneSeconds) {
     final stableKey = item.localUuid.trim().isNotEmpty
         ? item.localUuid.trim()
         : (item.serverId ?? item.id).toString();
-    return _stableId(stableKey);
+    return _stableId('$stableKey:$milestoneSeconds');
   }
 
   int _stableId(String value) {
@@ -377,4 +420,10 @@ class ReminderNotificationService {
 
     return max(1, hash.abs());
   }
+}
+
+class _ReminderMilestone {
+  final int secondsBeforeDue;
+
+  const _ReminderMilestone({required this.secondsBeforeDue});
 }
