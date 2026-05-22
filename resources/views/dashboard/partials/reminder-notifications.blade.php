@@ -176,9 +176,7 @@
 
                 const fireNotification = async (entry, milestoneSeconds) => {
                     if (!isSupported()) return;
-                    const permitted = Notification.permission === 'granted'
-                        || await requestPermission();
-                    if (!permitted) return;
+                    if (Notification.permission !== 'granted') return;
 
                     const milestone = MILESTONES.find((m) => m.seconds === milestoneSeconds);
                     const title = entry.title || 'Reminder';
@@ -225,22 +223,30 @@
                 const clear = () => notificationLog.clear();
 
                 const requestPermissionIfNeeded = async (hasActiveReminder = false) => {
-                    if (!hasActiveReminder) return;
-                    if (Notification.permission === 'default') {
-                        await requestPermission();
-                    }
-                    await ensurePushSubscription();
-                };
-
-                const armUserGestureHook = () => {
-                    const handler = async () => {
-                        document.removeEventListener('click', handler);
+                    if (!hasActiveReminder || !isSupported()) return;
+                    if (Notification.permission === 'granted') {
                         await ensurePushSubscription();
-                    };
-                    document.addEventListener('click', handler, { once: true, passive: true });
+                    }
                 };
 
-                armUserGestureHook();
+                const bindPermissionButton = () => {
+                    const button = document.querySelector('[data-reminder-notification-toggle]');
+                    if (!button || !isSupported()) return;
+                    if (Notification.permission === 'denied' || Notification.permission === 'granted') {
+                        button.classList.add('hidden');
+                        return;
+                    }
+
+                    button.classList.remove('hidden');
+                    button.addEventListener('click', async () => {
+                        button.disabled = true;
+                        const enabled = await ensurePushSubscription();
+                        button.classList.toggle('hidden', enabled || Notification.permission === 'denied');
+                        button.disabled = false;
+                    });
+                };
+
+                bindPermissionButton();
 
                 return {
                     attachEntry,
