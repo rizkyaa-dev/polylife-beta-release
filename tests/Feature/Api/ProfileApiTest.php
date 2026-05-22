@@ -64,8 +64,8 @@ test('mobile user can upload and fetch profile avatar without loading image in a
 
     expect($avatar)->not->toBeNull()
         ->and($avatar->mime_type)->toBe('image/webp')
-        ->and($avatar->width)->toBe(128)
-        ->and($avatar->height)->toBe(128)
+        ->and($avatar->width)->toBe(256)
+        ->and($avatar->height)->toBe(256)
         ->and($avatar->size)->toBeGreaterThan(0);
 
     $this->withToken($token)->get(route('api.v1.profile.avatar'))

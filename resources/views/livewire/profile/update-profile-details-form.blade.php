@@ -1,11 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
+use App\Services\ProfileAvatarService;
 
 new class extends Component
 {
@@ -51,7 +51,7 @@ new class extends Component
         $this->remove_avatar = false;
 
         $this->validateOnly('avatar', [
-            'avatar' => ['nullable', 'file', 'mimetypes:image/webp', 'max:512'],
+            'avatar' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:512'],
         ]);
     }
 
@@ -67,7 +67,7 @@ new class extends Component
             'theme_preference' => ['required', Rule::in(['system', 'light', 'dark'])],
             'timezone' => ['nullable', 'string', 'max:64'],
             'locale' => ['nullable', Rule::in(['id', 'en'])],
-            'avatar' => ['nullable', 'file', 'mimetypes:image/webp', 'max:512'],
+            'avatar' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:512'],
             'off_days' => ['nullable', 'array'],
             'off_days.*' => ['integer', 'min:0', 'max:6'],
             'auto_national_holidays' => ['required', 'boolean'],
@@ -75,46 +75,13 @@ new class extends Component
 
         $user = Auth::user();
         $profile = $user->profile()->firstOrNew(['user_id' => $user->id]);
+        $avatarService = app(ProfileAvatarService::class);
 
         if ($this->avatar) {
-            $path = $this->avatar->getRealPath();
-            $binary = $path ? file_get_contents($path) : false;
-
-            if ($binary === false || $binary === '') {
-                $this->addError('avatar', 'Foto profil tidak bisa dibaca.');
-                return;
-            }
-
-            [$width, $height] = getimagesizefromstring($binary) ?: [0, 0];
-            if ($width < 64 || $height < 64 || $width > 256 || $height > 256) {
-                $this->addError('avatar', 'Foto profil harus sudah dikompres ke ukuran 64 sampai 256 px.');
-                return;
-            }
-
-            $user->profileAvatar()->updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'image' => $binary,
-                    'mime_type' => 'image/webp',
-                    'width' => $width,
-                    'height' => $height,
-                    'size' => strlen($binary),
-                ]
-            );
-
-            if ($profile->avatar_path) {
-                Storage::disk('public')->delete($profile->avatar_path);
-                $profile->avatar_path = null;
-            }
-
+            $avatarService->store($user, $this->avatar);
             $this->remove_avatar = false;
         } elseif ($this->remove_avatar) {
-            $user->profileAvatar()->delete();
-
-            if ($profile->avatar_path) {
-                Storage::disk('public')->delete($profile->avatar_path);
-                $profile->avatar_path = null;
-            }
+            $avatarService->delete($user);
         }
 
         $preferences = $profile->preferences ?? [];
@@ -501,7 +468,7 @@ new class extends Component
             };
 
             const openProfileAvatarCropper = async (file, input) => {
-                if (! /^image\/(jpeg|png|webp)$/.test(file.type)) {
+                if (file.type && ! /^image\/(jpeg|png|webp|heic|heif)$/.test(file.type)) {
                     throw new Error('Format foto harus PNG, JPG, atau WebP.');
                 }
 
@@ -709,16 +676,42 @@ new class extends Component
                     AVATAR_OUTPUT_SIZE
                 );
 
-                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', AVATAR_OUTPUT_QUALITY));
+                const blob = await canvasToSupportedAvatarBlob(canvas);
                 if (! blob) {
-                    throw new Error('Browser ini belum mendukung kompresi WebP.');
+                    throw new Error('Browser ini belum mendukung kompresi foto profil.');
                 }
 
+                const extension = blob.type === 'image/webp'
+                    ? 'webp'
+                    : (blob.type === 'image/png' ? 'png' : 'jpg');
                 const name = state.file.name.replace(/\.[^.]+$/, '') || 'avatar';
-                return new File([blob], `${name}.webp`, {
-                    type: 'image/webp',
+                return new File([blob], `${name}.${extension}`, {
+                    type: blob.type || 'image/jpeg',
                     lastModified: Date.now(),
                 });
+            };
+
+            const canvasToBlob = (canvas, type, quality) => new Promise((resolve) => {
+                canvas.toBlob((blob) => resolve(blob), type, quality);
+            });
+
+            const canvasToSupportedAvatarBlob = async (canvas) => {
+                const webpBlob = await canvasToBlob(canvas, 'image/webp', AVATAR_OUTPUT_QUALITY);
+                if (webpBlob && webpBlob.type === 'image/webp') {
+                    return webpBlob;
+                }
+
+                const jpegBlob = await canvasToBlob(canvas, 'image/jpeg', 0.85);
+                if (jpegBlob && jpegBlob.type === 'image/jpeg') {
+                    return jpegBlob;
+                }
+
+                const pngBlob = await canvasToBlob(canvas, 'image/png');
+                if (pngBlob && pngBlob.type === 'image/png') {
+                    return pngBlob;
+                }
+
+                return webpBlob || jpegBlob || pngBlob || null;
             };
 
             const loadImage = (file) => new Promise((resolve, reject) => {

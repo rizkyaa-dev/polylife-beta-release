@@ -234,6 +234,39 @@ test('profile avatar is resized compressed and stored in the database', function
         ->assertHeader('Content-Type', 'image/webp');
 });
 
+test('profile avatar upload accepts jpeg fallback when browser cropper cannot create webp', function () {
+    if (! function_exists('imagecreatetruecolor') || ! function_exists('imagejpeg') || ! function_exists('imagewebp')) {
+        $this->markTestSkipped('GD with JPEG and WebP support is required to test avatar fallback upload.');
+    }
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user);
+
+    $image = imagecreatetruecolor(300, 220);
+    $path = tempnam(sys_get_temp_dir(), 'avatar_jpeg_');
+    imagejpeg($image, $path, 85);
+    imagedestroy($image);
+
+    $component = Volt::test('profile.update-profile-details-form')
+        ->set('avatar', UploadedFile::fake()->createWithContent('avatar.jpg', file_get_contents($path)))
+        ->call('updateProfileDetails');
+
+    @unlink($path);
+
+    $component
+        ->assertHasNoErrors()
+        ->assertDispatched('profile-details-updated');
+
+    $avatar = UserProfileAvatar::query()->where('user_id', $user->id)->first();
+
+    expect($avatar)->not->toBeNull()
+        ->and($avatar->mime_type)->toBe('image/webp')
+        ->and($avatar->width)->toBe(256)
+        ->and($avatar->height)->toBe(256)
+        ->and($avatar->size)->toBeGreaterThan(0);
+});
+
 test('profile avatar can be removed from the database', function () {
     $user = User::factory()->create();
     $user->profileAvatar()->create([
