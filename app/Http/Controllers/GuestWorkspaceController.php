@@ -6,6 +6,7 @@ use App\Models\Ipk;
 use App\Queries\Jadwal\GuestJadwalCalendarQuery;
 use App\Services\Keuangan\YearlyStatisticsService;
 use App\Support\GuestWorkspace;
+use App\Support\Keuangan\StatisticYearRange;
 use App\ViewModels\JadwalIndexViewModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -14,7 +15,8 @@ class GuestWorkspaceController extends Controller
 {
     public function __construct(
         private readonly YearlyStatisticsService $yearlyStatisticsService,
-        private readonly GuestJadwalCalendarQuery $guestJadwalCalendarQuery
+        private readonly GuestJadwalCalendarQuery $guestJadwalCalendarQuery,
+        private readonly StatisticYearRange $statisticYearRange
     ) {
     }
 
@@ -28,7 +30,7 @@ class GuestWorkspaceController extends Controller
 
     public function keuanganStatistik(Request $request)
     {
-        $year = (int) ($request->get('tahun') ?: Carbon::now()->year);
+        $year = $this->statisticYearRange->resolve($request->query('tahun'));
         $records = GuestWorkspace::keuangan()
             ->filter(function ($row) use ($year) {
                 try {
@@ -50,6 +52,7 @@ class GuestWorkspaceController extends Controller
 
         return view('keuangan.statistik', array_merge([
             'tahun' => $year,
+            'tahunOptions' => $this->statisticYearRange->options(),
             'guestMode' => true,
         ], $statistics));
     }

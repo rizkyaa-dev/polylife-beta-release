@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\EnsureWebUserIsActive::class,
+            \App\Http\Middleware\SecurityHeaders::class,
         ]);
         $middleware->trustProxies(
             at: ProxyTrustSettings::trustedProxies(),

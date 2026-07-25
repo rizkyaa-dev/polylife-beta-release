@@ -71,29 +71,16 @@ class YearlyStatisticsService
         $totalPengeluaran = array_sum($seriesPengeluaran);
         $totalNet = $totalPemasukan - $totalPengeluaran;
 
-        $bulanTerisi = max(1, (int) min(12, Carbon::now()->year === $year ? Carbon::now()->month : 12));
+        $bulanTerisi = $this->projectionMonthCount($year);
         $avgPemasukan = $bulanTerisi ? $totalPemasukan / $bulanTerisi : 0;
         $avgPengeluaran = $bulanTerisi ? $totalPengeluaran / $bulanTerisi : 0;
         $avgNet = $bulanTerisi ? $totalNet / $bulanTerisi : 0;
 
-        $meanPengeluaran = $avgPengeluaran;
-        $variance = 0;
-        foreach ($months as $month) {
-            $variance += pow(($byMonth[$month]['pengeluaran'] - $meanPengeluaran), 2);
-        }
-
-        $stdPengeluaran = sqrt($variance / count($months));
-        $anomali = [];
-        $threshold = $meanPengeluaran + (1.5 * $stdPengeluaran);
-        foreach ($months as $month) {
-            if ($byMonth[$month]['pengeluaran'] > $threshold && $byMonth[$month]['pengeluaran'] > 0) {
-                $anomali[] = [
-                    'bulan' => $monthNames[$month],
-                    'nilai' => $byMonth[$month]['pengeluaran'],
-                    'batas' => $threshold,
-                ];
-            }
-        }
+        $monthlyExpenses = array_map(
+            fn (int $month): float|int => $byMonth[$month]['pengeluaran'],
+            $months
+        );
+        $anomali = $this->detectExpenseAnomalies($monthlyExpenses, $monthNames);
 
         $savingsRate = $totalPemasukan > 0 ? ($totalNet / $totalPemasukan) : 0;
         $burnRate = $avgPengeluaran;
@@ -137,6 +124,63 @@ class YearlyStatisticsService
             'monthNames' => $monthNames,
             'saran' => $saran,
         ];
+    }
+
+    private function projectionMonthCount(int $year): int
+    {
+        $now = Carbon::now();
+
+        if ($year === (int) $now->year) {
+            return max(1, min(12, (int) $now->month));
+        }
+
+        return 12;
+    }
+
+    /**
+     * @param  array<int, float|int>  $monthlyExpenses  Zero-based list ordered from January to December.
+     * @param  array<int, string>  $monthNames  One-based month labels.
+     * @return list<array{bulan: string, nilai: float|int, batas: float}>
+     */
+    private function detectExpenseAnomalies(array $monthlyExpenses, array $monthNames): array
+    {
+        $sample = array_values(array_filter(
+            $monthlyExpenses,
+            fn (float|int $value): bool => $value > 0
+        ));
+
+        if (count($sample) < 3) {
+            return [];
+        }
+
+        $mean = array_sum($sample) / count($sample);
+        $variance = array_sum(array_map(
+            fn (float|int $value): float => pow($value - $mean, 2),
+            $sample
+        ));
+        $stdDeviation = sqrt($variance / count($sample));
+
+        if ($stdDeviation <= 0.0) {
+            return [];
+        }
+
+        $threshold = $mean + (1.5 * $stdDeviation);
+        $anomalies = [];
+
+        foreach ($monthlyExpenses as $index => $expense) {
+            if ($expense <= $threshold || $expense <= 0) {
+                continue;
+            }
+
+            $monthNumber = $index + 1;
+            $anomalies[] = [
+                'bulan' => $monthNames[$monthNumber] ?? (string) $monthNumber,
+                'nilai' => $expense,
+                'batas' => $threshold,
+            ];
+        }
+
+        return $anomalies;
     }
 
     /**

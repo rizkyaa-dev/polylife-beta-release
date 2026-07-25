@@ -6,6 +6,14 @@
 @php
     $guestMode = $guestMode ?? false;
     $statistikAction = $guestMode ? route('guest.keuangan.statistik') : route('keuangan.statistik');
+    $tahunOptions = $tahunOptions ?? range(now()->year, now()->year - 5);
+    $chartPayload = [
+        'labels' => $labels,
+        'pemasukan' => $seriesPemasukan,
+        'pengeluaran' => $seriesPengeluaran,
+        'net' => $seriesNet,
+        'saldo' => $cumulativeSaldo,
+    ];
 @endphp
 <div class="space-y-6">
     <div class="bg-white border rounded-2xl shadow-sm p-6">
@@ -17,13 +25,17 @@
             <form method="GET" action="{{ $statistikAction }}" class="flex items-center gap-2">
                 <label for="tahun" class="text-sm text-gray-600">Tahun</label>
                 <select id="tahun" name="tahun" class="px-3 py-2 rounded-lg bg-gray-50 border">
-                    @for($y = now()->year; $y >= now()->year - 5; $y--)
-                        <option value="{{ $y }}" {{ $tahun == $y ? 'selected' : '' }}>{{ $y }}</option>
-                    @endfor
+                    @foreach($tahunOptions as $tahunOption)
+                        <option value="{{ $tahunOption }}" {{ $tahun == $tahunOption ? 'selected' : '' }}>{{ $tahunOption }}</option>
+                    @endforeach
                 </select>
                 <button class="px-3 py-2 rounded-lg bg-gray-800 text-white hover:bg-black">Terapkan</button>
-                <button type="button" onclick="window.print()" class="px-3 py-2 rounded-lg bg-rose-500 text-white hover:bg-rose-600">
-                    Export PDF
+                <button
+                    type="button"
+                    class="px-3 py-2 rounded-lg bg-rose-500 text-white hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    data-statistik-print
+                    disabled>
+                    <span data-statistik-print-label>Menyiapkan PDF</span>
                 </button>
             </form>
         </div>
@@ -152,42 +164,8 @@
     @endif
 </div>
 
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
-    const labels = @json($labels);
-    const pemasukan = @json($seriesPemasukan);
-    const pengeluaran = @json($seriesPengeluaran);
-    const net = @json($seriesNet);
-    const saldo = @json($cumulativeSaldo);
-
-    const ctx = document.getElementById('chartKeuangan');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: 'Pemasukan', data: pemasukan, backgroundColor: '#10b981' },
-                    { label: 'Pengeluaran', data: pengeluaran, backgroundColor: '#ef4444' },
-                    { type: 'line', label: 'Netto', data: net, borderColor: '#4f46e5', backgroundColor: 'transparent', yAxisID: 'y' },
-                    { type: 'line', label: 'Saldo Kumulatif', data: saldo, borderColor: '#f59e0b', backgroundColor: 'transparent', yAxisID: 'y1' }
-                ]
-            },
-            options: {
-                responsive: true,
-                interaction: { mode: 'index', intersect: false },
-                stacked: false,
-                scales: {
-                    y: { beginAtZero: true, title: { display: true, text: 'Nominal (Rp)' } },
-                    y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Saldo' } }
-                }
-            }
-        });
-    }
-</script>
+@push('styles')
 <style>
-/* Print friendly */
 @media print {
     header, nav, aside, [role="button"], button, form[action*="statistik"] button[type="submit"], .no-print { display: none !important; }
     main { padding: 0 !important; }
@@ -196,5 +174,12 @@
     @page { size: A4; margin: 12mm; }
 }
 </style>
+@endpush
+
+@push('scripts')
+<script type="application/json" id="keuangan-statistik-data">
+{!! json_encode($chartPayload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
+</script>
+@vite('resources/js/keuangan-statistik.js')
 @endpush
 @endsection

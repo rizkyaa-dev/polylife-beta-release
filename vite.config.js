@@ -23,7 +23,12 @@ export default defineConfig(({ mode }) => {
     return {
         plugins: [
             laravel({
-                input: ['resources/css/app.css', 'resources/js/app.js', 'resources/js/dashboard.js'],
+                input: [
+                    'resources/css/app.css',
+                    'resources/js/app.js',
+                    'resources/js/dashboard.js',
+                    'resources/js/keuangan-statistik.js',
+                ],
                 refresh: true,
             }),
         ],

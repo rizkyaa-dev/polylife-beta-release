@@ -4,21 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Keuangan;
 use App\Services\Keuangan\YearlyStatisticsService;
+use App\Support\Keuangan\StatisticYearRange;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Carbon;
 
 class KeuanganStatistikController extends Controller
 {
     public function __construct(
-        private readonly YearlyStatisticsService $yearlyStatisticsService
+        private readonly YearlyStatisticsService $yearlyStatisticsService,
+        private readonly StatisticYearRange $statisticYearRange
     ) {
     }
 
     public function index(Request $request)
     {
         $userId = Auth::id();
-        $year = (int) ($request->get('tahun') ?: Carbon::now()->year);
+        $year = $this->statisticYearRange->resolve($request->query('tahun'));
 
         $records = Keuangan::where('user_id', $userId)
             ->whereYear('tanggal', $year)
@@ -29,6 +30,7 @@ class KeuanganStatistikController extends Controller
 
         return view('keuangan.statistik', array_merge([
             'tahun' => $year,
+            'tahunOptions' => $this->statisticYearRange->options(),
         ], $statistics));
     }
 }

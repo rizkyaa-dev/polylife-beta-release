@@ -33,7 +33,7 @@ return [
             'policy' => env('SECURITY_CSP_POLICY', "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'self'; form-action 'self'; base-uri 'self'"),
             'dev_allow_vite' => env('SECURITY_CSP_DEV_ALLOW_VITE', true),
             'dev_hosts' => explode(',', env('SECURITY_CSP_DEV_HOSTS', 'http://localhost:5173')),
-            'extra_script_sources' => explode(',', env('SECURITY_CSP_EXTRA_SCRIPT_SOURCES', 'https://cdn.jsdelivr.net')),
+            'extra_script_sources' => explode(',', env('SECURITY_CSP_EXTRA_SCRIPT_SOURCES', '')),
         ],
         'referrer_policy' => env('SECURITY_REFERRER_POLICY', 'strict-origin-when-cross-origin'),
         'frame_options' => env('SECURITY_FRAME_OPTIONS', 'SAMEORIGIN'),
