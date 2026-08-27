@@ -51,7 +51,7 @@ new class extends Component
         $this->remove_avatar = false;
 
         $this->validateOnly('avatar', [
-            'avatar' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:512'],
+            'avatar' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:5120'],
         ]);
     }
 
@@ -67,7 +67,7 @@ new class extends Component
             'theme_preference' => ['required', Rule::in(['system', 'light', 'dark'])],
             'timezone' => ['nullable', 'string', 'max:64'],
             'locale' => ['nullable', Rule::in(['id', 'en'])],
-            'avatar' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:512'],
+            'avatar' => ['nullable', 'file', 'mimetypes:image/jpeg,image/png,image/webp', 'max:5120'],
             'off_days' => ['nullable', 'array'],
             'off_days.*' => ['integer', 'min:0', 'max:6'],
             'auto_national_holidays' => ['required', 'boolean'],
@@ -520,12 +520,25 @@ new class extends Component
                 const apply = async () => {
                     try {
                         const optimized = await renderCroppedAvatar(state);
-                        const transfer = new DataTransfer();
-                        transfer.items.add(optimized);
-                        input.files = transfer.files;
-                        input.dataset.optimized = 'true';
                         close();
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
+
+                        const componentEl = input.closest('[wire\\:id]');
+                        const componentId = componentEl ? componentEl.getAttribute('wire:id') : null;
+                        const component = componentId && window.Livewire ? window.Livewire.find(componentId) : null;
+
+                        if (component && typeof component.upload === 'function') {
+                            component.upload('avatar', optimized, () => {
+                                // Upload selesai, Livewire otomatis me-render ulang preview
+                            }, (error) => {
+                                alert(error || 'Gagal mengunggah foto profil.');
+                            });
+                        } else {
+                            const transfer = new DataTransfer();
+                            transfer.items.add(optimized);
+                            input.files = transfer.files;
+                            input.dataset.optimized = 'true';
+                            input.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
                     } catch (error) {
                         alert(error.message || 'Foto profil tidak bisa dikompres di browser ini.');
                     }
@@ -715,6 +728,19 @@ new class extends Component
             };
 
             const loadImage = (file) => new Promise((resolve, reject) => {
+                if (typeof FileReader !== 'undefined') {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const image = new Image();
+                        image.onload = () => resolve(image);
+                        image.onerror = () => reject(new Error('Foto profil tidak bisa dibaca.'));
+                        image.src = String(reader.result || '');
+                    };
+                    reader.onerror = () => reject(new Error('Foto profil tidak bisa dibaca.'));
+                    reader.readAsDataURL(file);
+                    return;
+                }
+
                 const url = URL.createObjectURL(file);
                 const image = new Image();
 
@@ -738,6 +764,16 @@ new class extends Component
 
             document.addEventListener('DOMContentLoaded', init);
             document.addEventListener('livewire:navigated', init);
+
+            if (window.Livewire?.hook) {
+                window.Livewire.hook('morph.updated', () => {
+                    init();
+                });
+                window.Livewire.hook('commit', () => {
+                    init();
+                });
+            }
+
             init();
         })();
     </script>

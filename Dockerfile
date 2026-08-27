@@ -12,12 +12,16 @@ RUN apk add --no-cache \
     git \
     supervisor \
     libpng-dev \
+    libwebp-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
     libzip-dev \
     oniguruma-dev \
     libxml2-dev
 
 # Install ekstensi PHP
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd opcache zip
+RUN docker-php-ext-configure gd --with-webp --with-jpeg --with-freetype \
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd opcache zip
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
