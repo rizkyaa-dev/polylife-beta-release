@@ -31,24 +31,31 @@ class GuestWorkspaceController extends Controller
     public function keuanganStatistik(Request $request)
     {
         $year = $this->statisticYearRange->resolve($request->query('tahun'));
-        $records = GuestWorkspace::keuangan()
-            ->filter(function ($row) use ($year) {
-                try {
-                    return Carbon::parse($row->tanggal)->year === $year;
-                } catch (\Throwable $e) {
-                    return false;
-                }
-            })
-            ->map(function ($row) {
-                return [
-                    'jenis' => $row->jenis ?? 'pengeluaran',
-                    'kategori' => $row->kategori ?? 'Lainnya',
-                    'nominal' => (float) ($row->nominal ?? 0),
-                    'tanggal' => Carbon::parse($row->tanggal),
-                ];
-            });
+        $allGuestRecords = GuestWorkspace::keuangan();
 
-        $statistics = $this->yearlyStatisticsService->build($records, $year);
+        $initialBalance = 0.0;
+        $yearRecords = collect();
+
+        foreach ($allGuestRecords as $row) {
+            try {
+                $date = Carbon::parse($row->tanggal);
+                if ($date->year < $year) {
+                    $nominal = (float) ($row->nominal ?? 0);
+                    $initialBalance += ($row->jenis === 'pemasukan' ? $nominal : -$nominal);
+                } elseif ($date->year === $year) {
+                    $yearRecords->push([
+                        'jenis' => $row->jenis ?? 'pengeluaran',
+                        'kategori' => $row->kategori ?? 'Lainnya',
+                        'nominal' => (float) ($row->nominal ?? 0),
+                        'tanggal' => $date,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // skip invalid date records
+            }
+        }
+
+        $statistics = $this->yearlyStatisticsService->build($yearRecords, $year, $initialBalance);
 
         return view('keuangan.statistik', array_merge([
             'tahun' => $year,

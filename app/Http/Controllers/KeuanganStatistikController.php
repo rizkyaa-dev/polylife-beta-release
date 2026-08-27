@@ -21,12 +21,20 @@ class KeuanganStatistikController extends Controller
         $userId = Auth::id();
         $year = $this->statisticYearRange->resolve($request->query('tahun'));
 
+        $startDate = sprintf('%04d-01-01', $year);
+        $endDate = sprintf('%04d-12-31', $year);
+
+        $initialBalance = (float) Keuangan::where('user_id', $userId)
+            ->where('tanggal', '<', $startDate)
+            ->selectRaw("COALESCE(SUM(CASE WHEN jenis = 'pemasukan' THEN nominal ELSE -nominal END), 0) as balance")
+            ->value('balance');
+
         $records = Keuangan::where('user_id', $userId)
-            ->whereYear('tanggal', $year)
+            ->whereBetween('tanggal', [$startDate, $endDate])
             ->orderBy('tanggal')
             ->get(['jenis', 'kategori', 'nominal', 'tanggal']);
 
-        $statistics = $this->yearlyStatisticsService->build($records, $year);
+        $statistics = $this->yearlyStatisticsService->build($records, $year, $initialBalance);
 
         return view('keuangan.statistik', array_merge([
             'tahun' => $year,

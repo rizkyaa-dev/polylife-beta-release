@@ -11,7 +11,7 @@ class YearlyStatisticsService
      * @param  iterable<int, array<string, mixed>|object>  $records
      * @return array<string, mixed>
      */
-    public function build(iterable $records, int $year): array
+    public function build(iterable $records, int $year, float $initialBalance = 0.0): array
     {
         $normalizedRecords = collect($records)
             ->map(fn ($record) => $this->normalizeRecord($record))
@@ -53,7 +53,7 @@ class YearlyStatisticsService
         $seriesNet = [];
         $cumulativeSaldo = [];
 
-        $running = 0;
+        $running = $initialBalance;
         foreach ($months as $month) {
             $labels[] = $monthNames[$month];
             $pemasukan = $byMonth[$month]['pemasukan'];
@@ -71,6 +71,7 @@ class YearlyStatisticsService
         $totalPengeluaran = array_sum($seriesPengeluaran);
         $totalNet = $totalPemasukan - $totalPengeluaran;
 
+        $isTahunBerjalan = $year === (int) Carbon::now()->year;
         $bulanTerisi = $this->projectionMonthCount($year);
         $avgPemasukan = $bulanTerisi ? $totalPemasukan / $bulanTerisi : 0;
         $avgPengeluaran = $bulanTerisi ? $totalPengeluaran / $bulanTerisi : 0;
@@ -82,10 +83,13 @@ class YearlyStatisticsService
         );
         $anomali = $this->detectExpenseAnomalies($monthlyExpenses, $monthNames);
 
-        $savingsRate = $totalPemasukan > 0 ? ($totalNet / $totalPemasukan) : 0;
+        $isDefisit = $totalNet < 0;
+        $rawSavingsRate = $totalPemasukan > 0 ? ($totalNet / $totalPemasukan) : 0;
+        $savingsRate = max(0.0, $rawSavingsRate);
         $burnRate = $avgPengeluaran;
         $sisaBulan = max(0, 12 - $bulanTerisi);
-        $proyeksiAkhirTahun = $totalNet + ($avgNet * $sisaBulan);
+        $proyeksiAkhirTahun = $isTahunBerjalan ? ($totalNet + ($avgNet * $sisaBulan)) : $totalNet;
+        $proyeksiLabel = $isTahunBerjalan ? 'Proyeksi Akhir Tahun' : 'Total Bersih Tahunan';
 
         arsort($kategoriPengeluaran);
         $topKategoriPengeluaran = array_slice($kategoriPengeluaran, 0, 5, true);
@@ -93,7 +97,7 @@ class YearlyStatisticsService
         $topKategoriPemasukan = array_slice($kategoriPemasukan, 0, 5, true);
 
         $saran = [];
-        if ($savingsRate < 0.1 && $totalPemasukan > 0) {
+        if ($savingsRate < 0.1 && $totalPemasukan > 0 && ! $isDefisit) {
             $saran[] = 'Tingkatkan savings rate ke > 10% dengan kurangi kategori pengeluaran terbesar.';
         }
         if (! empty($anomali)) {
@@ -116,6 +120,10 @@ class YearlyStatisticsService
             'avgPengeluaran' => $avgPengeluaran,
             'avgNet' => $avgNet,
             'savingsRate' => $savingsRate,
+            'rawSavingsRate' => $rawSavingsRate,
+            'isDefisit' => $isDefisit,
+            'isTahunBerjalan' => $isTahunBerjalan,
+            'proyeksiLabel' => $proyeksiLabel,
             'burnRate' => $burnRate,
             'proyeksiAkhirTahun' => $proyeksiAkhirTahun,
             'topKategoriPengeluaran' => $topKategoriPengeluaran,
@@ -123,6 +131,7 @@ class YearlyStatisticsService
             'anomali' => $anomali,
             'monthNames' => $monthNames,
             'saran' => $saran,
+            'initialBalance' => $initialBalance,
         ];
     }
 

@@ -53,9 +53,14 @@
                 <p class="text-sm text-indigo-700 dark:text-indigo-300">Saldo (Netto)</p>
                 <p class="text-2xl font-bold text-indigo-900 dark:text-indigo-100">Rp {{ number_format($totalNet,0,',','.') }}</p>
             </div>
-            <div class="rounded-xl p-4 bg-amber-50 border border-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10">
-                <p class="text-sm text-amber-700 dark:text-amber-300">Savings Rate</p>
-                <p class="text-2xl font-bold text-amber-900 dark:text-amber-100">{{ number_format($savingsRate * 100, 1, ',', '.') }}%</p>
+            <div class="rounded-xl p-4 {{ !empty($isDefisit) ? 'bg-rose-50 border border-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10' : 'bg-amber-50 border border-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10' }}">
+                <div class="flex items-center justify-between">
+                    <p class="text-sm {{ !empty($isDefisit) ? 'text-rose-700 dark:text-rose-300' : 'text-amber-700 dark:text-amber-300' }}">Savings Rate</p>
+                    @if(!empty($isDefisit))
+                        <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300">Defisit</span>
+                    @endif
+                </div>
+                <p class="text-2xl font-bold {{ !empty($isDefisit) ? 'text-rose-900 dark:text-rose-100' : 'text-amber-900 dark:text-amber-100' }}">{{ number_format($savingsRate * 100, 1, ',', '.') }}%</p>
             </div>
         </div>
 
@@ -69,7 +74,7 @@
                 <p class="text-xl font-semibold text-gray-900 dark:text-slate-100">Rp {{ number_format($avgPengeluaran,0,',','.') }}</p>
             </div>
             <div class="rounded-xl p-4 bg-gray-50 border border-gray-100 dark:bg-slate-800/80 dark:border-slate-700">
-                <p class="text-sm text-gray-700 dark:text-slate-400">Proyeksi Akhir Tahun</p>
+                <p class="text-sm text-gray-700 dark:text-slate-400">{{ $proyeksiLabel ?? 'Proyeksi Akhir Tahun' }}</p>
                 <p class="text-xl font-semibold text-gray-900 dark:text-slate-100">Rp {{ number_format($proyeksiAkhirTahun,0,',','.') }}</p>
             </div>
         </div>
