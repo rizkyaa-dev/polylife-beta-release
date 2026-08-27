@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ipk;
 use App\Queries\Jadwal\GuestJadwalCalendarQuery;
+use App\Services\Keuangan\BudgetEvaluationService;
 use App\Services\Keuangan\YearlyStatisticsService;
 use App\Support\GuestWorkspace;
 use App\Support\Keuangan\StatisticYearRange;
@@ -15,6 +16,7 @@ class GuestWorkspaceController extends Controller
 {
     public function __construct(
         private readonly YearlyStatisticsService $yearlyStatisticsService,
+        private readonly BudgetEvaluationService $budgetEvaluationService,
         private readonly GuestJadwalCalendarQuery $guestJadwalCalendarQuery,
         private readonly StatisticYearRange $statisticYearRange
     ) {
@@ -28,9 +30,41 @@ class GuestWorkspaceController extends Controller
         ]);
     }
 
+    public function keuanganAnggaran(Request $request)
+    {
+        $now = Carbon::now();
+        $month = filter_var($request->query('bulan'), FILTER_VALIDATE_INT);
+        if ($month === false || $month < 1 || $month > 12) {
+            $month = (int) $now->month;
+        }
+
+        $year = $this->statisticYearRange->resolve($request->query('tahun'), $now);
+
+        $evaluation = $this->budgetEvaluationService->evaluateGuest(
+            GuestWorkspace::budgets(),
+            GuestWorkspace::keuangan(),
+            $month,
+            $year
+        );
+
+        $monthOptions = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni',
+            7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        return view('keuangan.anggaran', array_merge([
+            'currentMonth' => $month,
+            'currentYear' => $year,
+            'monthOptions' => $monthOptions,
+            'tahunOptions' => $this->statisticYearRange->options($now),
+            'guestMode' => true,
+        ], $evaluation));
+    }
+
     public function keuanganStatistik(Request $request)
     {
-        $year = $this->statisticYearRange->resolve($request->query('tahun'));
+        $now = Carbon::now();
+        $year = $this->statisticYearRange->resolve($request->query('tahun'), $now);
         $allGuestRecords = GuestWorkspace::keuangan();
 
         $initialBalance = 0.0;
@@ -59,7 +93,7 @@ class GuestWorkspaceController extends Controller
 
         return view('keuangan.statistik', array_merge([
             'tahun' => $year,
-            'tahunOptions' => $this->statisticYearRange->options(),
+            'tahunOptions' => $this->statisticYearRange->options($now),
             'guestMode' => true,
         ], $statistics));
     }

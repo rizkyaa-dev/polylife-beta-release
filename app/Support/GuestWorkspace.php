@@ -215,6 +215,25 @@ class GuestWorkspace
             });
     }
 
+    public static function budgets(): Collection
+    {
+        $rows = static::payload()['budgets'] ?? [];
+
+        return collect(is_array($rows) ? $rows : [])
+            ->map(function ($row, $index) {
+                $model = new KeuanganBudget();
+                $model->forceFill([
+                    'id' => $row['id'] ?? (1300 + $index),
+                    'kategori' => $row['kategori'] ?? 'Makanan & Minuman',
+                    'nominal_limit' => (float) ($row['nominal_limit'] ?? 1000000),
+                    'bulan' => (int) ($row['bulan'] ?? Carbon::now()->month),
+                    'tahun' => (int) ($row['tahun'] ?? Carbon::now()->year),
+                ]);
+
+                return $model;
+            });
+    }
+
     protected static function payload(): array
     {
         $path = storage_path('app/guest/workspace.json');
@@ -231,6 +250,7 @@ class GuestWorkspace
 
         return [
             'keuangan' => is_array($decoded['keuangan'] ?? null) ? $decoded['keuangan'] : $defaults['keuangan'],
+            'budgets' => is_array($decoded['budgets'] ?? null) ? $decoded['budgets'] : $defaults['budgets'],
             'matkuls' => is_array($decoded['matkuls'] ?? null) ? $decoded['matkuls'] : $defaults['matkuls'],
             'jadwals' => is_array($decoded['jadwals'] ?? null) ? $decoded['jadwals'] : $defaults['jadwals'],
             'todolist' => is_array($decoded['todolist'] ?? null) ? $decoded['todolist'] : $defaults['todolist'],
@@ -244,6 +264,7 @@ class GuestWorkspace
     {
         return [
             'keuangan' => [],
+            'budgets' => [],
             'matkuls' => [],
             'jadwals' => [],
             'todolist' => [],

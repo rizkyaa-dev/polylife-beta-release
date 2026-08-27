@@ -94,5 +94,20 @@
                     </p>
                 </button>
             </div>
+
+            <div class="mt-4 pt-3 border-t border-gray-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span class="text-gray-500 dark:text-slate-400">Analisis & Manajemen Keuangan:</span>
+                <div class="flex items-center gap-3 font-semibold">
+                    <a href="{{ ($guestMode ?? false) ? route('guest.keuangan.anggaran') : route('keuangan.anggaran') }}" class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline">
+                        <span>Plafon Anggaran</span>
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </a>
+                    <span class="text-gray-300 dark:text-slate-700">&bull;</span>
+                    <a href="{{ ($guestMode ?? false) ? route('guest.keuangan.statistik') : route('keuangan.statistik') }}" class="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:underline">
+                        <span>Statistik & Tren</span>
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </a>
+                </div>
+            </div>
         </section>
 

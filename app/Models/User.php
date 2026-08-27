@@ -293,4 +293,9 @@ class User extends Authenticatable implements MustVerifyEmail
 
         return null;
     }
+
+    public function keuanganBudgets()
+    {
+        return $this->hasMany(KeuanganBudget::class);
+    }
 }

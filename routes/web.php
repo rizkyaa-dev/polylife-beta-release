@@ -16,6 +16,7 @@ use App\Http\Controllers\GuestWorkspaceController;
 use App\Http\Controllers\IpkController;
 use App\Http\Controllers\JadwalController;
 use App\Http\Controllers\KegiatanController;
+use App\Http\Controllers\KeuanganBudgetController;
 use App\Http\Controllers\KeuanganController;
 use App\Http\Controllers\KeuanganStatistikController;
 use App\Http\Controllers\MatkulController;
@@ -62,6 +63,15 @@ Route::prefix('workspace')->middleware(['auth', 'active-account', 'workspace-acc
     Route::get('keuangan/statistik', [KeuanganStatistikController::class, 'index'])
         ->name('keuangan.statistik')
         ->middleware('verified');
+    Route::get('keuangan/anggaran', [KeuanganBudgetController::class, 'index'])
+        ->name('keuangan.anggaran')
+        ->middleware('verified');
+    Route::post('keuangan/anggaran', [KeuanganBudgetController::class, 'store'])
+        ->name('keuangan.anggaran.store')
+        ->middleware(['verified', ...$userWriteMiddleware]);
+    Route::delete('keuangan/anggaran/{budget}', [KeuanganBudgetController::class, 'destroy'])
+        ->name('keuangan.anggaran.destroy')
+        ->middleware(['verified', ...$userWriteMiddleware]);
     Route::resource('keuangan', KeuanganController::class)
         ->middleware('verified')
         ->middlewareFor(['store', 'update', 'destroy'], $userWriteMiddleware);
@@ -108,6 +118,7 @@ Route::prefix('guest')->name('guest.')->group(function () {
     Route::get('/', [GuestDashboardController::class, 'index'])->name('home');
     Route::get('/keuangan', [GuestWorkspaceController::class, 'keuangan'])->name('keuangan.index');
     Route::get('/keuangan/statistik', [GuestWorkspaceController::class, 'keuanganStatistik'])->name('keuangan.statistik');
+    Route::get('/keuangan/anggaran', [GuestWorkspaceController::class, 'keuanganAnggaran'])->name('keuangan.anggaran');
     Route::get('/jadwal', [GuestWorkspaceController::class, 'jadwal'])->name('jadwal.index');
     Route::get('/todolist', [GuestWorkspaceController::class, 'todolist'])->name('todolist.index');
     Route::get('/catatan', [GuestWorkspaceController::class, 'catatan'])->name('catatan.index');

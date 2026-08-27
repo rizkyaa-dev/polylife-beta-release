@@ -16,11 +16,22 @@
     ];
 @endphp
 <div class="space-y-6">
-    <div class="bg-white border rounded-2xl shadow-sm p-6 dark:bg-slate-900 dark:border-slate-800">
+    {{-- Header & Sub-Tabs Navigation --}}
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-slate-100">Modul Keuangan</h2>
+            <p class="text-sm text-gray-500 dark:text-slate-400">Analisis tren pemasukan, pola pengeluaran, dan deteksi anomali tahunan.</p>
+        </div>
+        <div class="w-full md:w-auto">
+            @include('keuangan.partials.nav-tabs', ['activeTab' => 'statistik', 'guestMode' => $guestMode])
+        </div>
+    </div>
+
+    <div class="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 dark:bg-slate-900 dark:border-slate-800">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-                <h2 class="text-xl font-semibold text-gray-900 dark:text-slate-100">Ringkasan Tahunan</h2>
-                <p class="text-gray-500 dark:text-slate-400">Analisis canggih keuangan tahun <span class="font-medium">{{ $tahun }}</span></p>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-slate-100">Ringkasan Tahunan</h3>
+                <p class="text-sm text-gray-500 dark:text-slate-400">Analisis keuangan dan performa anggaran tahun <span class="font-semibold text-gray-800 dark:text-slate-200">{{ $tahun }}</span></p>
             </div>
             <form method="GET" action="{{ $statistikAction }}" class="flex items-center gap-2">
                 <label for="tahun" class="text-sm text-gray-600 dark:text-slate-300">Tahun</label>

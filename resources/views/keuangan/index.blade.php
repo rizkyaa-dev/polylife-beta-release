@@ -14,26 +14,32 @@
 @endphp
 
 <div class="space-y-6">
+    {{-- Header & Sub-Tabs Navigation --}}
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900 dark:text-slate-100">Modul Keuangan</h2>
+            <p class="text-sm text-gray-500 dark:text-slate-400">Kelola arus kas harian, pantau statistik keuangan, dan atur plafon anggaran.</p>
+        </div>
+        <div class="w-full md:w-auto">
+            @include('keuangan.partials.nav-tabs', ['activeTab' => 'transaksi', 'guestMode' => $guestMode])
+        </div>
+    </div>
+
     <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 dark:bg-slate-900 dark:border-slate-800">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-                <p class="text-sm uppercase tracking-wide text-indigo-500 font-semibold">Ringkasan bulan ini</p>
-                <h2 class="text-2xl font-bold text-gray-900">Kelola arus kas harian</h2>
-                <p class="text-sm text-gray-500 mt-1">Pantau pemasukan, pengeluaran, dan saldo tanpa perlu buka spreadsheet.</p>
+                <p class="text-sm uppercase tracking-wide text-indigo-500 font-semibold">Ringkasan Bulan Ini</p>
+                <h3 class="text-xl font-bold text-gray-900 dark:text-slate-100">Arus Kas Berjalan</h3>
+                <p class="text-sm text-gray-500 dark:text-slate-400 mt-1">Pantau total pemasukan, pengeluaran, dan saldo bersih bulan ini.</p>
             </div>
             <div class="flex flex-col w-full gap-2 sm:w-auto sm:flex-row">
                 <a @if($guestMode) aria-disabled="true" @else href="{{ route('keuangan.create', ['jenis' => 'pemasukan']) }}" @endif
-                   class="w-full px-4 py-2 rounded-2xl text-center text-sm font-semibold text-white shadow {{ $guestMode ? 'bg-gray-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500' }}">
+                   class="w-full px-4 py-2.5 rounded-xl text-center text-sm font-semibold text-white shadow {{ $guestMode ? 'bg-gray-300 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500' }}">
                     + Pemasukan
                 </a>
                 <a @if($guestMode) aria-disabled="true" @else href="{{ route('keuangan.create', ['jenis' => 'pengeluaran']) }}" @endif
-                   class="w-full px-4 py-2 rounded-2xl text-center text-sm font-semibold text-white shadow {{ $guestMode ? 'bg-gray-200 cursor-not-allowed text-gray-500' : 'bg-rose-500 hover:bg-rose-500/90' }}">
+                   class="w-full px-4 py-2.5 rounded-xl text-center text-sm font-semibold text-white shadow {{ $guestMode ? 'bg-gray-200 cursor-not-allowed text-gray-500' : 'bg-rose-600 hover:bg-rose-500' }}">
                     - Pengeluaran
-                </a>
-                <a href="{{ $statistikRoute }}"
-                   class="w-full px-4 py-2 rounded-2xl border border-gray-100 text-center text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800/50"
-                   title="Statistik Beta">
-                    Statistik <span class="ml-1 text-[10px] align-baseline px-2 py-0.5 rounded-full bg-amber-500 text-white">Beta</span>
                 </a>
             </div>
         </div>
