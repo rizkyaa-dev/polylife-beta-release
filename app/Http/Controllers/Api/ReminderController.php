@@ -84,7 +84,7 @@ class ReminderController extends Controller
                         'helper' => 'Pengingat untuk kegiatan turunan dari sebuah jadwal.',
                         'options' => $payload['kegiatans']->map(fn ($item) => [
                             'id' => (int) $item->id,
-                            'label' => trim((string) $item->nama_kegiatan.($item->tanggal_deadline ? ' • '.Carbon::parse($item->tanggal_deadline)->translatedFormat('d M H:i') : '')),
+                            'label' => trim((string) $item->nama_kegiatan.($item->formatted_datetime ? ' • '.$item->formatted_datetime : '')),
                         ])->values(),
                     ],
                 ],

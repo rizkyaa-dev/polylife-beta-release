@@ -119,7 +119,7 @@
             <label class="text-sm font-semibold text-gray-700 dark:text-slate-200">Status Profil</label>
             <label class="inline-flex items-center gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 cursor-pointer dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100">
                 <input type="checkbox" name="is_active" value="1"
-                       class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                       class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900"
                        @checked(old('is_active', $nilaiMutu->is_active))>
                 Tandai sebagai profil aktif
             </label>

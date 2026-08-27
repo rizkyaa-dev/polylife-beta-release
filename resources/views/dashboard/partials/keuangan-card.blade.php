@@ -56,40 +56,40 @@
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 w-full">
                 <button type="button"
                         data-slice="pemasukan"
-                        class="stat-card rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow focus-visible:ring-2 focus-visible:ring-green-400 w-full ring-green-300 dark:ring-green-400 ring-offset-white dark:ring-offset-slate-900">
-                    <div class="flex items-center gap-2 text-sm font-medium text-green-700">
+                        class="stat-card rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow focus-visible:ring-2 focus-visible:ring-green-400 w-full ring-green-300 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:ring-green-400 ring-offset-white dark:ring-offset-slate-900">
+                    <div class="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-emerald-300">
                         <span class="inline-flex h-3 w-3 rounded-full" style="background-color: rgba(34, 197, 94, 0.9);"></span>
                         Pemasukan
                     </div>
-                    <p id="statPemasukan" data-raw="{{ $ringkasanKeuangan['total_pemasukan'] ?? 0 }}" class="text-2xl font-semibold text-green-800 transition">
+                    <p id="statPemasukan" data-raw="{{ $ringkasanKeuangan['total_pemasukan'] ?? 0 }}" class="text-2xl font-semibold text-green-800 dark:text-emerald-100 transition">
                         {{ isset($ringkasanKeuangan['total_pemasukan']) ? 'Rp '.number_format($ringkasanKeuangan['total_pemasukan'],0,',','.') : 'Rp 0' }}
                     </p>
-                    <p class="text-xs text-green-700/70 mt-1">Total dana masuk bulan ini</p>
+                    <p class="text-xs text-green-700/70 dark:text-emerald-200/70 mt-1">Total dana masuk bulan ini</p>
                 </button>
                 <button type="button"
                         data-slice="pengeluaran"
-                        class="stat-card rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow focus-visible:ring-2 focus-visible:ring-rose-400 w-full ring-rose-300 dark:ring-rose-400 ring-offset-white dark:ring-offset-slate-900">
-                    <div class="flex items-center gap-2 text-sm font-medium text-rose-700">
+                        class="stat-card rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow focus-visible:ring-2 focus-visible:ring-rose-400 w-full ring-rose-300 dark:border-rose-500/20 dark:bg-rose-500/10 dark:ring-rose-400 ring-offset-white dark:ring-offset-slate-900">
+                    <div class="flex items-center gap-2 text-sm font-medium text-rose-700 dark:text-rose-300">
                         <span class="inline-flex h-3 w-3 rounded-full" style="background-color: rgba(239, 68, 68, 0.9);"></span>
                         Pengeluaran
                     </div>
-                    <p id="statPengeluaran" data-raw="{{ $ringkasanKeuangan['total_pengeluaran'] ?? 0 }}" class="text-2xl font-semibold text-rose-800 transition">
+                    <p id="statPengeluaran" data-raw="{{ $ringkasanKeuangan['total_pengeluaran'] ?? 0 }}" class="text-2xl font-semibold text-rose-800 dark:text-rose-100 transition">
                         {{ isset($ringkasanKeuangan['total_pengeluaran']) ? 'Rp '.number_format($ringkasanKeuangan['total_pengeluaran'],0,',','.') : 'Rp 0' }}
                     </p>
-                    <p class="text-xs text-rose-700/70 mt-1">Total dana keluar bulan ini</p>
+                    <p class="text-xs text-rose-700/70 dark:text-rose-200/70 mt-1">Total dana keluar bulan ini</p>
                 </button>
                 <button type="button"
                         data-slice="saldo"
                         id="saldoCard"
-                        class="stat-card rounded-2xl border px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow focus-visible:ring-2 w-full ring-offset-white dark:ring-offset-slate-900 {{ $saldoNegatif ? 'border-gray-900 bg-gray-900 text-white focus-visible:ring-gray-700 ring-gray-700 dark:ring-gray-500' : 'border-indigo-100 bg-indigo-50 text-indigo-800 focus-visible:ring-indigo-400 ring-indigo-200 dark:ring-indigo-500' }}">
-                    <div id="saldoLabelWrap" class="flex items-center gap-2 text-sm font-medium {{ $saldoNegatif ? 'text-white' : 'text-indigo-700' }}">
+                        class="stat-card rounded-2xl border px-4 py-3 text-left transition hover:-translate-y-0.5 hover:shadow focus-visible:ring-2 w-full ring-offset-white dark:ring-offset-slate-900 {{ $saldoNegatif ? 'border-gray-900 bg-gray-900 text-white focus-visible:ring-gray-700 ring-gray-700 dark:ring-gray-500' : 'border-indigo-100 bg-indigo-50 text-indigo-800 focus-visible:ring-indigo-400 ring-indigo-200 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-100 dark:ring-indigo-500' }}">
+                    <div id="saldoLabelWrap" class="flex items-center gap-2 text-sm font-medium {{ $saldoNegatif ? 'text-white' : 'text-indigo-700 dark:text-indigo-300' }}">
                         <span class="inline-flex h-3 w-3 rounded-full" style="background-color: rgba(99, 102, 241, 0.9);"></span>
                         <span id="labelSaldo">{{ ($ringkasanKeuangan['saldo_bulan_ini'] ?? 0) < 0 ? 'Hutang' : 'Saldo' }}</span>
                     </div>
-                    <p id="statSaldo" data-raw="{{ $ringkasanKeuangan['saldo_bulan_ini'] ?? 0 }}" class="text-2xl font-semibold transition {{ $saldoNegatif ? 'text-white' : 'text-indigo-800' }}">
+                    <p id="statSaldo" data-raw="{{ $ringkasanKeuangan['saldo_bulan_ini'] ?? 0 }}" class="text-2xl font-semibold transition {{ $saldoNegatif ? 'text-white' : 'text-indigo-800 dark:text-indigo-100' }}">
                         {{ isset($ringkasanKeuangan['saldo_bulan_ini']) ? 'Rp '.number_format($ringkasanKeuangan['saldo_bulan_ini'],0,',','.') : 'Rp 0' }}
                     </p>
-                    <p class="text-xs mt-1 {{ $saldoNegatif ? 'text-gray-200' : 'text-indigo-700/70' }}" id="saldoSubtitle">
+                    <p class="text-xs mt-1 {{ $saldoNegatif ? 'text-gray-200' : 'text-indigo-700/70 dark:text-indigo-200/70' }}" id="saldoSubtitle">
                         {{ ($ringkasanKeuangan['saldo_bulan_ini'] ?? 0) < 0 ? 'Total hutang per '.now()->format('d M') : 'Sisa dana per '.now()->format('d M') }}
                     </p>
                 </button>

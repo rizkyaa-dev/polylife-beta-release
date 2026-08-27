@@ -150,7 +150,7 @@
                                             <input type="checkbox"
                                                    name="email_verified"
                                                    value="1"
-                                                   class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                   class="endmin-checkbox"
                                                    @checked((bool) $user->email_verified_at)>
                                             Email verified
                                         </label>

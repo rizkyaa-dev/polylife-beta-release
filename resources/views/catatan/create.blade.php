@@ -64,7 +64,7 @@
                            id="show_preview"
                            value="1"
                            @checked(old('show_preview'))
-                           class="mt-1 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500">
+                           class="mt-1 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 dark:border-indigo-700 dark:bg-slate-950">
                     <span>
                         <span class="block font-semibold text-gray-900 dark:text-slate-100">Tampilkan preview di daftar catatan</span>
                         <span class="mt-1 block text-xs leading-5 text-gray-600 dark:text-slate-400">

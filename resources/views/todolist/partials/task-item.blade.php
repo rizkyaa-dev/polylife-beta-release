@@ -4,24 +4,24 @@
     $hasActiveReminder = $task->reminders->where('aktif', true)->isNotEmpty();
 
     if (! $hasReminderRecord) {
-        $reminderBadge = ['text' => 'Tanpa reminder', 'classes' => 'bg-gray-100 text-gray-600'];
+        $reminderBadge = ['text' => 'Tanpa reminder', 'classes' => 'bg-gray-100 text-gray-600 dark:bg-slate-800 dark:text-slate-300'];
     } elseif ($hasActiveReminder) {
-        $reminderBadge = ['text' => 'Reminder aktif', 'classes' => 'bg-indigo-50 text-indigo-700'];
+        $reminderBadge = ['text' => 'Reminder aktif', 'classes' => 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-200'];
     } else {
-        $reminderBadge = ['text' => 'Reminder nonaktif', 'classes' => 'bg-amber-50 text-amber-700'];
+        $reminderBadge = ['text' => 'Reminder nonaktif', 'classes' => 'bg-amber-50 text-amber-700 dark:bg-amber-500/20 dark:text-amber-200'];
     }
 @endphp
 
 <li @class([
-        'task-item flex items-center justify-between gap-3 p-4 border border-gray-100 rounded-xl transition',
-        'bg-gray-50' => $isCompleted,
-        'hover:border-indigo-200' => ! $isCompleted,
+        'task-item flex items-center justify-between gap-3 p-4 border border-gray-100 rounded-xl transition dark:border-slate-800',
+        'bg-gray-50 dark:bg-slate-900/40' => $isCompleted,
+        'hover:border-indigo-200 dark:hover:border-slate-700' => ! $isCompleted,
     ])
     data-task-id="{{ $task->id }}"
     data-state="{{ $isCompleted ? 'completed' : 'ongoing' }}">
     <div class="flex items-start gap-3">
         @if($guestMode)
-            <span class="mt-1 inline-flex h-5 w-5 items-center justify-center rounded border border-gray-200 bg-gray-100 text-gray-400">
+            <span class="mt-1 inline-flex h-5 w-5 items-center justify-center rounded border border-gray-200 bg-gray-100 text-gray-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
@@ -38,8 +38,8 @@
             </form>
         @endif
         <div>
-            <p class="task-title font-semibold text-gray-900 {{ $isCompleted ? 'line-through' : '' }}">{{ $task->nama_item }}</p>
-            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            <p class="task-title font-semibold text-gray-900 dark:text-slate-100 {{ $isCompleted ? 'line-through text-gray-400 dark:text-slate-500' : '' }}">{{ $task->nama_item }}</p>
+            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
                 <span class="task-badge inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium {{ $reminderBadge['classes'] }}">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6v6l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>

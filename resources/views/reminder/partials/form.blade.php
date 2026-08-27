@@ -105,8 +105,8 @@
                                     if ($key === 'tugas' && $option->deadline) {
                                         $label .= ' • ' . \Illuminate\Support\Carbon::parse($option->deadline)->translatedFormat('d M');
                                     }
-                                    if ($key === 'kegiatan' && $option->tanggal_deadline) {
-                                        $label .= ' • ' . \Illuminate\Support\Carbon::parse($option->tanggal_deadline)->translatedFormat('d M H:i');
+                                    if ($key === 'kegiatan' && $option->formatted_datetime) {
+                                        $label .= ' • ' . $option->formatted_datetime;
                                     }
                                 @endphp
                                 <option value="{{ $option->id }}" @selected($selectedId == $option->id)>

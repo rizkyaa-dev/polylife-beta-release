@@ -30,8 +30,8 @@
                         data-reminder-deadline="{{ $r['waktu_formatted'] }}">
                         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
-                                <p class="font-medium text-gray-800">{{ $r['title'] }}</p>
-                                <p class="text-sm text-gray-500">Tenggat: {{ $r['waktu_formatted'] }}</p>
+                                <p class="font-medium text-gray-800 dark:text-slate-100">{{ $r['title'] }}</p>
+                                <p class="text-sm text-gray-500 dark:text-slate-400">Tenggat: {{ $r['waktu_formatted'] }}</p>
                             </div>
                             <a href="{{ $r['edit_url'] }}" class="text-sm text-indigo-600 hover:underline">Edit</a>
                         </div>

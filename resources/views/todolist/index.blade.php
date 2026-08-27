@@ -13,41 +13,41 @@
     <div class="space-y-6">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-                <p class="text-sm text-gray-500">Atur tugas kamu dengan rapi</p>
-                <h2 class="text-2xl font-semibold text-gray-900">Pantau Progress Harian</h2>
+                <p class="text-sm text-gray-500 dark:text-slate-400">Atur tugas kamu dengan rapi</p>
+                <h2 class="text-2xl font-semibold text-gray-900 dark:text-slate-100">Pantau Progress Harian</h2>
             </div>
             <a @if($guestMode) aria-disabled="true" @else href="{{ route('todolist.create') }}" @endif
-               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold shadow-sm {{ $guestMode ? 'bg-gray-300 cursor-not-allowed' : '' }}"
+               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-semibold shadow-sm {{ $guestMode ? 'bg-gray-300 cursor-not-allowed' : 'hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400' }}"
                style="{{ $guestMode ? '' : 'background-color: #1261DE;' }}">
                 {{ $guestMode ? 'Mode baca' : '+ Tugas Baru' }}
             </a>
         </div>
 
         @if($guestMode)
-            <div class="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs text-indigo-900">
+            <div class="rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs text-indigo-900 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
                 Mode tamu: centang status dan edit disembunyikan. Ubah contoh data di <code>storage/app/guest/workspace.json</code> jika ingin menyesuaikan.
             </div>
         @endif
 
-        <div class="bg-white border rounded-2xl shadow-sm p-6 space-y-6">
+        <div class="bg-white border rounded-2xl shadow-sm p-6 space-y-6 dark:bg-slate-900 dark:border-slate-800">
             <div class="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <p class="text-sm text-gray-500">Total tugas</p>
-                    <p class="text-2xl font-semibold text-gray-900">{{ $todolists->count() }}</p>
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Total tugas</p>
+                    <p class="text-2xl font-semibold text-gray-900 dark:text-slate-100">{{ $todolists->count() }}</p>
                 </div>
-                <p class="text-sm text-gray-500 max-w-md">
+                <p class="text-sm text-gray-500 dark:text-slate-400 max-w-md">
                     Klik kartu kategori di bawah ini untuk melihat daftar tugas berlangsung atau yang sudah selesai.
                 </p>
             </div>
 
             <div class="space-y-4" id="task-groups">
-                <details class="task-group border border-gray-100 rounded-2xl p-4 bg-gray-50" data-group="ongoing" {{ $activeTab === 'ongoing' ? 'open' : '' }}>
+                <details class="task-group border border-gray-100 rounded-2xl p-4 bg-gray-50 dark:border-slate-800 dark:bg-slate-900/50" data-group="ongoing" {{ $activeTab === 'ongoing' ? 'open' : '' }}>
                     <summary class="flex items-center justify-between gap-4 cursor-pointer select-none">
                         <div>
-                            <p class="text-xs uppercase tracking-wide text-gray-500">Kategori</p>
-                            <p class="text-lg font-semibold text-gray-900">Tugas Berlangsung</p>
+                            <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">Kategori</p>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-slate-100">Tugas Berlangsung</p>
                         </div>
-                        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-xl text-sm font-semibold bg-white text-indigo-600">
+                        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-xl text-sm font-semibold bg-white text-indigo-600 dark:bg-slate-800 dark:text-indigo-400">
                             <span><span id="ongoing-count">{{ $ongoingTasks->count() }}</span> tugas</span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 9l6 6 6-6" />
@@ -56,7 +56,7 @@
                     </summary>
                     <div class="mt-4 space-y-3">
                         <div id="ongoing-empty" class="{{ $ongoingTasks->isEmpty() ? '' : 'hidden' }}">
-                            <div class="text-center py-6 text-gray-500 border border-dashed border-gray-200 rounded-xl">
+                            <div class="text-center py-6 text-gray-500 dark:text-slate-400 border border-dashed border-gray-200 dark:border-slate-700 rounded-xl">
                                 Belum ada tugas berlangsung. Klik <span class="font-semibold">+ Tugas Baru</span> untuk mulai membuat daftar.
                             </div>
                         </div>
@@ -68,13 +68,13 @@
                     </div>
                 </details>
 
-                <details class="task-group border border-gray-100 rounded-2xl p-4 bg-gray-50" data-group="completed" {{ $activeTab === 'completed' ? 'open' : '' }}>
+                <details class="task-group border border-gray-100 rounded-2xl p-4 bg-gray-50 dark:border-slate-800 dark:bg-slate-900/50" data-group="completed" {{ $activeTab === 'completed' ? 'open' : '' }}>
                     <summary class="flex items-center justify-between gap-4 cursor-pointer select-none">
                         <div>
-                            <p class="text-xs uppercase tracking-wide text-gray-500">Kategori</p>
-                            <p class="text-lg font-semibold text-gray-900">Tugas Selesai</p>
+                            <p class="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400">Kategori</p>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-slate-100">Tugas Selesai</p>
                         </div>
-                        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-xl text-sm font-semibold bg-white text-emerald-600">
+                        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-xl text-sm font-semibold bg-white text-emerald-600 dark:bg-slate-800 dark:text-emerald-400">
                             <span><span id="completed-count">{{ $completedTasks->count() }}</span> tugas</span>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 9l6 6 6-6" />
@@ -83,7 +83,7 @@
                     </summary>
                     <div class="mt-4 space-y-3">
                         <div id="completed-empty" class="{{ $completedTasks->isEmpty() ? '' : 'hidden' }}">
-                            <div class="text-center py-6 text-gray-500 border border-dashed border-gray-200 rounded-xl">
+                            <div class="text-center py-6 text-gray-500 dark:text-slate-400 border border-dashed border-gray-200 dark:border-slate-700 rounded-xl">
                                 Belum ada tugas yang ditandai selesai.
                             </div>
                         </div>

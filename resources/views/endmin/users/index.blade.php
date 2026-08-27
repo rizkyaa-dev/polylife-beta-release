@@ -119,7 +119,7 @@
                     <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                         <input id="select-all-users"
                                type="checkbox"
-                               class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                               class="endmin-checkbox">
                         Pilih semua di halaman ini
                     </label>
                     <span id="selected-users-count" class="text-xs font-semibold text-slate-500 dark:text-slate-400">0 dipilih</span>
@@ -152,7 +152,7 @@
             <table class="min-w-full text-sm">
                 <thead>
                     <tr class="text-left border-b border-gray-100 dark:border-slate-800">
-                        <th class="py-3 pr-3 w-10"></th>
+                        <th class="py-3 pl-4 pr-3 w-12"></th>
                         <th class="py-3 pr-4">Nama</th>
                         <th class="py-3 pr-4">Email</th>
                         <th class="py-3 pr-4">Peran</th>
@@ -168,9 +168,9 @@
                             $isSelf = auth()->id() === $user->id;
                         @endphp
                         <tr>
-                            <td class="py-3 pr-3">
+                            <td class="py-3 pl-4 pr-3">
                                 <input type="checkbox"
-                                       class="bulk-user-checkbox h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                       class="bulk-user-checkbox endmin-checkbox"
                                        value="{{ $user->id }}">
                             </td>
                             <td class="py-3 pr-4 font-medium text-slate-900 dark:text-slate-100">

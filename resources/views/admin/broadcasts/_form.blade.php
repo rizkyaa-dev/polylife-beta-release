@@ -51,7 +51,7 @@
             <p class="mt-1 text-sm text-rose-600">{{ $message }}</p>
         @enderror
 
-        @if ($broadcast?->image_path)
+        @if ($broadcast?->image_url)
             <div class="mt-2 flex items-center gap-3">
                 <img src="{{ $broadcast->image_url }}"
                      alt="Gambar broadcast"
@@ -60,7 +60,7 @@
                     <input type="checkbox"
                            name="remove_image"
                            value="1"
-                           class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                           class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900">
                     Hapus gambar saat simpan
                 </label>
             </div>
@@ -75,7 +75,7 @@
                     <input type="radio"
                            name="target_mode"
                            value="{{ \App\Models\AffiliationBroadcast::TARGET_MODE_AFFILIATION }}"
-                           class="h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                           class="h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900"
                            @checked($currentTargetMode === \App\Models\AffiliationBroadcast::TARGET_MODE_AFFILIATION)>
                     Afiliasi Spesifik
                 </label>
@@ -84,7 +84,7 @@
                         <input type="radio"
                                name="target_mode"
                                value="{{ \App\Models\AffiliationBroadcast::TARGET_MODE_GLOBAL }}"
-                               class="h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                               class="h-4 w-4 border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900"
                                @checked($currentTargetMode === \App\Models\AffiliationBroadcast::TARGET_MODE_GLOBAL)>
                         Global (semua user)
                     </label>
@@ -106,7 +106,7 @@
                     <input type="checkbox"
                            name="send_push"
                            value="1"
-                           class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                           class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900"
                            @checked(old('send_push', $broadcast?->send_push ?? true))>
                     Kirim push notification saat dipublish
                 </label>
@@ -129,7 +129,7 @@
                             <input type="checkbox"
                                    name="targets[]"
                                    value="{{ $option['value'] }}"
-                                   class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                   class="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900"
                                    @checked(in_array($option['value'], $selectedTargetValues, true))>
                             <span>{{ $option['label'] }}</span>
                         </label>
