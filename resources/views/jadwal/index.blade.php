@@ -459,9 +459,19 @@
                                     @endif
                                 </ul>
                             @else
-                                <p class="mt-auto text-[11px] leading-tight text-gray-300">
-                                    {{ $isKuliahWeekend ? ($getHolidayReason($day) ?: 'Libur kuliah') : '—' }}
-                                </p>
+                                @if($isKuliahWeekend)
+                                    @php
+                                        $holidayReason = $getHolidayReason($day) ?: 'Libur kuliah';
+                                        $isNationalHoliday = $holidayReason !== 'Hari libur rutin' && $holidayReason !== 'Akhir pekan';
+                                    @endphp
+                                    <p class="mt-auto text-[11px] leading-snug line-clamp-2 {{ $isNationalHoliday ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-slate-500 dark:text-slate-400' }}" title="{{ $holidayReason }}">
+                                        {{ $holidayReason }}
+                                    </p>
+                                @else
+                                    <p class="mt-auto text-[11px] leading-tight text-gray-300 dark:text-slate-600">
+                                        —
+                                    </p>
+                                @endif
                             @endif
                         </a>
                     @endforeach

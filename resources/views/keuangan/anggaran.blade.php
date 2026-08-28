@@ -12,15 +12,9 @@
 @endphp
 
 <div class="space-y-6">
-    {{-- Header & Sub-Tabs Navigation --}}
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-slate-100">Modul Keuangan</h2>
-            <p class="text-sm text-gray-500 dark:text-slate-400">Kelola arus kas, analisis tahunan, dan kontrol batas pengeluaran pos anggaran.</p>
-        </div>
-        <div class="w-full md:w-auto">
-            @include('keuangan.partials.nav-tabs', ['activeTab' => 'anggaran', 'guestMode' => $guestMode])
-        </div>
+    {{-- Sub-Tabs Navigation --}}
+    <div class="flex items-center justify-between">
+        @include('keuangan.partials.nav-tabs', ['activeTab' => 'anggaran', 'guestMode' => $guestMode])
     </div>
 
     {{-- Notification Messages --}}

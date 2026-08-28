@@ -270,7 +270,7 @@ class User extends Authenticatable implements MustVerifyEmail
         }
 
         // National holidays (if enabled in preferences, default is true)
-        if ($this->profile->preferences['auto_national_holidays'] ?? true) {
+        if ($this->profile?->preferences['auto_national_holidays'] ?? true) {
             return app(\App\Services\HolidayService::class)->isHoliday($date);
         }
 
@@ -280,7 +280,7 @@ class User extends Authenticatable implements MustVerifyEmail
     public function getOffDayReason(\Illuminate\Support\Carbon $date): ?string
     {
         // National holidays take precedence for the label
-        if ($this->profile->preferences['auto_national_holidays'] ?? true) {
+        if ($this->profile?->preferences['auto_national_holidays'] ?? true) {
             $nationalHoliday = app(\App\Services\HolidayService::class)->getHolidayName($date);
             if ($nationalHoliday) {
                 return $nationalHoliday;

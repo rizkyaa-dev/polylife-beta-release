@@ -18,7 +18,6 @@ test('authenticated user can view anggaran page and default evaluation metrics',
 
     $response->assertOk();
     $response->assertViewIs('keuangan.anggaran');
-    $response->assertSee('Modul Keuangan');
     $response->assertSee('Plafon Anggaran');
     $response->assertSee('Buku Kas');
     $response->assertSee('Statistik &amp; Tren', false);
