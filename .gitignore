@@ -22,6 +22,7 @@ Thumbs.db
 /.nova
 /.vscode
 /.zed
+/.agents/
 /auth.json
 
 /node_modules
