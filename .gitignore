@@ -23,6 +23,7 @@ Thumbs.db
 /.vscode
 /.zed
 /.agents/
+/anti-slop/
 /auth.json
 
 /node_modules
