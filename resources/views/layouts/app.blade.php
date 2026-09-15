@@ -480,7 +480,10 @@
         @include($sidebarView ?? 'layouts.components.sidebar')
         <div class="sidebar-backdrop hidden lg:hidden" data-mobile-sidebar-backdrop></div>
 
-        <div class="flex-1 flex flex-col w-full bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+        <div class="flex-1 min-w-0 flex flex-col w-full bg-gradient-to-br from-slate-50 via-white to-indigo-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+            @hasSection('workspace_canvas')
+                @yield('workspace_canvas')
+            @else
             <header id="app-header" class="app-header border-b border-slate-100/80 bg-white/90 backdrop-blur-xl dark:border-slate-900/70 dark:bg-slate-950/70">
                 <div class="max-w-7xl mx-auto px-6 py-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                     <div class="min-w-0 space-y-1">
@@ -556,6 +559,7 @@
                     </div>
                 </div>
             </main>
+            @endif
         </div>
     </div>
 
@@ -813,6 +817,10 @@
                 if (backdrop) {
                     backdrop.classList.toggle('hidden', !open);
                 }
+                const sidebar = document.getElementById('app-sidebar');
+                if (sidebar) sidebar.inert = !desktopQuery.matches && !open;
+                document.querySelectorAll('[data-mobile-sidebar-open]').forEach(button => button.setAttribute('aria-expanded', String(open)));
+                if (open) sidebar?.querySelector('[data-mobile-sidebar-close]')?.focus();
             };
 
             const syncToViewport = () => {
@@ -823,6 +831,8 @@
 
                 if (desktopQuery.matches) {
                     setMobileOpen(false);
+                } else {
+                    setMobileOpen(document.body.classList.contains('sidebar-open'));
                 }
             };
 
@@ -839,6 +849,30 @@
             });
 
             const mobileOpeners = document.querySelectorAll('[data-mobile-sidebar-open]');
+            document.addEventListener('sidebar:close', () => setMobileOpen(false));
+            document.querySelectorAll('[data-mobile-sidebar-close]').forEach(button => button.addEventListener('click', () => {
+                setMobileOpen(false);
+                mobileOpeners[0]?.focus();
+            }));
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && document.body.classList.contains('sidebar-open')) {
+                    setMobileOpen(false);
+                    mobileOpeners[0]?.focus();
+                }
+                if (event.key === 'Tab' && document.body.classList.contains('sidebar-open')) {
+                    const controls = Array.from(document.querySelectorAll('#app-sidebar a[href], #app-sidebar button, #app-sidebar input'))
+                        .filter(element => !element.disabled && element.getClientRects().length > 0);
+                    const first = controls[0];
+                    const last = controls[controls.length - 1];
+                    if (event.shiftKey && document.activeElement === first) {
+                        event.preventDefault();
+                        last?.focus();
+                    } else if (!event.shiftKey && document.activeElement === last) {
+                        event.preventDefault();
+                        first?.focus();
+                    }
+                }
+            });
             mobileOpeners.forEach((btn) => {
                 btn.addEventListener('click', () => setMobileOpen(true));
             });

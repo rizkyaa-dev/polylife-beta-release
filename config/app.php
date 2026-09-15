@@ -67,6 +67,8 @@ return [
 
     'timezone' => 'UTC',
 
+    'dashboard_timezone' => env('APP_DASHBOARD_TIMEZONE', 'Asia/Jakarta'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Admin\AffiliationBroadcastController as AdminAffiliationBroadcastController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
+use App\Http\Controllers\Ai\AiChatController;
+use App\Http\Controllers\Ai\AiChatSessionController;
+use App\Http\Controllers\Ai\AiWorkspaceController;
 use App\Http\Controllers\BroadcastImageController;
 use App\Http\Controllers\CatatanController;
 use App\Http\Controllers\DashboardController;
@@ -112,7 +115,24 @@ Route::prefix('workspace')->middleware(['auth', 'active-account', 'workspace-acc
         ->middlewareFor(['store', 'update', 'destroy'], $userWriteMiddleware);
     Route::resource('reminder', ReminderController::class)
         ->middlewareFor(['store', 'update', 'destroy'], $userWriteMiddleware);
+
+    Route::get('ai', [AiWorkspaceController::class, 'index'])->name('ai.workspace');
+    Route::get('ai/sessions/{session}/messages', [AiWorkspaceController::class, 'messages'])->whereNumber('session')->name('ai.sessions.messages');
+    Route::post('ai/settings', [AiWorkspaceController::class, 'updateSettings'])->middleware($userWriteMiddleware)->name('ai.settings.update');
+    Route::patch('ai/settings/thinking', [AiWorkspaceController::class, 'updateThinking'])->middleware($userWriteMiddleware)->name('ai.settings.thinking.update');
+    Route::post('ai/chat', [AiChatController::class, 'sendMessage'])->middleware([...$userWriteMiddleware, 'throttle:ai-chat'])->name('ai.chat');
+    Route::get('ai/runs/{run}', [AiChatController::class, 'runStatus'])->whereNumber('run')->name('ai.runs.show');
+    Route::post('ai/runs/{run}/cancel', [AiChatController::class, 'cancelRun'])->whereNumber('run')->middleware($userWriteMiddleware)->name('ai.runs.cancel');
+    Route::patch('ai/messages/{message}/edit', [AiChatController::class, 'editMessage'])->whereNumber('message')->middleware([...$userWriteMiddleware, 'throttle:ai-chat'])->name('ai.messages.edit');
+    Route::post('ai/branches/{branch}/activate', [AiChatSessionController::class, 'activateBranch'])->whereNumber('branch')->middleware($userWriteMiddleware)->name('ai.branches.activate');
+    Route::patch('ai/sessions/{session}', [AiChatSessionController::class, 'update'])->whereNumber('session')->middleware($userWriteMiddleware)->name('ai.sessions.update');
+    Route::delete('ai/sessions/{session}', [AiChatSessionController::class, 'destroy'])->whereNumber('session')->middleware($userWriteMiddleware)->name('ai.sessions.destroy');
+    Route::post('ai/action/confirm', [AiChatController::class, 'confirmAction'])->middleware($userWriteMiddleware)->name('ai.action.confirm');
+    Route::post('ai/action/reject', [AiChatController::class, 'rejectAction'])->middleware($userWriteMiddleware)->name('ai.action.reject');
 });
+
+Route::get('ai/workspace', fn () => redirect()->route('ai.workspace'))
+    ->middleware(['auth', 'active-account', 'workspace-access', 'verified', 'prevent-back-history']);
 
 Route::prefix('guest')->name('guest.')->group(function () {
     Route::get('/', [GuestDashboardController::class, 'index'])->name('home');

@@ -1,11 +1,23 @@
 <?php
 
+use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\EnsureApiUserIsActive;
+use App\Http\Middleware\EnsureWebUserIsActive;
+use App\Http\Middleware\PreventBackHistory;
+use App\Http\Middleware\PreventDuplicateWrite;
+use App\Http\Middleware\SanitizeForwardedHeaders;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SuperAdminMiddleware;
+use App\Http\Middleware\WorkspaceAccessMiddleware;
+use App\Services\Ai\AiRunStateManager;
 use App\Services\ReminderPushService;
 use App\Support\Security\ProxyTrustSettings;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Laravel\Sanctum\Http\Middleware\CheckAbilities;
+use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,25 +28,25 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'admin' => \App\Http\Middleware\AdminMiddleware::class,
-            'super-admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
-            'workspace-access' => \App\Http\Middleware\WorkspaceAccessMiddleware::class,
-            'active-account' => \App\Http\Middleware\EnsureWebUserIsActive::class,
-            'prevent-back-history' => \App\Http\Middleware\PreventBackHistory::class,
-            'prevent-duplicate-write' => \App\Http\Middleware\PreventDuplicateWrite::class,
-            'api-active' => \App\Http\Middleware\EnsureApiUserIsActive::class,
-            'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
-            'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
+            'admin' => AdminMiddleware::class,
+            'super-admin' => SuperAdminMiddleware::class,
+            'workspace-access' => WorkspaceAccessMiddleware::class,
+            'active-account' => EnsureWebUserIsActive::class,
+            'prevent-back-history' => PreventBackHistory::class,
+            'prevent-duplicate-write' => PreventDuplicateWrite::class,
+            'api-active' => EnsureApiUserIsActive::class,
+            'abilities' => CheckAbilities::class,
+            'ability' => CheckForAnyAbility::class,
         ]);
         $middleware->web(append: [
-            \App\Http\Middleware\EnsureWebUserIsActive::class,
-            \App\Http\Middleware\SecurityHeaders::class,
+            EnsureWebUserIsActive::class,
+            SecurityHeaders::class,
         ]);
         $middleware->trustProxies(
             at: ProxyTrustSettings::trustedProxies(),
             headers: ProxyTrustSettings::trustedHeaders()
         );
-        $middleware->prepend(\App\Http\Middleware\SanitizeForwardedHeaders::class);
+        $middleware->prepend(SanitizeForwardedHeaders::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
@@ -45,5 +57,12 @@ return Application::configure(basePath: dirname(__DIR__))
         })
             ->name('reminders.push.notifications')
             ->everyMinute();
+
+        $schedule->call(function () {
+            app(AiRunStateManager::class)->expireStale();
+        })
+            ->name('ai.runs.expire-stale')
+            ->everyMinute()
+            ->withoutOverlapping();
     })
     ->create();

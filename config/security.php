@@ -34,10 +34,12 @@ return [
             'dev_allow_vite' => env('SECURITY_CSP_DEV_ALLOW_VITE', true),
             'dev_hosts' => explode(',', env('SECURITY_CSP_DEV_HOSTS', 'http://localhost:5173')),
             'extra_script_sources' => explode(',', env('SECURITY_CSP_EXTRA_SCRIPT_SOURCES', '')),
+            'extra_style_sources' => explode(',', env('SECURITY_CSP_EXTRA_STYLE_SOURCES', 'https://fonts.bunny.net')),
+            'extra_font_sources' => explode(',', env('SECURITY_CSP_EXTRA_FONT_SOURCES', 'https://fonts.bunny.net')),
         ],
         'referrer_policy' => env('SECURITY_REFERRER_POLICY', 'strict-origin-when-cross-origin'),
         'frame_options' => env('SECURITY_FRAME_OPTIONS', 'SAMEORIGIN'),
         'x_content_type_options' => env('SECURITY_X_CONTENT_TYPE_OPTIONS', 'nosniff'),
-        'permissions_policy' => env('SECURITY_PERMISSIONS_POLICY', "accelerometer=(), autoplay=(), camera=(), clipboard-read=(), clipboard-write=(), display-capture=(), document-domain=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), sync-xhr=(), usb=(), vr=()"),
+        'permissions_policy' => env('SECURITY_PERMISSIONS_POLICY', 'accelerometer=(), autoplay=(), camera=(), clipboard-read=(), clipboard-write=(), display-capture=(), document-domain=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), sync-xhr=(), usb=(), vr=()'),
     ],
 ];

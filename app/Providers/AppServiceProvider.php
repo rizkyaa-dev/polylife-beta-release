@@ -4,6 +4,11 @@ namespace App\Providers;
 
 use App\Events\Security\UntrustedProxyHeadersDetected;
 use App\Listeners\Security\LogUntrustedProxyHeaders;
+use App\Services\Ai\Contracts\LlmClientInterface;
+use App\Services\Ai\Providers\DeepSeekLlmClient;
+use App\Services\Ai\Providers\GeminiLlmClient;
+use App\Services\Ai\Providers\MockLlmClient;
+use App\Services\Ai\Providers\OpenAiLlmClient;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -15,6 +20,7 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
+use RuntimeException;
 use Symfony\Component\Mailer\Transport;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,7 +30,34 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(LlmClientInterface::class, function (): LlmClientInterface {
+            if (app()->environment('testing')) {
+                return new MockLlmClient;
+            }
+
+            $provider = strtolower((string) config('services.ai_provider', 'gemini'));
+
+            return match ($provider) {
+                'openai' => new OpenAiLlmClient(
+                    apiKey: $this->requiredAiKey('openai'),
+                    model: (string) config('services.openai.model', 'gpt-4o-mini'),
+                    baseUrl: (string) config('services.openai.base_url', 'https://api.openai.com/v1')
+                ),
+                'deepseek' => new DeepSeekLlmClient(
+                    apiKey: $this->requiredAiKey('deepseek'),
+                    model: (string) config('services.deepseek.model', 'deepseek-flash'),
+                    baseUrl: (string) config('services.deepseek.base_url', 'https://api.deepseek.com')
+                ),
+                'gemini' => new GeminiLlmClient(
+                    apiKey: $this->requiredAiKey('gemini'),
+                    model: (string) config('services.gemini.model', 'gemini-2.5-flash')
+                ),
+                'mock' => app()->environment('local')
+                    ? new MockLlmClient
+                    : throw new RuntimeException('AI_PROVIDER=mock hanya diizinkan pada environment local atau testing.'),
+                default => throw new InvalidArgumentException("AI provider '{$provider}' tidak didukung."),
+            };
+        });
     }
 
     /**
@@ -106,6 +139,11 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('bulk-write', function (Request $request) {
             return Limit::perMinute(5)->by($this->writeLimiterKey($request, 'bulk-write'));
         });
+
+        RateLimiter::for('ai-chat', function (Request $request) {
+            return Limit::perMinute(max(1, (int) config('services.ai_rate_limit_per_minute', 8)))
+                ->by($this->writeLimiterKey($request, 'ai-chat'));
+        });
     }
 
     private function writeLimiterKey(Request $request, string $prefix): string
@@ -114,5 +152,16 @@ class AppServiceProvider extends ServiceProvider
         $identifier = $userId !== null ? 'user:'.$userId : 'ip:'.$request->ip();
 
         return $prefix.':'.$identifier;
+    }
+
+    private function requiredAiKey(string $provider): string
+    {
+        $key = (string) config("services.{$provider}.api_key", '');
+
+        if ($key === '') {
+            throw new RuntimeException(strtoupper($provider).'_API_KEY tidak dikonfigurasi.');
+        }
+
+        return $key;
     }
 }

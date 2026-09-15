@@ -52,6 +52,8 @@
         ],
     ];
 
+    $aiMode = ! $guestMode && request()->routeIs('ai.*');
+
     $user = Auth::user();
     $userProfile = $user ? $user->profile : null;
     $userName = $user ? trim((string) ($user->name ?? '')) : '';
@@ -73,18 +75,27 @@
 @endphp
 
 <aside id="app-sidebar"
-    class="bg-white/95 text-slate-600 w-64 h-screen fixed inset-y-0 left-0 z-30 px-5 py-6 flex flex-col border-r border-slate-100/70 shadow-[0_10px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-slate-950/80 dark:text-slate-200 dark:border-slate-900/80">
+    class="{{ $aiMode ? 'sidebar-mode-ai' : 'sidebar-mode-workspace' }} bg-white/95 text-slate-600 w-64 h-screen fixed inset-y-0 left-0 z-30 px-5 py-6 flex flex-col border-r border-slate-100/70 shadow-[0_10px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:bg-slate-950/80 dark:text-slate-200 dark:border-slate-900/80">
     <div class="flex items-center gap-3 mb-8 h-12 sidebar-brand-wrapper transition-all duration-300">
         <div class="sidebar-brand-icon hidden h-10 w-10 rounded-2xl bg-indigo-500/90 text-white font-semibold grid place-items-center">PL</div>
         <div class="flex flex-col">
             <span class="text-2xl font-extrabold sidebar-brand-text text-slate-900 dark:text-white">PolyLife</span>
             <span class="text-xs tracking-[0.35em] uppercase text-slate-400 dark:text-slate-500 sidebar-brand-text">
-                {{ $guestMode ? 'Guest' : 'Workspace' }}
+                {{ $guestMode ? 'Guest' : ($aiMode ? 'AI Assistant' : 'Workspace') }}
             </span>
         </div>
     </div>
 
-    <nav class="space-y-1 flex-1 pb-6">
+    <button type="button" class="ai-mobile-sidebar-close ai-icon-button" data-mobile-sidebar-close aria-label="Tutup menu"><x-ai.icon name="close" /></button>
+
+    @unless ($guestMode)
+        @include('layouts.components.workspace-mode-switch')
+    @endunless
+
+    @if ($aiMode)
+        @include('ai.partials.sidebar')
+    @else
+    <nav class="space-y-1 flex-1 pb-6" aria-label="Menu workspace">
         @foreach ($navigation as $item)
             @php
                 $routeName = $guestMode ? ($item['route_guest'] ?? $item['route']) : $item['route'];
@@ -105,6 +116,7 @@
             </a>
         @endforeach
     </nav>
+    @endif
 
     <div class="sidebar-footer mt-auto border-t border-slate-100/60 dark:border-slate-900/60 pt-5 flex flex-col gap-4">
         <div class="flex items-center gap-3 min-w-0 sidebar-user">

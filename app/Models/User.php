@@ -4,12 +4,14 @@ namespace App\Models;
 
 use App\Notifications\ResetPasswordNotification;
 use App\Notifications\VerifyEmailNotification;
+use App\Services\HolidayService;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmail
@@ -253,7 +255,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function offDays(): array
     {
-        $days = $this->profile->preferences['off_days'] ?? null;
+        $days = $this->profile?->preferences['off_days'] ?? null;
 
         if (is_array($days)) {
             return array_map('intval', $days);
@@ -262,7 +264,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [0, 6]; // Default: Sunday, Saturday
     }
 
-    public function isOffDay(\Illuminate\Support\Carbon $date): bool
+    public function isOffDay(Carbon $date): bool
     {
         // Routine off days
         if (in_array($date->dayOfWeek, $this->offDays(), true)) {
@@ -271,17 +273,17 @@ class User extends Authenticatable implements MustVerifyEmail
 
         // National holidays (if enabled in preferences, default is true)
         if ($this->profile?->preferences['auto_national_holidays'] ?? true) {
-            return app(\App\Services\HolidayService::class)->isHoliday($date);
+            return app(HolidayService::class)->isHoliday($date);
         }
 
         return false;
     }
 
-    public function getOffDayReason(\Illuminate\Support\Carbon $date): ?string
+    public function getOffDayReason(Carbon $date): ?string
     {
         // National holidays take precedence for the label
         if ($this->profile?->preferences['auto_national_holidays'] ?? true) {
-            $nationalHoliday = app(\App\Services\HolidayService::class)->getHolidayName($date);
+            $nationalHoliday = app(HolidayService::class)->getHolidayName($date);
             if ($nationalHoliday) {
                 return $nationalHoliday;
             }
@@ -297,5 +299,15 @@ class User extends Authenticatable implements MustVerifyEmail
     public function keuanganBudgets()
     {
         return $this->hasMany(KeuanganBudget::class);
+    }
+
+    public function aiAssistant(): HasOne
+    {
+        return $this->hasOne(UserAiAssistant::class);
+    }
+
+    public function aiChatSessions(): HasMany
+    {
+        return $this->hasMany(AiChatSession::class);
     }
 }

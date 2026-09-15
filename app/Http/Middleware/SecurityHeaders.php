@@ -32,10 +32,13 @@ class SecurityHeaders
     {
         $directives = $this->parsePolicy((string) config('security.headers.csp.policy', "default-src 'self'"));
         $this->appendSources($directives, 'script-src', $this->configuredSources('security.headers.csp.extra_script_sources'));
+        $this->appendSources($directives, 'style-src', $this->configuredSources('security.headers.csp.extra_style_sources'));
+        $this->appendSources($directives, 'font-src', $this->configuredSources('security.headers.csp.extra_font_sources'));
 
         if ($this->allowsViteDevServer()) {
             $devHosts = $this->configuredSources('security.headers.csp.dev_hosts');
             $this->appendSources($directives, 'script-src', $devHosts);
+            $this->appendSources($directives, 'style-src', $devHosts);
             $this->appendSources($directives, 'connect-src', array_merge(
                 $devHosts,
                 $this->webSocketSources($devHosts)
