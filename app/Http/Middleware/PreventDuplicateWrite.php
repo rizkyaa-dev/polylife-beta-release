@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
 class PreventDuplicateWrite
@@ -15,6 +16,12 @@ class PreventDuplicateWrite
     public function handle(Request $request, Closure $next): Response
     {
         if (! in_array($request->method(), ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
+            return $next($request);
+        }
+        // AI turns have durable, user-scoped idempotency. A replay must reach
+        // that contract instead of being mistaken for a duplicate workspace write.
+        if (in_array($request->route()?->getName(), ['ai.chat', 'ai.messages.edit'], true)
+            && is_string($request->input('request_id')) && Str::isUuid($request->input('request_id'))) {
             return $next($request);
         }
 

@@ -70,7 +70,7 @@ class GeminiLlmClient implements LlmClientInterface
                 ])
                 ->post($endpoint, $payload);
         } catch (ConnectionException $exception) {
-            throw AiProviderException::timeout();
+            throw AiProviderException::transportFailure($exception);
         }
 
         if ($response->failed()) {

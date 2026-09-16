@@ -8,12 +8,14 @@ use App\Models\AiChatRun;
 use App\Models\AiChatSession;
 use App\Models\User;
 use App\Services\Ai\AiAgentOrchestrator;
+use App\Services\Ai\AiRunDispatcher;
 use App\Services\Ai\AiRunStateManager;
 use App\Services\Ai\Contracts\LlmClientInterface;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\DTOs\LlmResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AiConversationBranchTest extends TestCase
@@ -114,6 +116,75 @@ class AiConversationBranchTest extends TestCase
         $this->assertDatabaseMissing('ai_chat_messages', ['content' => 'Pesan bertabrakan']);
     }
 
+    public function test_repeated_request_id_returns_the_same_run_without_dispatching_twice(): void
+    {
+        Queue::fake();
+        $user = $this->activeUser();
+        $requestId = '11111111-2222-4333-8444-555555555555';
+        $orchestrator = app(AiAgentOrchestrator::class);
+
+        $first = $orchestrator->enqueue($user, 'Pesan tahan retry', requestId: $requestId);
+        $second = $orchestrator->enqueue($user, 'Pesan tahan retry', requestId: $requestId);
+
+        $this->assertSame($first['run']->id, $second['run']->id);
+        $this->assertDatabaseCount('ai_chat_runs', 1);
+        $this->assertDatabaseCount('ai_chat_messages', 1);
+        Queue::assertPushed(ProcessAiChatRun::class, 1);
+    }
+
+    public function test_request_id_cannot_be_reused_for_different_content(): void
+    {
+        Queue::fake();
+        $user = $this->activeUser();
+        $requestId = '11111111-2222-4333-8444-555555555559';
+        $orchestrator = app(AiAgentOrchestrator::class);
+        $orchestrator->enqueue($user, 'Pesan pertama', requestId: $requestId);
+
+        $this->actingAs($user)->postJson(route('ai.chat'), [
+            'message' => 'Isi yang berbeda',
+            'request_id' => $requestId,
+        ])->assertConflict();
+
+        $this->assertDatabaseCount('ai_chat_runs', 1);
+    }
+
+    public function test_global_active_run_limit_sheds_load_before_the_queue_is_unbounded(): void
+    {
+        Queue::fake();
+        config([
+            'services.ai_max_active_runs_per_user' => 10,
+            'services.ai_max_active_runs_global' => 1,
+        ]);
+        app(AiAgentOrchestrator::class)->enqueue($this->activeUser(), 'Mengisi kapasitas');
+        $secondUser = $this->activeUser();
+
+        $this->actingAs($secondUser)->postJson(route('ai.chat'), [
+            'message' => 'Melebihi kapasitas',
+            'request_id' => '11111111-2222-4333-8444-555555555558',
+        ])->assertStatus(503)->assertHeader('Retry-After', '10');
+
+        $this->assertDatabaseCount('ai_chat_runs', 1);
+    }
+
+    public function test_user_active_run_limit_applies_backpressure_before_queue_growth(): void
+    {
+        Queue::fake();
+        config(['services.ai_max_active_runs_per_user' => 1]);
+        $user = $this->activeUser();
+
+        $this->actingAs($user)->postJson(route('ai.chat'), [
+            'message' => 'Proses pertama',
+            'request_id' => '11111111-2222-4333-8444-555555555551',
+        ])->assertAccepted();
+
+        $this->postJson(route('ai.chat'), [
+            'message' => 'Proses kedua',
+            'request_id' => '11111111-2222-4333-8444-555555555552',
+        ])->assertStatus(429)->assertHeader('Retry-After', '5');
+
+        $this->assertDatabaseCount('ai_chat_runs', 1);
+    }
+
     public function test_expired_run_is_recovered_before_a_new_turn_is_accepted(): void
     {
         Queue::fake();
@@ -145,7 +216,7 @@ class AiConversationBranchTest extends TestCase
         $this->assertSame('failed', $expired->fresh()->status);
         $this->assertSame('run_lease_expired', $expired->fresh()->error_code);
         $this->assertSame('failed', $message->fresh()->status);
-        Queue::assertPushedOn('ai', ProcessAiChatRun::class);
+        Queue::assertPushedOn('ai-heavy', ProcessAiChatRun::class);
     }
 
     public function test_stale_run_reaper_recovers_runs_without_user_traffic(): void
@@ -174,6 +245,95 @@ class AiConversationBranchTest extends TestCase
         $this->assertSame('failed', $run->fresh()->status);
         $this->assertSame('run_lease_expired', $message->fresh()->error_code);
         $this->assertNull($branch->fresh()->head_message_id);
+    }
+
+    public function test_dispatch_watchdog_requeues_a_run_that_never_reached_a_worker(): void
+    {
+        Queue::fake();
+        config(['services.ai_redispatch_after_seconds' => 30]);
+        $user = $this->activeUser();
+        $session = AiChatSession::create(['user_id' => $user->id, 'title' => 'Dispatch hilang']);
+        $branch = $session->branches()->create();
+        $session->update(['active_branch_id' => $branch->id]);
+        $message = $session->messages()->create([
+            'branch_id' => $branch->id,
+            'role' => 'user',
+            'content' => 'Belum masuk worker',
+            'status' => 'pending',
+        ]);
+        $run = AiChatRun::create([
+            'session_id' => $session->id,
+            'branch_id' => $branch->id,
+            'user_message_id' => $message->id,
+            'status' => 'running',
+            'started_at' => now()->subMinute(),
+            'lease_expires_at' => now()->addMinutes(5),
+            'last_dispatched_at' => now()->subMinute(),
+        ]);
+
+        $this->assertSame(1, app(AiRunDispatcher::class)->redispatchOrphaned());
+
+        Queue::assertPushedOn('ai-heavy', ProcessAiChatRun::class, fn (ProcessAiChatRun $job): bool => $job->runId === $run->id);
+        $this->assertSame(1, $run->fresh()->dispatch_attempts);
+    }
+
+    public function test_run_status_exposes_queue_phase_and_fails_an_unclaimed_worker_run(): void
+    {
+        config(['services.ai_worker_start_timeout_seconds' => 30]);
+        $user = $this->activeUser();
+        $session = AiChatSession::create(['user_id' => $user->id, 'title' => 'Worker tidak aktif']);
+        $branch = $session->branches()->create();
+        $session->update(['active_branch_id' => $branch->id]);
+        $message = $session->messages()->create([
+            'branch_id' => $branch->id,
+            'role' => 'user',
+            'content' => 'Proses ini',
+            'status' => 'pending',
+        ]);
+        $branch->update(['head_message_id' => $message->id]);
+        $run = AiChatRun::create([
+            'session_id' => $session->id,
+            'branch_id' => $branch->id,
+            'user_message_id' => $message->id,
+            'status' => 'running',
+            'started_at' => now(),
+            'last_dispatched_at' => now(),
+            'lease_expires_at' => now()->addMinutes(5),
+        ]);
+
+        $this->actingAs($user)->getJson(route('ai.runs.show', $run->id))
+            ->assertStatus(202)
+            ->assertJsonPath('status', 'running')
+            ->assertJsonPath('phase', 'queued');
+
+        $run->update(['last_dispatched_at' => now()->subSeconds(31)]);
+
+        $this->getJson(route('ai.runs.show', $run->id))
+            ->assertOk()
+            ->assertJsonPath('status', 'failed')
+            ->assertJsonPath('retryable', true)
+            ->assertJsonPath('message', 'Worker AI tidak merespons. Pesanmu aman dan bisa langsung dicoba lagi.');
+
+        $this->assertSame('worker_start_timeout', $run->fresh()->error_code);
+        $this->assertSame('failed', $message->fresh()->status);
+        $this->assertNull($branch->fresh()->head_message_id);
+    }
+
+    public function test_dispatch_failure_finishes_the_run_instead_of_leaving_it_thinking(): void
+    {
+        config(['services.ai_queue_connection' => 'missing']);
+        $user = $this->activeUser();
+
+        $this->actingAs($user)->postJson(route('ai.chat'), [
+            'message' => 'Tetap aman saat antrean rusak',
+            'request_id' => (string) Str::uuid(),
+        ])->assertStatus(500);
+
+        $run = AiChatRun::query()->latest('id')->firstOrFail();
+        $this->assertSame('failed', $run->status);
+        $this->assertSame('queue_dispatch_failed', $run->error_code);
+        $this->assertTrue($run->retryable);
+        $this->assertSame('failed', $run->userMessage->status);
     }
 
     public function test_run_status_is_private_to_the_session_owner(): void
@@ -309,7 +469,7 @@ class AiConversationBranchTest extends TestCase
             ->assertSee('2 / 2')
             ->assertSee('data-ai-version-branch="'.$first['branch']->id.'"', false)
             ->assertSee('Proses AI ·')
-            ->assertSee('Reasoning ringkas')
+            ->assertSee('Pemrosesan AI')
             ->assertDontSee('reasoning_content');
     }
 

@@ -25,6 +25,7 @@ use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\DTOs\LlmResponse;
 use App\Services\Ai\DTOs\LlmToolCall;
 use App\Services\Ai\Enums\ThinkingEffort;
+use App\Services\Ai\Exceptions\AiProviderException;
 use App\Services\Ai\Providers\GeminiLlmClient;
 use App\Services\Ai\Providers\MockLlmClient;
 use App\Services\Ai\Tools\GetFinancialSummaryTool;
@@ -39,7 +40,7 @@ class AiAgentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_can_access_ai_workspace_and_assistant_profile_is_auto_created(): void
+    public function test_user_can_access_ai_workspace_without_writing_during_a_get_request(): void
     {
         $user = User::factory()->create([
             'email_verified_at' => now(),
@@ -50,9 +51,8 @@ class AiAgentTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('PolyBot');
-        $this->assertDatabaseHas('user_ai_assistants', [
+        $this->assertDatabaseMissing('user_ai_assistants', [
             'user_id' => $user->id,
-            'assistant_name' => 'PolyBot',
         ]);
     }
 
@@ -371,6 +371,7 @@ class AiAgentTest extends TestCase
             'status' => 'success',
             'message' => 'Catatan berhasil disimpan.',
             'receipt' => [
+                'acknowledgement' => 'Sip, catatannya sudah tersimpan. Kalau mau, kita bisa lanjut merapikan atau menambahkan isinya.',
                 'destination_label' => 'Buka Catatan',
                 'destination_url' => route('catatan.index'),
             ],
@@ -938,6 +939,79 @@ class AiAgentTest extends TestCase
         $this->assertDatabaseMissing('ai_action_proposals', ['user_id' => $user->id]);
     }
 
+    public function test_coding_request_is_planned_then_delegated_with_isolated_context(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now(), 'account_status' => 'active']);
+        UserAiAssistant::create([
+            'user_id' => $user->id,
+            'assistant_name' => 'PolyBot',
+            'personality_tone' => 'friendly_peer',
+            'thinking_effort' => ThinkingEffort::Low,
+        ]);
+        $client = new class implements LlmClientInterface
+        {
+            public int $calls = 0;
+
+            /** @var list<LlmRequestOptions|null> */
+            public array $options = [];
+
+            public array $requests = [];
+
+            public array $tools = [];
+
+            public array $systemInstructions = [];
+
+            public function chat(array $messages, array $tools = [], ?string $systemInstruction = null, ?LlmRequestOptions $options = null): LlmResponse
+            {
+                $this->calls++;
+                $this->options[] = $options;
+                $this->requests[] = $messages;
+                $this->tools[] = $tools;
+                $this->systemInstructions[] = $systemInstruction;
+
+                if ($this->calls === 1) {
+                    return new LlmResponse(null, toolCalls: [new LlmToolCall('coding_1', 'delegate_code_generation', [
+                        'language' => 'html',
+                        'runtime' => 'browser',
+                        'files' => ['index.html'],
+                        'requirements' => ['Landing page coffee shop responsif'],
+                        'acceptance_criteria' => ['Dapat dibuka langsung di browser'],
+                        'visual_direction' => ['style' => 'warm editorial'],
+                        'runnable' => true,
+                    ])], finishReason: 'tool_calls');
+                }
+
+                return new LlmResponse(
+                    "```html\n<main><h1>Coffee Shop</h1></main>\n```",
+                    finishReason: 'stop'
+                );
+            }
+        };
+        $this->app->instance(LlmClientInterface::class, $client);
+
+        $result = app(AiAgentOrchestrator::class)->handle($user, 'Buatkan HTML standalone untuk coffee shop.');
+
+        $this->assertSame(2, $client->calls);
+        $this->assertSame(ThinkingEffort::Low, $client->options[0]?->thinkingEffort);
+        $this->assertSame(ThinkingEffort::Low, $client->options[1]?->thinkingEffort);
+        $this->assertSame(16384, $client->options[1]?->maxOutputTokens);
+        $this->assertContains('delegate_code_generation', array_column($client->tools[0], 'name'));
+        $this->assertSame([], $client->tools[1]);
+        $this->assertCount(1, $client->requests[0]);
+        $this->assertCount(1, $client->requests[1]);
+        $this->assertSame('Buatkan HTML standalone untuk coffee shop.', $client->requests[0][0]->content);
+        $this->assertStringContainsString('delegated_coding_request', $client->requests[1][0]->content);
+        $this->assertStringContainsString('DELEGASI CODING WAJIB', $client->systemInstructions[0]);
+        $this->assertStringContainsString('coding agent khusus', $client->systemInstructions[1]);
+        $this->assertSame("```html\n<main><h1>Coffee Shop</h1></main>\n```", $result['reply']);
+        $this->assertSame('completed', $result['run']->status);
+        $this->assertTrue($result['run']->steps->contains('label', 'Memahami permintaan dan konteks'));
+        $delegationStep = $result['run']->steps->firstWhere('tool_name', 'delegate_code_generation');
+        $this->assertNotNull($delegationStep);
+        $this->assertSame('tool_call', $delegationStep->kind);
+        $this->assertSame('html', $delegationStep->public_metadata['language']);
+    }
+
     public function test_orchestrator_uses_user_thinking_effort_and_persists_reasoning_privately(): void
     {
         $user = User::factory()->create(['email_verified_at' => now(), 'account_status' => 'active']);
@@ -1038,6 +1112,34 @@ class AiAgentTest extends TestCase
         $this->assertCount(1, $result['proposals']);
         $this->assertDatabaseCount('ai_action_proposals', 1);
         $this->assertDatabaseCount('todolists', 0);
+    }
+
+    public function test_agentic_loop_rejects_an_abnormally_large_tool_call_batch(): void
+    {
+        config(['services.ai_max_tool_calls_per_response' => 8]);
+        $user = User::factory()->create(['email_verified_at' => now(), 'account_status' => 'active']);
+        $client = new MockLlmClient;
+        $client->queueResponse(new LlmResponse(content: null, toolCalls: array_map(
+            fn (int $index): LlmToolCall => new LlmToolCall(
+                id: "overflow_{$index}",
+                name: 'get_pending_tasks',
+                arguments: []
+            ),
+            range(1, 9)
+        )));
+        $this->app->instance(LlmClientInterface::class, $client);
+
+        try {
+            app(AiAgentOrchestrator::class)->handle($user, 'Panggil terlalu banyak alat');
+            $this->fail('Tool-call overflow should fail the run.');
+        } catch (AiProviderException $exception) {
+            $this->assertSame('provider_tool_call_limit_exceeded', $exception->errorCode);
+        }
+
+        $this->assertDatabaseHas('ai_chat_runs', [
+            'status' => 'failed',
+            'error_code' => 'provider_tool_call_limit_exceeded',
+        ]);
     }
 
     public function test_tool_registry_is_json_schema_compatible_and_gemini_adapts_types(): void

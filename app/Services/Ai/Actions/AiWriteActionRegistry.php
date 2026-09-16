@@ -5,6 +5,8 @@ namespace App\Services\Ai\Actions;
 use App\Models\User;
 use App\Services\Ai\Exceptions\AiActionException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class AiWriteActionRegistry
 {
@@ -15,11 +17,39 @@ class AiWriteActionRegistry
         CreateJadwalAction $createJadwal,
         CreateKeuanganAction $createKeuangan,
         CreateTodolistAction $createTodolist,
-        CreateCatatanAction $createCatatan
+        CreateCatatanAction $createCatatan,
+        CreateTugasAction $createTugas,
+        CreateReminderAction $createReminder,
+        ManageTodolistAction $manageTodolist,
+        ManageTugasAction $manageTugas,
+        UpdateCatatanAction $updateCatatan,
+        SetFinanceBudgetAction $setFinanceBudget,
+        CreateCourseAction $createCourse,
+        CreateKegiatanAction $createKegiatan,
+        RecordAcademicResultAction $recordAcademicResult,
+        UpdateJadwalAction $updateJadwal,
+        UpdateKegiatanAction $updateKegiatan,
+        UpdateReminderAction $updateReminder,
+        UpdateKeuanganAction $updateKeuangan,
+        UpdateCourseAction $updateCourse,
+        UpdateTugasAction $updateTugas,
+        MarkAnnouncementReadAction $markAnnouncementRead,
+        DuplicateScheduleAction $duplicateSchedule,
+        CopyCourseToSemesterAction $copyCourseToSemester,
+        ArchiveNoteAction $archiveNote,
+        RestoreNoteAction $restoreNote,
+        SnoozeReminderAction $snoozeReminder
     ) {
         $this->actions = [];
 
-        foreach ([$createJadwal, $createKeuangan, $createTodolist, $createCatatan] as $action) {
+        foreach ([
+            $createJadwal, $createKeuangan, $createTodolist, $createCatatan, $createTugas, $createReminder,
+            $manageTodolist, $manageTugas, $updateCatatan, $setFinanceBudget,
+            $createCourse, $createKegiatan, $recordAcademicResult,
+            $updateJadwal, $updateKegiatan, $updateReminder, $updateKeuangan, $updateCourse, $updateTugas,
+            $markAnnouncementRead, $duplicateSchedule, $copyCourseToSemester, $archiveNote, $restoreNote,
+            $snoozeReminder,
+        ] as $action) {
             $this->actions[$action->toolName()] = $action;
         }
     }
@@ -38,7 +68,11 @@ class AiWriteActionRegistry
      */
     public function execute(string $toolName, User $user, array $payload): Model
     {
-        return $this->actionFor($toolName)->execute($user, $payload);
+        try {
+            return $this->actionFor($toolName)->execute($user, $payload);
+        } catch (ModelNotFoundException|HttpExceptionInterface) {
+            throw new AiActionException('Target proposal sudah tidak tersedia atau tidak dapat diakses. Buat proposal baru.');
+        }
     }
 
     private function actionFor(string $toolName): AiWriteAction

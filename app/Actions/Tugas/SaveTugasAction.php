@@ -18,6 +18,9 @@ class SaveTugasAction
             'deadline' => $validated['deadline'],
             'status_selesai' => $statusSelesai,
         ];
+        if (array_key_exists('matkul_id', $validated)) {
+            $payload['matkul_id'] = $validated['matkul_id'];
+        }
 
         if ($tugas) {
             $tugas->update($payload);

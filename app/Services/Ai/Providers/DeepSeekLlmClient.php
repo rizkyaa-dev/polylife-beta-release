@@ -32,6 +32,13 @@ class DeepSeekLlmClient extends OpenAiLlmClient
         $payload['thinking'] = ['type' => $effort->isEnabled() ? 'enabled' : 'disabled'];
         $payload['reasoning_effort'] = $effort->deepSeekValue();
 
+        // DeepSeek counts hidden reasoning and visible content against max_tokens.
+        // Its native thinking-mode allowance is intentionally much larger than
+        // the generic cross-provider response budget.
+        if ($effort->isEnabled()) {
+            unset($payload['max_tokens']);
+        }
+
         if ($hasTools && $effort->isEnabled()) {
             unset($payload['tool_choice']);
         }

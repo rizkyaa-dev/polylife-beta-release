@@ -47,7 +47,11 @@ class ActionProposalExecutor
             $proposal = AiActionProposal::query()
                 ->where('action_id', $actionId)
                 ->lockForUpdate()
-                ->firstOrFail();
+                ->first();
+
+            if (! $proposal) {
+                throw new AiActionException('Proposal tidak ditemukan atau sudah tidak tersedia.');
+            }
 
             if ((int) $proposal->user_id !== (int) $user->id) {
                 throw new AiActionException('Akses ditolak: Proposal ini bukan milik akun Anda.');
@@ -93,7 +97,11 @@ class ActionProposalExecutor
             $proposal = AiActionProposal::query()
                 ->where('action_id', $actionId)
                 ->lockForUpdate()
-                ->firstOrFail();
+                ->first();
+
+            if (! $proposal) {
+                throw new AiActionException('Proposal tidak ditemukan atau sudah tidak tersedia.');
+            }
 
             if ((int) $proposal->user_id !== (int) $user->id) {
                 throw new AiActionException('Akses ditolak: Proposal ini bukan milik akun Anda.');

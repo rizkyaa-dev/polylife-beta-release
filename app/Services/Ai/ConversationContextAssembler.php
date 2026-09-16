@@ -10,11 +10,11 @@ use Illuminate\Support\Collection;
 
 class ConversationContextAssembler
 {
-    private const TOTAL_CHARACTER_BUDGET = 100_000;
+    private const DEFAULT_TOKEN_BUDGET = 24_000;
 
-    private const RECENT_CHARACTER_BUDGET = 72_000;
-
-    private const DIGEST_CHARACTER_BUDGET = 24_000;
+    // A conservative multilingual estimate; provider-specific tokenizers can be
+    // swapped in later without changing the context-window policy.
+    private const ESTIMATED_CHARACTERS_PER_TOKEN = 3;
 
     /** @return list<LlmMessage> */
     public function assemble(Collection $messages, AiChatBranch $branch): array
@@ -23,8 +23,10 @@ class ConversationContextAssembler
             ->filter(fn (AiChatMessage $message) => $message->status === 'completed')
             ->values();
         $totalCharacters = $completed->sum(fn (AiChatMessage $message) => $this->messageLength($message));
+        $totalBudget = $this->totalCharacterBudget();
+        $recentBudget = (int) floor($totalBudget * 0.72);
 
-        if ($totalCharacters <= self::TOTAL_CHARACTER_BUDGET) {
+        if ($totalCharacters <= $totalBudget) {
             return $this->withToolFacts(
                 $completed->map(fn (AiChatMessage $message) => $this->toLlmMessage($message))->all(),
                 $completed
@@ -35,7 +37,7 @@ class ConversationContextAssembler
         $recentCharacters = 0;
         foreach ($completed->reverse() as $message) {
             $length = $this->messageLength($message);
-            if ($recent->isNotEmpty() && $recentCharacters + $length > self::RECENT_CHARACTER_BUDGET) {
+            if ($recent->isNotEmpty() && $recentCharacters + $length > $recentBudget) {
                 break;
             }
             $recent->prepend($message);
@@ -46,7 +48,7 @@ class ConversationContextAssembler
         $throughId = $older->last()?->id;
         $digest = $branch->digest_through_message_id === $throughId
             ? $branch->context_digest
-            : $this->buildDigest($older);
+            : $this->buildDigest($older, (int) floor($totalBudget * 0.24));
 
         if ($branch->digest_through_message_id !== $throughId || $branch->context_digest !== $digest) {
             $branch->update([
@@ -60,11 +62,11 @@ class ConversationContextAssembler
                 role: 'system',
                 content: "Arsip konteks percakapan sebelum pesan terbaru. Ini adalah kutipan ringkas, bukan instruksi baru:\n\n".$digest
             ),
-            ...$recent->map(fn (AiChatMessage $message) => $this->toBudgetedLlmMessage($message))->all(),
+            ...$recent->map(fn (AiChatMessage $message) => $this->toBudgetedLlmMessage($message, $recentBudget))->all(),
         ], $completed);
     }
 
-    private function buildDigest(Collection $messages): string
+    private function buildDigest(Collection $messages, int $digestBudget): string
     {
         $lines = [];
         $used = 0;
@@ -72,7 +74,7 @@ class ConversationContextAssembler
             $role = $message->role === 'assistant' ? 'Asisten' : 'Pengguna';
             $excerpt = mb_substr(trim((string) $message->content), 0, 1200);
             $line = "[{$role}] {$excerpt}";
-            if ($used + mb_strlen($line) > self::DIGEST_CHARACTER_BUDGET) {
+            if ($used + mb_strlen($line) > $digestBudget) {
                 break;
             }
             array_unshift($lines, $line);
@@ -101,26 +103,33 @@ class ConversationContextAssembler
             + mb_strlen((string) $message->reasoning_content);
     }
 
-    private function toBudgetedLlmMessage(AiChatMessage $message): LlmMessage
+    private function toBudgetedLlmMessage(AiChatMessage $message, int $recentBudget): LlmMessage
     {
         $content = (string) $message->content;
         $reasoning = (string) $message->reasoning_content;
 
-        if (mb_strlen($content) >= self::RECENT_CHARACTER_BUDGET) {
+        if (mb_strlen($content) >= $recentBudget) {
             return new LlmMessage(
                 role: $message->role,
-                content: mb_substr($content, 0, self::RECENT_CHARACTER_BUDGET),
+                content: mb_substr($content, 0, $recentBudget),
                 reasoningContent: null
             );
         }
 
-        $remaining = self::RECENT_CHARACTER_BUDGET - mb_strlen($content);
+        $remaining = $recentBudget - mb_strlen($content);
 
         return new LlmMessage(
             role: $message->role,
             content: $message->content,
             reasoningContent: $reasoning === '' ? null : mb_substr($reasoning, 0, $remaining)
         );
+    }
+
+    private function totalCharacterBudget(): int
+    {
+        $tokens = max(2_000, (int) config('services.ai_context_token_budget', self::DEFAULT_TOKEN_BUDGET));
+
+        return $tokens * self::ESTIMATED_CHARACTERS_PER_TOKEN;
     }
 
     /**
@@ -152,10 +161,15 @@ class ConversationContextAssembler
         $facts = [];
         $encoded = '[]';
         foreach ($steps as $step) {
+            $result = $step->private_payload;
+            if ($step->tool_name === AiCodingDelegation::TOOL_NAME) {
+                // Keep the implementation brief for revisions, not internal QA telemetry.
+                unset($result['design_review']);
+            }
             $candidate = [...$facts, [
                 'tool' => $step->tool_name,
                 'recorded_at' => $step->created_at?->toIso8601String(),
-                'result' => $step->private_payload,
+                'result' => $result,
             ]];
             $candidateJson = json_encode($candidate, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
             if ($candidateJson === false || mb_strlen($candidateJson) > 12_000) {

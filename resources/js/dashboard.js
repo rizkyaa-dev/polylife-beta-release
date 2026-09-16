@@ -1,4 +1,5 @@
 import Chart from 'chart.js/auto';
+import { runWhenPageIsActive } from './support/page-activation';
 
 window.Chart = window.Chart || Chart;
 
@@ -608,8 +609,4 @@ const initDashboardInteractive = () => {
         });
 };
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initDashboardInteractive);
-} else {
-    initDashboardInteractive();
-}
+runWhenPageIsActive(initDashboardInteractive);

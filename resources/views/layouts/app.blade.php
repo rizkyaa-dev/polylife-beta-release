@@ -63,6 +63,9 @@
         })();
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @auth
+        <x-navigation.workspace-mode-acceleration />
+    @endauth
     <style>
         :root {
             --sidebar-width: 16.5rem;

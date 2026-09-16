@@ -10,6 +10,7 @@ test('web responses include baseline security headers', function () {
 
     expect($response->headers->get('Content-Security-Policy'))
         ->toContain("default-src 'self'")
+        ->toContain("'inline-speculation-rules'")
         ->toContain("style-src 'self' 'unsafe-inline' https://fonts.bunny.net")
         ->toContain("font-src 'self' data: https://fonts.bunny.net")
         ->not->toContain('cdn.jsdelivr.net');

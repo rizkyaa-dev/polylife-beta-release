@@ -18,8 +18,18 @@ class Tugas extends Model
         'status_selesai',
     ];
 
+    protected $casts = [
+        'deadline' => 'datetime',
+        'status_selesai' => 'boolean',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function reminders()
+    {
+        return $this->hasMany(Reminder::class);
     }
 }

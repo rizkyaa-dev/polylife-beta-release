@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\UserAiAssistant;
 use App\Services\Ai\Actions\AiWriteActionRegistry;
 use App\Services\Ai\Contracts\LlmClientInterface;
+use App\Services\Ai\Design\AiDesignArtifactEvaluator;
 use App\Services\Ai\DTOs\LlmMessage;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\Enums\ThinkingEffort;
@@ -35,9 +36,14 @@ class AiAgentOrchestrator
         private readonly AiConversationBranchService $branchService,
         private readonly ConversationContextAssembler $contextAssembler,
         private readonly ToolActivityPresenter $toolActivityPresenter,
+        private readonly AiToolSelectionService $toolSelection,
         private readonly AiInferencePolicy $inferencePolicy,
         private readonly AiRunStateManager $runStateManager,
-        private readonly AiRunDispatcher $runDispatcher
+        private readonly AiRunDispatcher $runDispatcher,
+        private readonly AiCodingInstructionRouter $codingInstructionRouter,
+        private readonly AiCodingDelegation $codingDelegation,
+        private readonly AiCodeGenerationAgent $codeGenerationAgent,
+        private readonly AiDesignArtifactEvaluator $designEvaluator
     ) {}
 
     /**
@@ -55,10 +61,12 @@ class AiAgentOrchestrator
     }
 
     /** @return array{session: AiChatSession, branch: AiChatBranch, user_message: AiChatMessage, run: AiChatRun} */
-    public function enqueue(User $user, string $userPrompt, ?int $sessionId = null): array
+    public function enqueue(User $user, string $userPrompt, ?int $sessionId = null, ?string $requestId = null): array
     {
-        $turn = $this->branchService->beginTurn($user, $userPrompt, $sessionId);
-        $this->dispatchTurn($turn['run']);
+        $turn = $this->branchService->beginTurn($user, $userPrompt, $sessionId, requestId: $requestId);
+        if ($turn['is_new'] ?? true) {
+            $this->dispatchTurn($turn['run'], $user);
+        }
 
         return $turn;
     }
@@ -78,14 +86,16 @@ class AiAgentOrchestrator
     }
 
     /** @return array{session: AiChatSession, branch: AiChatBranch, user_message: AiChatMessage, run: AiChatRun} */
-    public function enqueueEdit(User $user, int $messageId, string $userPrompt): array
+    public function enqueueEdit(User $user, int $messageId, string $userPrompt, ?string $requestId = null): array
     {
         $message = AiChatMessage::query()
             ->whereKey($messageId)
             ->whereHas('session', fn ($query) => $query->where('user_id', $user->id))
             ->firstOrFail();
-        $turn = $this->branchService->beginTurn($user, $userPrompt, $message->session_id, $message->id);
-        $this->dispatchTurn($turn['run']);
+        $turn = $this->branchService->beginTurn($user, $userPrompt, $message->session_id, $message->id, $requestId);
+        if ($turn['is_new'] ?? true) {
+            $this->dispatchTurn($turn['run'], $user);
+        }
 
         return $turn;
     }
@@ -102,6 +112,8 @@ class AiAgentOrchestrator
                 'attempts' => $run->attempts + 1,
                 'heartbeat_at' => now(),
                 'lease_expires_at' => now()->addMinutes(6),
+                'error_code' => null,
+                'retryable' => false,
             ]);
 
             return $run;
@@ -149,16 +161,22 @@ class AiAgentOrchestrator
             ]
         );
 
-        $systemInstruction = $this->instructionBuilder->build($user, $assistant);
+        $systemInstruction = $this->instructionBuilder->build($user, $assistant).$this->codingDelegation->instruction();
+        $minimumOutputTokens = 0;
         $thinkingEffort = $assistant->thinking_effort ?? ThinkingEffort::High;
-        $deadlineAt = microtime(true) + $this->inferencePolicy->runTimeoutSeconds($thinkingEffort);
+        $runStartedAt = hrtime(true) / 1_000_000_000;
+        $deadlineAt = $runStartedAt + $this->inferencePolicy->runTimeoutSeconds($thinkingEffort);
+        $run->update(['lease_expires_at' => now()->addSeconds($this->inferencePolicy->runTimeoutSeconds($thinkingEffort) + 30)]);
 
-        $messageHistory = $this->contextAssembler->assemble(
-            $this->branchService->lineage($session, $turn['parent_id']),
-            $branch
-        );
+        $lineage = $this->branchService->recentLineage($session, $turn['parent_id']);
+        $sourceArtifacts = $lineage->filter(fn (AiChatMessage $message) => $message->role === 'assistant'
+            && $message->status === 'completed' && str_contains($message->content, '```'))->keyBy('id');
+        if ($sourceArtifacts->isNotEmpty()) {
+            $systemInstruction .= "\nArtefak pada cabang ini (ID pesan asisten, urutan lama ke baru): ".implode(', ', $sourceArtifacts->keys()->all());
+        }
+        $messageHistory = $this->contextAssembler->assemble($lineage, $branch);
         $messageHistory[] = new LlmMessage(role: 'user', content: $userPrompt);
-        $tools = $this->toolRegistry->getDeclarations();
+        $tools = [...$this->toolSelection->declarations($userPrompt, $messageHistory), $this->codingDelegation->declaration()];
         $proposals = [];
         $proposalRows = [];
         $toolResultsByInvocation = [];
@@ -167,6 +185,8 @@ class AiAgentOrchestrator
         $finalReply = '';
         $finalReasoningContent = null;
         $stepSequence = 0;
+        $totalToolCalls = 0;
+        $delegationBoundaryEnforced = false;
 
         try {
             while ($iterations < self::MAX_TOOL_ROUNDS) {
@@ -183,7 +203,7 @@ class AiAgentOrchestrator
                         $messageHistory,
                         $tools,
                         $systemInstruction,
-                        $this->requestOptions($thinkingEffort, $deadlineAt)
+                        $this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens)->withGuard(fn () => $this->ensureRunIsActive($run))
                     )
                 );
                 $this->ensureRunIsActive($run);
@@ -192,10 +212,29 @@ class AiAgentOrchestrator
                 }
 
                 if (! $response->hasToolCalls()) {
+                    if ($this->codingDelegation->containsImplementation($response->content)) {
+                        if ($delegationBoundaryEnforced || $iterations >= self::MAX_TOOL_ROUNDS) {
+                            throw AiProviderException::invalidCodingResponse();
+                        }
+                        // Discard bypassed source code; never feed it back as authoritative context.
+                        $delegationBoundaryEnforced = true;
+                        $tools = [$this->codingDelegation->declaration()];
+                        $systemInstruction .= "\nImplementasi Anda tidak diterima: gunakan delegate_code_generation dengan brief lengkap untuk permintaan ini. Jangan keluarkan source code sendiri.";
+
+                        continue;
+                    }
                     $finalReply = (string) ($response->content ?? 'Maaf, saya tidak memiliki jawaban saat ini.');
                     $finalReasoningContent = $response->reasoningContent;
                     break;
                 }
+
+                $roundToolCalls = count($response->toolCalls);
+                $maxPerRound = max(1, (int) config('services.ai_max_tool_calls_per_response', 8));
+                $maxPerRun = max($maxPerRound, (int) config('services.ai_max_tool_calls_per_run', 16));
+                if ($roundToolCalls > $maxPerRound || $totalToolCalls + $roundToolCalls > $maxPerRun) {
+                    throw AiProviderException::toolCallLimitExceeded();
+                }
+                $totalToolCalls += $roundToolCalls;
 
                 $messageHistory[] = new LlmMessage(
                     role: 'assistant',
@@ -221,6 +260,59 @@ class AiAgentOrchestrator
                             'status' => 'invalid_arguments',
                             'message' => $call->argumentError,
                         ];
+                    } elseif ($call->name === AiCodingDelegation::TOOL_NAME) {
+                        try {
+                            if ($roundToolCalls !== 1) {
+                                throw ValidationException::withMessages(['delegation' => 'Selesaikan tool workspace terlebih dahulu; delegasi harus dipanggil sendiri.']);
+                            }
+                            $brief = $this->codingDelegation->brief($call->arguments, $userPrompt, $this->codingInstructionRouter);
+                            $sourceId = $call->arguments['source_message_id'] ?? null;
+                            $source = $sourceId === null ? null : $sourceArtifacts->get($sourceId);
+                            if ($sourceId !== null && $source === null) {
+                                throw ValidationException::withMessages(['source_message_id' => 'Artefak tidak tersedia pada cabang ini.']);
+                            }
+                            if ($source !== null && mb_strlen($source->content) > 120000) {
+                                throw ValidationException::withMessages(['source_message_id' => 'Artefak terlalu besar untuk revisi dalam satu turn. Minta pengguna membatasi bagian yang direvisi.']);
+                            }
+                            // Promote only validated coding work; anchor to run start so
+                            // repeated delegations cannot renew the deadline indefinitely.
+                            $deadlineAt = $runStartedAt + $this->inferencePolicy->runTimeoutSeconds($thinkingEffort, true);
+                            $this->heartbeat($run, $deadlineAt);
+                            // Retain the validated brief privately even when generation fails.
+                            $coderOptions = $this->requestOptions($thinkingEffort, $deadlineAt, max(0, (int) config('services.ai_coding_output_tokens', 16384)), true)
+                                ->withGuard(fn () => $this->ensureRunIsActive($run));
+                            $toolStep->update([
+                                'public_metadata' => ['outcome' => 'started', 'language' => $brief->language, 'runtime' => $brief->runtime, 'prompt_version' => AiCodingPromptBuilder::VERSION],
+                                'private_payload' => [
+                                    'coding_brief' => $brief->toArray(), 'source_message_id' => $sourceId,
+                                    'execution_policy' => ['thinking_effort' => $thinkingEffort->value, 'request_timeout_seconds' => $coderOptions->timeoutSeconds, 'run_timeout_seconds' => $this->inferencePolicy->runTimeoutSeconds($thinkingEffort, true)],
+                                ],
+                            ]);
+                            $generated = $this->performModelCall($toolStep, function () use ($userPrompt, $brief, $source, $coderOptions) {
+                                $generated = $this->codeGenerationAgent->generate(
+                                    $userPrompt, $brief, $this->codingInstructionRouter->forLanguage($brief->language),
+                                    $coderOptions,
+                                    $source?->content
+                                );
+                                if ($generated->hasToolCalls() || blank($generated->content) || ! str_contains($generated->content, '```')) {
+                                    throw AiProviderException::invalidCodingResponse();
+                                }
+
+                                return $generated;
+                            });
+                            $this->ensureRunIsActive($run);
+                            $toolStep->update([
+                                'public_metadata' => ['outcome' => 'completed', 'language' => $brief->language, 'runtime' => $brief->runtime, 'prompt_version' => AiCodingPromptBuilder::VERSION],
+                                'private_payload' => array_merge($toolStep->private_payload, [
+                                    'design_review' => $this->designEvaluator->evaluate((string) $generated->content),
+                                ]),
+                            ]);
+                            $finalReply = (string) $generated->content;
+                            $finalReasoningContent = $generated->reasoningContent;
+                            break 2;
+                        } catch (ValidationException $exception) {
+                            $result = ['status' => 'invalid_arguments', 'message' => 'Perbaiki brief delegasi sebelum mencoba kembali.', 'errors' => $exception->errors()];
+                        }
                     } elseif (array_key_exists($invocationKey, $toolResultsByInvocation)) {
                         $result = [
                             'status' => 'duplicate_tool_call',
@@ -297,7 +389,6 @@ class AiAgentOrchestrator
                     );
                 }
             }
-
             if ($finalReply === '') {
                 $reasoningStep = $this->startStep(
                     $run->id,
@@ -311,7 +402,7 @@ class AiAgentOrchestrator
                         $messageHistory,
                         [],
                         $this->instructionBuilder->forFinalAnswer($systemInstruction),
-                        $this->requestOptions($thinkingEffort, $deadlineAt)
+                        $this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens)->withGuard(fn () => $this->ensureRunIsActive($run))
                     )
                 );
                 $this->ensureRunIsActive($run);
@@ -320,6 +411,9 @@ class AiAgentOrchestrator
                 }
 
                 if (! $finalResponse->hasToolCalls() && filled($finalResponse->content)) {
+                    if ($this->codingDelegation->containsImplementation($finalResponse->content)) {
+                        throw AiProviderException::invalidCodingResponse();
+                    }
                     $finalReply = (string) $finalResponse->content;
                     $finalReasoningContent = $finalResponse->reasoningContent;
                 } else {
@@ -494,19 +588,26 @@ class AiAgentOrchestrator
         }
     }
 
-    private function requestOptions(ThinkingEffort $effort, float $deadlineAt): LlmRequestOptions
-    {
-        $remaining = (int) floor($deadlineAt - microtime(true));
-        if ($remaining < 5) {
+    private function requestOptions(
+        ThinkingEffort $effort,
+        float $deadlineAt,
+        int $minimumOutputTokens = 0,
+        bool $coding = false
+    ): LlmRequestOptions {
+        $requestDeadline = $deadlineAt - 5;
+        $remaining = (int) floor($requestDeadline - hrtime(true) / 1_000_000_000);
+        if ($remaining < 1) {
             throw AiProviderException::timeout();
         }
 
-        return $this->inferencePolicy->requestOptions($effort, $remaining);
+        $options = $this->inferencePolicy->requestOptions($effort, $remaining, $minimumOutputTokens, $coding);
+
+        return $options->forAttempt($options->timeoutSeconds, $requestDeadline);
     }
 
     private function heartbeat(AiChatRun $run, float $deadlineAt): void
     {
-        $remaining = max(5, (int) ceil($deadlineAt - microtime(true)));
+        $remaining = max(5, (int) ceil($deadlineAt - hrtime(true) / 1_000_000_000));
         $run->update([
             'heartbeat_at' => now(),
             'lease_expires_at' => now()->addSeconds($remaining + 30),
@@ -526,10 +627,16 @@ class AiAgentOrchestrator
         return max(0, (int) round((microtime(true) - $startedAt) * 1000));
     }
 
-    private function dispatchTurn(AiChatRun $run): void
+    private function dispatchTurn(AiChatRun $run, User $user): void
     {
         try {
-            $this->runDispatcher->dispatch($run->id);
+            $effort = $user->aiAssistant()->first()?->thinking_effort;
+            $this->runDispatcher->dispatch(
+                $run->id,
+                $effort instanceof ThinkingEffort
+                    ? $effort
+                    : ThinkingEffort::tryFrom((string) $effort) ?? ThinkingEffort::High
+            );
         } catch (Throwable $exception) {
             $this->runStateManager->fail($run, 'queue_dispatch_failed', true);
 

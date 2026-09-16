@@ -25,13 +25,18 @@
             <fieldset>
                 <legend>Thinking effort</legend>
                 <p class="ai-field-help">Atur kedalaman penalaran asisten. Tingkat yang lebih tinggi dapat membutuhkan waktu lebih lama.</p>
-                <div class="ai-effort-options">
+                <div class="ai-settings-effort" data-ai-settings-effort>
+                    <div class="ai-effort-heading"><strong data-ai-settings-effort-label>{{ ucfirst(old('thinking_effort', $activeThinkingEffort->value)) }}</strong><x-ai.icon name="chevron-right" /></div>
+                    <label class="sr-only" for="ai-settings-effort-slider">Tingkat penalaran: Off, Low, High, Max</label>
+                    <input id="ai-settings-effort-slider" class="ai-effort-slider" type="range" min="0" max="3" step="1" value="{{ array_search(old('thinking_effort', $activeThinkingEffort->value), array_column($thinkingEfforts, 'value')) }}" aria-valuetext="{{ ucfirst(old('thinking_effort', $activeThinkingEffort->value)) }}" data-ai-settings-effort-slider>
+                <div class="ai-effort-options" hidden>
                     @foreach ($thinkingEfforts as $effort)
                         <label class="ai-tone-option">
                             <input type="radio" name="thinking_effort" value="{{ $effort->value }}" @checked(old('thinking_effort', $activeThinkingEffort->value) === $effort->value)>
                             <span><strong>{{ $effort->label() }}</strong><span>{{ $effort->description() }}</span></span>
                         </label>
                     @endforeach
+                </div>
                 </div>
             </fieldset>
         @else

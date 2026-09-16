@@ -12,6 +12,9 @@ use App\Services\Ai\AiRunErrorPresenter;
 use App\Services\Ai\AiRunStateManager;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\Exceptions\AiConversationBusyException;
+use App\Services\Ai\Exceptions\AiIdempotencyConflictException;
+use App\Services\Ai\Exceptions\AiSystemCapacityException;
+use App\Services\Ai\Exceptions\AiUserCapacityException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -33,6 +36,7 @@ class AiChatController extends Controller
     {
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:2000'],
+            'request_id' => ['nullable', 'uuid'],
             'session_id' => [
                 'nullable',
                 'integer',
@@ -44,11 +48,26 @@ class AiChatController extends Controller
             $result = $this->orchestrator->enqueue(
                 $request->user(),
                 $validated['message'],
-                $validated['session_id'] ?? null
+                $validated['session_id'] ?? null,
+                $validated['request_id'] ?? null
             );
 
             return response()->json($this->acceptedResponse($result), 202);
         } catch (AiConversationBusyException $exception) {
+            return $this->busyResponse($request, $validated['session_id'] ?? null, $exception);
+        } catch (AiUserCapacityException $exception) {
+            return response()->json(
+                ['status' => 'error', 'message' => $exception->getMessage()],
+                429,
+                ['Retry-After' => 5]
+            );
+        } catch (AiSystemCapacityException $exception) {
+            return response()->json(
+                ['status' => 'error', 'message' => $exception->getMessage()],
+                503,
+                ['Retry-After' => 10]
+            );
+        } catch (AiIdempotencyConflictException $exception) {
             return response()->json(['status' => 'error', 'message' => $exception->getMessage()], 409);
         } catch (Throwable $e) {
             report($e);
@@ -72,13 +91,33 @@ class AiChatController extends Controller
             ->firstOrFail();
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:2000'],
+            'request_id' => ['nullable', 'uuid'],
         ]);
 
         try {
             return response()->json($this->acceptedResponse(
-                $this->orchestrator->enqueueEdit($request->user(), $ownedMessage->id, $validated['message'])
+                $this->orchestrator->enqueueEdit(
+                    $request->user(),
+                    $ownedMessage->id,
+                    $validated['message'],
+                    $validated['request_id'] ?? null
+                )
             ), 202);
         } catch (AiConversationBusyException $exception) {
+            return $this->busyResponse($request, $ownedMessage->session_id, $exception);
+        } catch (AiUserCapacityException $exception) {
+            return response()->json(
+                ['status' => 'error', 'message' => $exception->getMessage()],
+                429,
+                ['Retry-After' => 5]
+            );
+        } catch (AiSystemCapacityException $exception) {
+            return response()->json(
+                ['status' => 'error', 'message' => $exception->getMessage()],
+                503,
+                ['Retry-After' => 10]
+            );
+        } catch (AiIdempotencyConflictException $exception) {
             return response()->json(['status' => 'error', 'message' => $exception->getMessage()], 409);
         } catch (Throwable $exception) {
             report($exception);
@@ -96,6 +135,11 @@ class AiChatController extends Controller
             ->whereKey($run)
             ->whereHas('session', fn ($query) => $query->where('user_id', $request->user()->id))
             ->firstOrFail();
+
+        if ($chatRun->status === 'running' && $chatRun->heartbeat_at === null) {
+            $this->runStateManager->failIfWorkerDidNotStart($chatRun);
+            $chatRun->refresh();
+        }
 
         if ($chatRun->status === 'running' && $chatRun->lease_expires_at?->isPast()) {
             $this->runStateManager->expire($chatRun);
@@ -125,6 +169,7 @@ class AiChatController extends Controller
         return response()->json([
             'status' => 'running',
             'run_id' => $chatRun->id,
+            'phase' => $chatRun->heartbeat_at === null ? 'queued' : 'processing',
             'steps' => $chatRun->steps()->get()->map(fn ($step) => [
                 'kind' => $step->kind,
                 'status' => $step->status,
@@ -225,6 +270,19 @@ class AiChatController extends Controller
     }
 
     /** @param array<string, mixed> $result */
+    private function busyResponse(Request $request, ?int $sessionId, AiConversationBusyException $exception): JsonResponse
+    {
+        $activeRunId = $sessionId === null ? null : AiChatRun::query()
+            ->where('session_id', $sessionId)->where('status', 'running')
+            ->whereHas('session', fn ($query) => $query->where('user_id', $request->user()->id))
+            ->value('id');
+
+        return response()->json([
+            'status' => 'error', 'code' => 'conversation_busy',
+            'message' => $exception->getMessage(), 'active_run_id' => $activeRunId,
+        ], 409);
+    }
+
     private function acceptedResponse(array $result): array
     {
         return [

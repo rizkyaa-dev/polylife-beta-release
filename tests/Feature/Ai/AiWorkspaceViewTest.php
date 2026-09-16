@@ -107,7 +107,8 @@ class AiWorkspaceViewTest extends TestCase
             ->assertSee('data-status="confirmed"', false)
             ->assertSee('Sudah disimpan')
             ->assertSee('Item to-do berhasil disimpan.')
-            ->assertSee('Buka To-Do');
+            ->assertSee('Buka To-Do')
+            ->assertSee('data-action-acknowledgements', false);
         $this->assertMatchesRegularExpression('/data-proposal-actions\s+hidden/', $response->getContent());
     }
 
@@ -142,6 +143,28 @@ class AiWorkspaceViewTest extends TestCase
             ->assertSee('<div class="ai-message-text" data-message-text>Apa jadwal saya?</div>', false);
     }
 
+    public function test_code_artifact_is_rendered_in_history_with_a_sandboxed_html_preview(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now(), 'account_status' => 'active']);
+        $session = AiChatSession::create(['user_id' => $user->id, 'title' => 'Kode HTML']);
+        $session->messages()->create([
+            'role' => 'assistant',
+            'content' => "```html\n<!doctype html><title>Demo</title><h1>Aman</h1>\n```",
+            'status' => 'completed',
+        ]);
+
+        $this->actingAs($user)->get(route('ai.workspace', ['session' => $session->id]))
+            ->assertOk()
+            ->assertSee('data-code-artifact', false)
+            ->assertSee('data-code-copy', false)
+            ->assertSee('data-code-download', false)
+            ->assertSee('data-code-run', false)
+            ->assertSee('data-code-preview', false)
+            ->assertSee('sandbox="allow-scripts"', false)
+            ->assertDontSee('allow-same-origin', false)
+            ->assertDontSee('<h1>Aman</h1>', false);
+    }
+
     public function test_workspace_resumes_an_active_run_with_inline_thinking_state(): void
     {
         $user = User::factory()->create(['email_verified_at' => now(), 'account_status' => 'active']);
@@ -169,6 +192,11 @@ class AiWorkspaceViewTest extends TestCase
             ->assertSee('data-active-run-id="'.$run->id.'"', false)
             ->assertSee('Besok ngapain ya?')
             ->assertSee('data-ai-thinking-indicator', false)
+            ->assertSee('Memproses permintaan')
+            ->assertDontSee('data-ai-thinking-copy>Thinking', false)
+            ->assertSee('data-ai-tool-icon-template', false)
+            ->assertSee('data-ai-effort-slider', false)
+            ->assertSee('type="range" min="0" max="3" step="1"', false)
             ->assertSee('data-ai-stop-icon', false)
             ->assertDontSee('sedang menyiapkan jawaban');
     }

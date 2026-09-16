@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class AiChatRun extends Model
 {
     protected $fillable = [
+        'request_id',
+        'request_fingerprint',
         'session_id',
         'branch_id',
         'user_message_id',
@@ -16,11 +18,13 @@ class AiChatRun extends Model
         'previous_branch_id',
         'status',
         'attempts',
+        'dispatch_attempts',
         'duration_ms',
         'error_code',
         'retryable',
         'started_at',
         'heartbeat_at',
+        'last_dispatched_at',
         'lease_expires_at',
         'completed_at',
     ];
@@ -28,6 +32,7 @@ class AiChatRun extends Model
     protected $casts = [
         'started_at' => 'datetime',
         'heartbeat_at' => 'datetime',
+        'last_dispatched_at' => 'datetime',
         'lease_expires_at' => 'datetime',
         'completed_at' => 'datetime',
         'retryable' => 'boolean',

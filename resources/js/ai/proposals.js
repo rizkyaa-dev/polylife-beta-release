@@ -31,7 +31,7 @@ function expire(card) {
     return false;
 }
 
-export function initProposals(root) {
+export function initProposals(root, { onConfirmed = () => {} } = {}) {
     const refreshExpiry = () => root.querySelectorAll('[data-ai-proposal]').forEach(expire);
     const timer = window.setInterval(refreshExpiry, 30000);
     window.addEventListener('pagehide', () => window.clearInterval(timer), { once: true });
@@ -60,6 +60,9 @@ export function initProposals(root) {
                 confirm ? 'Sudah disimpan' : 'Dibatalkan',
                 confirm ? response.receipt : { message: response.message }
             );
+            if (confirm && response.receipt?.acknowledgement) {
+                onConfirmed(response.receipt.acknowledgement, card);
+            }
             status.tabIndex = -1;
             status.focus({ preventScroll: true });
         } catch (exception) {

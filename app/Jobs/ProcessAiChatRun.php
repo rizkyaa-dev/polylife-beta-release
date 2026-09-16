@@ -14,7 +14,7 @@ class ProcessAiChatRun implements ShouldQueue
 
     public int $tries = 1;
 
-    public int $timeout = 330;
+    public int $timeout = 510;
 
     public bool $failOnTimeout = true;
 

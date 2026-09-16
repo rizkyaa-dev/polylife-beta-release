@@ -53,9 +53,9 @@
                 @endforeach
                 @if ($activeRun?->userMessage)
                     @include('ai.partials.message', ['message' => $activeRun->userMessage])
-                    <article class="ai-message ai-message-assistant ai-thinking-indicator" data-ai-thinking-indicator aria-label="Asisten sedang berpikir" aria-live="polite">
+                    <article class="ai-message ai-message-assistant ai-thinking-indicator" data-ai-thinking-indicator aria-label="Asisten sedang memproses permintaan" aria-live="polite">
                         <div class="ai-message-mark"><x-ai.icon name="spark" /></div>
-                        <div class="ai-message-body"><span data-ai-thinking-copy>Thinking</span><span class="ai-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+                        <div class="ai-message-body"><span data-ai-thinking-copy>Memproses permintaan</span><span class="ai-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
                     </article>
                 @endif
             </div>
@@ -75,11 +75,13 @@
     <template data-ai-user-template>@include('ai.partials.message', ['message' => (object) ['id' => null, 'branch_id' => null, 'role' => 'user', 'content' => '', 'tool_calls_json' => [], 'revisions' => collect()]])</template>
     <template data-ai-assistant-template>@include('ai.partials.message', ['message' => (object) ['id' => null, 'branch_id' => null, 'role' => 'assistant', 'content' => '', 'tool_calls_json' => [], 'run' => null]])</template>
     <template data-ai-thinking-template>
-        <article class="ai-message ai-message-assistant ai-thinking-indicator" data-ai-thinking-indicator aria-label="Asisten sedang berpikir" aria-live="polite">
+        <article class="ai-message ai-message-assistant ai-thinking-indicator" data-ai-thinking-indicator aria-label="Asisten sedang memproses permintaan" aria-live="polite">
             <div class="ai-message-mark"><x-ai.icon name="spark" /></div>
-            <div class="ai-message-body"><span data-ai-thinking-copy>Thinking</span><span class="ai-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+            <div class="ai-message-body"><span data-ai-thinking-copy>Memproses permintaan</span><span class="ai-thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
         </article>
     </template>
+    <template data-ai-tool-icon-template><x-ai.icon name="tool" /></template>
     <template data-ai-proposal-template>@include('ai.partials.proposal', ['proposal' => [], 'state' => null])</template>
+    @include('ai.partials.code-preview')
 </main>
 @endsection

@@ -9,6 +9,8 @@ use App\Http\Middleware\SanitizeForwardedHeaders;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SuperAdminMiddleware;
 use App\Http\Middleware\WorkspaceAccessMiddleware;
+use App\Services\Ai\AiDataRetentionService;
+use App\Services\Ai\AiRunDispatcher;
 use App\Services\Ai\AiRunStateManager;
 use App\Services\ReminderPushService;
 use App\Support\Security\ProxyTrustSettings;
@@ -63,6 +65,20 @@ return Application::configure(basePath: dirname(__DIR__))
         })
             ->name('ai.runs.expire-stale')
             ->everyMinute()
+            ->withoutOverlapping();
+
+        $schedule->call(function () {
+            app(AiRunDispatcher::class)->redispatchOrphaned();
+        })
+            ->name('ai.runs.redispatch-orphaned')
+            ->everyMinute()
+            ->withoutOverlapping();
+
+        $schedule->call(function () {
+            app(AiDataRetentionService::class)->prune();
+        })
+            ->name('ai.data.prune-sensitive')
+            ->dailyAt('03:30')
             ->withoutOverlapping();
     })
     ->create();

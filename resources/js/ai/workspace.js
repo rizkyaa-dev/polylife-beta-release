@@ -1,9 +1,26 @@
-import { getJson, postJson, sendJson } from './transport';
+import { postJson, sendJson } from './transport';
 import { initHistory } from './history';
 import { initProposals, createProposal } from './proposals';
+import { initCodeArtifacts } from './code-artifacts';
+import { runWhenPageIsActive } from '../support/page-activation';
+import { PendingAiTurn, isDefinitiveFailure } from './turn-recovery';
+import { observeAiRun } from './run-observer';
 
-const root = document.querySelector('[data-ai-workspace]');
-if (root) initWorkspace(root);
+runWhenPageIsActive(() => {
+    const root = document.querySelector('[data-ai-workspace]');
+    if (root) initWorkspace(root);
+});
+
+function createRequestId() {
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, character => {
+        const random = Math.floor(Math.random() * 16);
+        const value = character === 'x' ? random : (random & 0x3) | 0x8;
+
+        return value.toString(16);
+    });
+}
 
 function initWorkspace(root) {
     const input = root.querySelector('[data-ai-input]');
@@ -17,10 +34,12 @@ function initWorkspace(root) {
     const stopIcon = send.querySelector('[data-ai-stop-icon]');
     const history = initHistory(root.dataset.workspaceUrl);
     initThinkingControl(root);
+    initSettingsEffortSlider(root);
     let sessionId = Number(root.dataset.sessionId) || null;
     let busy = false;
     let activeRunId = null;
     let stopping = false;
+    let retryRequest = null;
     const showError = message => {
         errorText.textContent = message;
         error.hidden = false;
@@ -41,15 +60,16 @@ function initWorkspace(root) {
     const resize = () => {
         input.style.height = 'auto';
         input.style.height = `${input.scrollHeight}px`;
-        const canStop = busy && activeRunId !== null && !stopping;
-        send.disabled = busy ? !canStop : !input.value.trim();
-        sendIcon.hidden = busy;
-        stopIcon.hidden = !busy;
-        send.setAttribute('aria-label', busy ? 'Hentikan respons' : 'Kirim pesan');
-        send.title = busy ? 'Hentikan respons' : 'Kirim pesan';
+        const processing = busy || activeRunId !== null;
+        const canStop = activeRunId !== null && !stopping;
+        send.disabled = processing ? !canStop : !input.value.trim();
+        sendIcon.hidden = processing;
+        stopIcon.hidden = !processing;
+        send.setAttribute('aria-label', processing ? 'Hentikan respons' : 'Kirim pesan');
+        send.title = processing ? 'Hentikan respons' : 'Kirim pesan';
     };
     send.addEventListener('click', async event => {
-        if (!busy) return;
+        if (!busy && activeRunId === null) return;
         event.preventDefault();
         if (!activeRunId || stopping) return;
 
@@ -58,6 +78,12 @@ function initWorkspace(root) {
         try {
             const url = root.dataset.cancelRunUrlTemplate.replace('__RUN__', activeRunId);
             await postJson(url, {});
+            if (!busy) {
+                retryRequest?.message?.remove();
+                retryRequest = null;
+                activeRunId = null;
+                hideError();
+            }
         } catch (exception) {
             showError(exception.message);
         } finally {
@@ -81,6 +107,10 @@ function initWorkspace(root) {
     });
     const scrollToLatest = () => { messages.scrollTop = messages.scrollHeight; };
     const appendMessage = (role, content, proposals = [], safeHtml = null, metadata = {}) => {
+        if (metadata.id) {
+            const existing = list.querySelector(`[data-message-id="${metadata.id}"]`);
+            if (existing) return existing;
+        }
         const message = root.querySelector(`[data-ai-${role}-template]`).content.firstElementChild.cloneNode(true);
         const text = message.querySelector('[data-message-text]');
         if (role === 'assistant' && safeHtml !== null) {
@@ -101,24 +131,36 @@ function initWorkspace(root) {
         event.preventDefault();
         const prompt = input.value.trim();
         if (busy || !prompt) return;
+        if (retryRequest && retryRequest.prompt !== prompt) {
+            showError('Pengiriman sebelumnya belum diketahui hasilnya. Pulihkan percakapan dengan memuat ulang sebelum mengirim pesan berbeda. Draft tetap tersedia.');
+            return;
+        }
+        retryRequest ??= new PendingAiTurn(createRequestId(), prompt, sessionId);
         busy = true;
         hideError();
         root.classList.add('has-messages');
         root.querySelector('[data-ai-welcome]').hidden = true;
         root.querySelector('[data-ai-suggestions]').hidden = true;
         messages.hidden = false;
-        const userMessage = appendMessage('user', prompt);
+        const userMessage = retryRequest.message?.isConnected ? retryRequest.message : appendMessage('user', prompt);
+        retryRequest.message = userMessage;
         showThinking();
         input.value = '';
         input.readOnly = true;
         form.setAttribute('aria-busy', 'true');
         resize();
         try {
-            const data = await postJson(root.dataset.chatUrl, { message: prompt, session_id: sessionId });
+            const data = await retryRequest.reconcile(payload => postJson(root.dataset.chatUrl, payload));
             sessionId = data.session_id;
             root.dataset.sessionId = sessionId;
-            setMessageIdentity(userMessage, data.user_message.id);
-            userMessage.dataset.branchId = data.user_message.branch_id;
+            history.update(sessionId, prompt.slice(0, 60));
+            const acceptedUrl = new URL(root.dataset.workspaceUrl);
+            acceptedUrl.searchParams.set('session', sessionId);
+            window.history.replaceState(null, '', acceptedUrl);
+            if (data.user_message) {
+                setMessageIdentity(userMessage, data.user_message.id);
+                userMessage.dataset.branchId = data.user_message.branch_id;
+            }
             activeRunId = data.run_id;
             resize();
             const completed = await waitForRun(root, data.run_id);
@@ -132,15 +174,19 @@ function initWorkspace(root) {
             const url = new URL(root.dataset.workspaceUrl);
             url.searchParams.set('session', sessionId);
             window.history.replaceState(null, '', url);
+            retryRequest = null;
         } catch (exception) {
             removeThinking();
-            userMessage.remove();
+            if (isDefinitiveFailure(exception, Boolean(retryRequest?.accepted || retryRequest?.uncertain))) {
+                retryRequest = null;
+                userMessage.remove();
+            }
             input.value = prompt;
             if (exception.name !== 'AbortError') {
                 showError((exception instanceof TypeError ? 'Koneksi terputus. Periksa jaringanmu.' : exception.message) + ' Draft tetap tersedia.');
             }
         } finally {
-            activeRunId = null;
+            activeRunId = retryRequest?.accepted?.run_id ?? null;
             busy = false;
             input.readOnly = false;
             form.setAttribute('aria-busy', 'false');
@@ -179,7 +225,19 @@ function initWorkspace(root) {
         target?.focus({ preventScroll: true });
     });
     if (dialog.hasAttribute('data-has-errors')) dialog.showModal();
-    initProposals(root);
+    initProposals(root, {
+        onConfirmed: (acknowledgement, card) => {
+            const container = card.closest('.ai-message-body')?.querySelector('[data-action-acknowledgements]');
+            if (!container) return;
+
+            const continuation = document.createElement('p');
+            continuation.className = 'ai-action-acknowledgement';
+            continuation.textContent = acknowledgement;
+            container.append(continuation);
+            scrollToLatest();
+        },
+    });
+    initCodeArtifacts(root);
     resize();
     scrollToLatest();
 
@@ -193,6 +251,8 @@ function initWorkspace(root) {
             ? list.querySelector(`[data-message-id="${root.dataset.activeRunMessageId}"]`)
             : null;
         const pendingPrompt = root.dataset.activeRunPrompt ?? '';
+        retryRequest = new PendingAiTurn(null, pendingPrompt, sessionId, { run_id: runId, session_id: sessionId });
+        retryRequest.message = pendingMessage;
         busy = true;
         activeRunId = runId;
         input.readOnly = true;
@@ -209,15 +269,19 @@ function initWorkspace(root) {
                 branchId: completed.active_branch_id,
                 run: completed.run,
             });
+            retryRequest = null;
         } catch (exception) {
             removeThinking();
-            pendingMessage?.remove();
+            if (isDefinitiveFailure(exception, true)) {
+                retryRequest = null;
+                pendingMessage?.remove();
+            }
             input.value = pendingPrompt;
             if (exception.name !== 'AbortError') {
                 showError(`${exception.message} Draft tetap tersedia.`);
             }
         } finally {
-            activeRunId = null;
+            activeRunId = retryRequest?.accepted?.run_id ?? null;
             busy = false;
             input.readOnly = false;
             form.setAttribute('aria-busy', 'false');
@@ -240,6 +304,8 @@ function setMessageIdentity(message, id) {
 function appendProcess(message, run) {
     if (!run?.steps?.length) return;
 
+    message.querySelector('.ai-message-mark')?.classList.add('ai-message-mark-process');
+
     const details = document.createElement('details');
     details.className = 'ai-process';
     details.dataset.aiProcess = '';
@@ -253,12 +319,16 @@ function appendProcess(message, run) {
         item.dataset.status = step.status;
         const mark = document.createElement('span');
         mark.className = 'ai-process-step-mark';
-        if (step.kind === 'tool_call') mark.textContent = '⌁';
+        if (step.kind === 'tool_call') {
+            const icon = message.closest('[data-ai-workspace]')?.querySelector('[data-ai-tool-icon-template]')
+                ?? document.querySelector('[data-ai-tool-icon-template]');
+            if (icon) mark.append(icon.content.firstElementChild.cloneNode(true));
+        }
         const copy = document.createElement('span');
         const label = document.createElement('strong');
         label.textContent = step.label;
         const meta = document.createElement('small');
-        const type = step.kind === 'tool_call' ? 'Aktivitas alat' : 'Reasoning ringkas';
+        const type = step.kind === 'tool_call' ? 'Aktivitas alat' : 'Pemrosesan AI';
         const duration = step.duration_ms === null ? '' : ` · ${Math.max(1, Math.round(step.duration_ms / 1000))} dtk`;
         meta.textContent = `${type}${duration} · ${step.status === 'failed' ? 'Gagal' : 'Selesai'}`;
         copy.append(label, meta);
@@ -269,6 +339,7 @@ function appendProcess(message, run) {
 }
 
 function initMessageInteractions(root, state) {
+    const pendingEdits = new WeakMap();
     root.addEventListener('click', async event => {
         const message = event.target.closest('.ai-message-user');
         if (!message) return;
@@ -307,6 +378,14 @@ function initMessageInteractions(root, state) {
         const error = form.querySelector('[data-ai-edit-error]');
         const prompt = input.value.trim();
         if (!prompt || state.isBusy() || !message.dataset.messageId) return;
+        let turn = pendingEdits.get(form);
+        if (turn && turn.prompt !== prompt) {
+            error.textContent = 'Edit sebelumnya belum diketahui hasilnya. Periksa edit yang sama atau muat ulang sebelum mengubah draft.';
+            error.hidden = false;
+            return;
+        }
+        turn ??= new PendingAiTurn(createRequestId(), prompt, null);
+        pendingEdits.set(form, turn);
 
         state.setBusy(true);
         form.setAttribute('aria-busy', 'true');
@@ -314,18 +393,21 @@ function initMessageInteractions(root, state) {
         error.hidden = true;
         try {
             const url = root.dataset.editUrlTemplate.replace('__MESSAGE__', message.dataset.messageId);
-            const accepted = await sendJson(url, 'PATCH', { message: prompt });
+            const accepted = await turn.reconcile(payload => sendJson(url, 'PATCH', {
+                message: payload.message, request_id: payload.request_id,
+            }));
             state.setActiveRunId(accepted.run_id);
             const data = await waitForRun(root, accepted.run_id);
             const workspaceUrl = new URL(root.dataset.workspaceUrl);
             workspaceUrl.searchParams.set('session', data.session_id);
             window.location.assign(workspaceUrl);
         } catch (exception) {
+            if (isDefinitiveFailure(exception, Boolean(turn.accepted || turn.uncertain))) pendingEdits.delete(form);
             if (exception.name !== 'AbortError') {
                 error.textContent = `${exception.message} Draft edit tetap tersedia.`;
                 error.hidden = false;
             }
-            state.setActiveRunId(null);
+            state.setActiveRunId(pendingEdits.get(form)?.accepted?.run_id ?? null);
             state.setBusy(false);
             form.setAttribute('aria-busy', 'false');
             form.querySelectorAll('button, textarea').forEach(control => { control.disabled = false; });
@@ -401,37 +483,46 @@ function initEarlierMessages(root, list) {
 }
 
 async function waitForRun(root, runId) {
-    const deadline = Date.now() + 360_000;
     const url = root.dataset.runUrlTemplate.replace('__RUN__', runId);
-    let consecutiveFailures = 0;
-
-    while (Date.now() < deadline) {
-        let data;
-        try {
-            data = await getJson(url);
-            consecutiveFailures = 0;
-        } catch (exception) {
-            consecutiveFailures++;
-            if (consecutiveFailures >= 3) throw exception;
-            await new Promise(resolve => window.setTimeout(resolve, 1200));
-            continue;
-        }
-        if (data.status === 'success') return data;
-        if (data.status === 'cancelled') {
-            const exception = new Error(data.message || 'Proses AI dihentikan.');
-            exception.name = 'AbortError';
-            throw exception;
-        }
-        if (data.status === 'failed') throw new Error(data.message || 'Proses AI gagal diselesaikan.');
+    return observeAiRun(url, { onProgress: data => {
         const activeStep = data.steps?.at(-1);
         const thinkingCopy = root.querySelector('[data-ai-thinking-indicator] [data-ai-thinking-copy]');
         if (thinkingCopy) {
-            thinkingCopy.textContent = activeStep?.kind === 'tool_call' ? activeStep.label : 'Thinking';
+            thinkingCopy.textContent = data.phase === 'queued'
+                ? 'Menunggu proses AI'
+                : activeStep?.kind === 'tool_call'
+                    ? activeStep.label
+                    : 'Memproses permintaan';
         }
-        await new Promise(resolve => window.setTimeout(resolve, 1200));
-    }
+    } });
+}
 
-    throw new Error('Proses AI belum selesai setelah beberapa menit. Periksa kembali percakapan ini sesaat lagi.');
+function initSettingsEffortSlider(root) {
+    const control = root.querySelector('[data-ai-settings-effort]');
+    if (!control) return;
+    const slider = control.querySelector('[data-ai-settings-effort-slider]');
+    const label = control.querySelector('[data-ai-settings-effort-label]');
+    const options = [...control.querySelectorAll('input[name="thinking_effort"]')];
+    let previous = Number(slider.value);
+    slider.addEventListener('input', () => {
+        const index = Number(slider.value);
+        if (!options[index]) return;
+        animateEffortSlider(slider, previous, index, options.length);
+        previous = index;
+        options.forEach((option, position) => { option.checked = position === index; });
+        label.textContent = options[index].closest('label').querySelector('strong').textContent;
+        slider.setAttribute('aria-valuetext', label.textContent);
+    });
+}
+
+function animateEffortSlider(slider, previous, index, count) {
+    if (previous === null || previous === index) return;
+    const distance = (previous - index) * Math.max(0, slider.clientWidth - 28) / (count - 1);
+    slider.style.setProperty('--ai-effort-slide-offset', `${distance}px`);
+    slider.classList.remove('ai-effort-sliding');
+    // Restart the thumb transition from its previous visual position.
+    void slider.offsetWidth;
+    slider.classList.add('ai-effort-sliding');
 }
 
 function initThinkingControl(root) {
@@ -442,14 +533,38 @@ function initThinkingControl(root) {
     const label = control.querySelector('[data-ai-thinking-label]');
     const status = control.querySelector('[data-ai-thinking-status]');
     const options = [...control.querySelectorAll('[data-ai-thinking-option]')];
+    const slider = control.querySelector('[data-ai-effort-slider]');
+    const preview = control.querySelector('[data-ai-effort-preview]');
     let currentValue = control.dataset.currentEffort;
     let saving = false;
+    let paintedIndex = null;
+
+    const paintSlider = index => {
+        if (!slider || !options[index]) return;
+        animateEffortSlider(slider, paintedIndex, index, options.length);
+        paintedIndex = index;
+        const text = options[index].closest('label').querySelector('strong').textContent;
+        slider.value = String(index);
+        slider.style.setProperty('--ai-effort-progress', `${index / (options.length - 1) * 100}%`);
+        slider.setAttribute('aria-valuetext', text);
+        preview.textContent = text;
+    };
+    slider?.addEventListener('input', () => paintSlider(Number(slider.value)));
+    slider?.addEventListener('change', () => {
+        if (saving) return;
+        const option = options[Number(slider.value)];
+        if (!option) return;
+        option.checked = true;
+        option.dispatchEvent(new Event('change'));
+    });
 
     const syncSelection = value => {
         root.querySelectorAll('input[name="thinking_effort"]').forEach(input => {
             input.checked = input.value === value;
         });
+        paintSlider(options.findIndex(option => option.value === value));
     };
+    syncSelection(currentValue);
 
     options.forEach(option => option.addEventListener('change', async () => {
         if (!option.checked || saving || option.value === currentValue) return;
@@ -458,6 +573,7 @@ function initThinkingControl(root) {
         saving = true;
         control.setAttribute('aria-busy', 'true');
         options.forEach(input => { input.disabled = true; });
+        if (slider) slider.disabled = true;
         status.removeAttribute('data-error');
         status.textContent = 'Menyimpan pilihan…';
 
@@ -479,6 +595,7 @@ function initThinkingControl(root) {
             saving = false;
             control.setAttribute('aria-busy', 'false');
             options.forEach(input => { input.disabled = false; });
+            if (slider) slider.disabled = false;
         }
     }));
 

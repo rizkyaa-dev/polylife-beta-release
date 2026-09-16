@@ -21,7 +21,9 @@ class AiWorkspaceController extends Controller
     {
         $user = $request->user();
 
-        $assistant = UserAiAssistant::query()->firstOrCreate(
+        // Rendering a GET request must stay side-effect free. This matters for
+        // browser prefetch/prerender requests, which may never be activated.
+        $assistant = UserAiAssistant::query()->firstOrNew(
             ['user_id' => $user->id],
             [
                 'assistant_name' => 'PolyBot',
@@ -48,8 +50,7 @@ class AiWorkspaceController extends Controller
         }
 
         if ($currentSession) {
-            $this->branchService->ensureActiveBranch($currentSession);
-            $lineage = $this->branchService->lineage($currentSession)
+            $lineage = $this->branchService->recentActiveLineage($currentSession, limit: 101)
                 ->filter(fn ($message) => $message->status === 'completed' && in_array($message->role, ['user', 'assistant'], true))
                 ->values();
             $messages = $lineage->take(-100)->values();
@@ -98,13 +99,12 @@ class AiWorkspaceController extends Controller
         $currentSession = AiChatSession::query()
             ->where('user_id', $request->user()->id)
             ->findOrFail($session);
-        $lineage = $this->branchService->lineage($currentSession)
-            ->filter(fn ($message) => $message->status === 'completed' && in_array($message->role, ['user', 'assistant'], true))
-            ->values();
-        $position = $lineage->search(fn ($message) => $message->id === (int) $validated['before']);
-        abort_if($position === false, 404);
-
-        $page = $lineage->slice(max(0, $position - 100), min(100, $position))->values();
+        $result = $this->branchService->completedPageBefore(
+            $currentSession,
+            (int) $validated['before'],
+            100
+        );
+        $page = $result['messages'];
         $this->decorateMessages($currentSession, $page);
         $proposalStates = $this->proposalStates($currentSession, $page);
         $html = $page->map(fn ($message) => view('ai.partials.message', [
@@ -115,7 +115,7 @@ class AiWorkspaceController extends Controller
         return response()->json([
             'status' => 'success',
             'html' => $html,
-            'has_more' => $position > 100,
+            'has_more' => $result['has_more'],
             'next_before' => $page->first()?->id,
         ]);
     }

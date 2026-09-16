@@ -30,10 +30,11 @@ return [
         ],
         'csp' => [
             'enabled' => env('SECURITY_CSP', true),
-            'policy' => env('SECURITY_CSP_POLICY', "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' blob: https:; frame-ancestors 'self'; form-action 'self'; base-uri 'self'"),
+            'policy' => env('SECURITY_CSP_POLICY', "default-src 'self'; img-src 'self' data: blob: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'inline-speculation-rules'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' blob: https:; frame-ancestors 'self'; form-action 'self'; base-uri 'self'"),
             'dev_allow_vite' => env('SECURITY_CSP_DEV_ALLOW_VITE', true),
             'dev_hosts' => explode(',', env('SECURITY_CSP_DEV_HOSTS', 'http://localhost:5173')),
-            'extra_script_sources' => explode(',', env('SECURITY_CSP_EXTRA_SCRIPT_SOURCES', '')),
+            // Keep speculation rules allowed even when SECURITY_CSP_POLICY is overridden.
+            'extra_script_sources' => explode(',', env('SECURITY_CSP_EXTRA_SCRIPT_SOURCES', "'inline-speculation-rules'")),
             'extra_style_sources' => explode(',', env('SECURITY_CSP_EXTRA_STYLE_SOURCES', 'https://fonts.bunny.net')),
             'extra_font_sources' => explode(',', env('SECURITY_CSP_EXTRA_FONT_SOURCES', 'https://fonts.bunny.net')),
         ],

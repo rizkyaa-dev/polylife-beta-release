@@ -18,9 +18,6 @@
         <p class="ai-history-empty" data-ai-history-no-results hidden role="status">Tidak ada judul yang cocok di riwayat terbaru.</p>
         <p class="ai-history-action-status" data-ai-history-action-status hidden role="status"></p>
     </div>
-    <button type="button" class="ai-sidebar-action ai-settings-link" data-ai-settings-open title="Pengaturan asisten" aria-label="Pengaturan asisten">
-        <x-ai.icon name="settings" /><span class="sidebar-link-text">Pengaturan asisten</span>
-    </button>
 </nav>
 <template data-ai-history-item-template>
     <x-ai.history-item />

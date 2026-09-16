@@ -26,7 +26,7 @@
                                 <span class="ai-process-step-mark">@if ($step->kind === 'tool_call')<x-ai.icon name="tool" />@endif</span>
                                 <span>
                                     <strong>{{ $step->label }}</strong>
-                                    <small>{{ $step->kind === 'tool_call' ? 'Aktivitas alat' : 'Reasoning ringkas' }}@if ($step->duration_ms !== null) · {{ max(1, (int) round($step->duration_ms / 1000)) }} dtk @endif · {{ $step->status === 'failed' ? 'Gagal' : 'Selesai' }}</small>
+                                    <small>{{ $step->kind === 'tool_call' ? 'Aktivitas alat' : 'Pemrosesan AI' }}@if ($step->duration_ms !== null) · {{ max(1, (int) round($step->duration_ms / 1000)) }} dtk @endif · {{ $step->status === 'failed' ? 'Gagal' : 'Selesai' }}</small>
                                 </span>
                             </li>
                         @endforeach
@@ -62,6 +62,7 @@
                     @include('ai.partials.proposal', ['proposal' => $proposal, 'state' => $proposalStates->get($proposal['action_id'])])
                 @endforeach
             </div>
+            <div class="ai-action-acknowledgements" data-action-acknowledgements aria-live="polite"></div>
         @endunless
     </div>
 </article>

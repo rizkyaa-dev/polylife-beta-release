@@ -168,7 +168,7 @@ class DeepSeekLlmClientTest extends TestCase
             && $request['reasoning_effort'] === 'none');
     }
 
-    public function test_deepseek_client_applies_per_request_output_budget(): void
+    public function test_deepseek_client_does_not_apply_generic_output_cap_in_thinking_mode(): void
     {
         Http::fake(['https://api.deepseek.com/chat/completions' => Http::response([
             'choices' => [['message' => ['content' => 'ok'], 'finish_reason' => 'stop']],
@@ -182,7 +182,24 @@ class DeepSeekLlmClientTest extends TestCase
         );
 
         Http::assertSent(fn ($request): bool => $request['reasoning_effort'] === 'max'
-            && $request['max_tokens'] === 16384);
+            && ! array_key_exists('max_tokens', $request->data()));
+    }
+
+    public function test_deepseek_client_keeps_explicit_output_cap_when_thinking_is_off(): void
+    {
+        Http::fake(['https://api.deepseek.com/chat/completions' => Http::response([
+            'choices' => [['message' => ['content' => 'ok'], 'finish_reason' => 'stop']],
+        ])]);
+
+        (new DeepSeekLlmClient(apiKey: 'test'))->chat(
+            [new LlmMessage(role: 'user', content: 'Jawab singkat')],
+            [],
+            null,
+            new LlmRequestOptions(ThinkingEffort::Off, 30, 2048)
+        );
+
+        Http::assertSent(fn ($request): bool => $request['reasoning_effort'] === 'none'
+            && $request['max_tokens'] === 2048);
     }
 
     public function test_deepseek_client_throws_exception_on_error(): void

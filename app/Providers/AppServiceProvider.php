@@ -9,6 +9,7 @@ use App\Services\Ai\Providers\DeepSeekLlmClient;
 use App\Services\Ai\Providers\GeminiLlmClient;
 use App\Services\Ai\Providers\MockLlmClient;
 use App\Services\Ai\Providers\OpenAiLlmClient;
+use App\Services\Ai\ResilientLlmClient;
 use Illuminate\Auth\Middleware\RedirectIfAuthenticated;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
 
             $provider = strtolower((string) config('services.ai_provider', 'gemini'));
 
-            return match ($provider) {
+            $client = match ($provider) {
                 'openai' => new OpenAiLlmClient(
                     apiKey: $this->requiredAiKey('openai'),
                     model: (string) config('services.openai.model', 'gpt-4o-mini'),
@@ -57,6 +58,10 @@ class AppServiceProvider extends ServiceProvider
                     : throw new RuntimeException('AI_PROVIDER=mock hanya diizinkan pada environment local atau testing.'),
                 default => throw new InvalidArgumentException("AI provider '{$provider}' tidak didukung."),
             };
+
+            return $provider === 'mock'
+                ? $client
+                : new ResilientLlmClient($client, $provider);
         });
     }
 

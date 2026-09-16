@@ -15,9 +15,12 @@
                     </summary>
                     <div class="ai-thinking-popover">
                         <fieldset aria-describedby="ai-thinking-help ai-thinking-status">
-                            <legend>Thinking effort</legend>
-                            <p id="ai-thinking-help">Pilih kedalaman penalaran untuk pesan berikutnya.</p>
-                            <div class="ai-thinking-options">
+                            <legend class="sr-only">Thinking effort</legend>
+                            <p id="ai-thinking-help" class="sr-only">Pilih kedalaman penalaran untuk pesan berikutnya.</p>
+                            <div class="ai-effort-heading"><strong data-ai-effort-preview>{{ $activeThinkingEffort->label() }}</strong><x-ai.icon name="chevron-right" /></div>
+                            <label class="sr-only" for="ai-effort-slider">Tingkat penalaran: Off, Low, High, Max</label>
+                            <input id="ai-effort-slider" class="ai-effort-slider" type="range" min="0" max="3" step="1" value="{{ array_search($activeThinkingEffort, $thinkingEfforts) }}" aria-valuetext="{{ $activeThinkingEffort->label() }}" aria-describedby="ai-thinking-help ai-thinking-status" data-ai-effort-slider>
+                            <div class="ai-thinking-options" hidden>
                                 @foreach ($thinkingEfforts as $effort)
                                     <label>
                                         <input type="radio" name="thinking_effort" value="{{ $effort->value }}" data-ai-thinking-option @checked($activeThinkingEffort === $effort)>
