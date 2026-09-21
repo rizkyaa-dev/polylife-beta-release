@@ -21,7 +21,8 @@ class AiConversationBranchService
 {
     private const CONTEXT_MESSAGE_LIMIT = 240;
 
-    public function __construct(private readonly AiRunStateManager $runStateManager) {}
+    public function __construct(private readonly AiRunStateManager $runStateManager,
+        private readonly AiRunAdmissionGuard $admission) {}
 
     /**
      * @return array{session: AiChatSession, branch: AiChatBranch, user_message: AiChatMessage, run: AiChatRun, parent_id: ?int}
@@ -31,14 +32,17 @@ class AiConversationBranchService
         string $prompt,
         ?int $sessionId = null,
         ?int $editedMessageId = null,
-        ?string $requestId = null
+        ?string $requestId = null,
+        bool $scienceClient = false
     ): array {
         if ($requestId && $existing = $this->existingTurn($user, $requestId, $prompt, $sessionId, $editedMessageId)) {
             return $existing;
         }
 
         try {
-            return DB::transaction(function () use ($user, $prompt, $sessionId, $editedMessageId, $requestId): array {
+            return DB::transaction(function () use ($user, $prompt, $sessionId, $editedMessageId, $requestId, $scienceClient): array {
+                // Lock order: global admission, session, user, then recoverable runs.
+                $this->admission->acquire();
                 $session = $sessionId
                         ? AiChatSession::query()->where('user_id', $user->id)->lockForUpdate()->findOrFail($sessionId)
                         : AiChatSession::query()->create([
@@ -59,8 +63,11 @@ class AiConversationBranchService
                 if ($activeRuns >= max(1, (int) config('services.ai_max_active_runs_per_user', 2))) {
                     throw new AiUserCapacityException;
                 }
-                $globalActiveRuns = AiChatRun::query()->where('status', 'running')->count();
-                if ($globalActiveRuns >= max(1, (int) config('services.ai_max_active_runs_global', 100))) {
+                $globalLimit = max(1, (int) config('services.ai_max_active_runs_global', 100));
+                // A locking read avoids an older snapshot in a caller-owned transaction.
+                $globalActiveRuns = AiChatRun::query()->where('status', 'running')
+                    ->lockForUpdate()->limit($globalLimit)->get(['id'])->count();
+                if ($globalActiveRuns >= $globalLimit) {
                     throw new AiSystemCapacityException;
                 }
                 if ($session->runs()->where('status', 'running')->exists()) {
@@ -102,6 +109,7 @@ class AiConversationBranchService
 
                 $run = $session->runs()->create([
                     'request_id' => $requestId,
+                    'science_client' => $scienceClient && (bool) config('services.ai_science_browser_enabled', false),
                     'request_fingerprint' => $this->requestFingerprint($prompt, $sessionId, $editedMessageId),
                     'branch_id' => $branch->id,
                     'previous_branch_id' => $previousBranchId,
@@ -116,7 +124,7 @@ class AiConversationBranchService
                     'parent_id' => $parentId,
                     'is_new' => true,
                 ];
-            });
+            }, 3);
         } catch (QueryException $exception) {
             if ($requestId && $existing = $this->existingTurn($user, $requestId, $prompt, $sessionId, $editedMessageId)) {
                 return $existing;

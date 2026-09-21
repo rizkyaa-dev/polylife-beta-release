@@ -27,6 +27,7 @@ final class WorkAiQueue extends Command
         // CLI execution has its own timeout, independent of the HTTP PHP limit.
         $queues = array_unique([
             (string) config('services.ai_fast_queue', 'ai-fast'),
+            (string) config('services.ai_compute_queue', 'ai-compute'),
             (string) config('services.ai_heavy_queue', 'ai-heavy'), 'default',
         ]);
         $options = ['connection' => $connection, '--queue' => implode(',', $queues), '--tries' => 1, '--timeout' => 510];

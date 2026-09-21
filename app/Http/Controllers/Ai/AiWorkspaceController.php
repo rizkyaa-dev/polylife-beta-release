@@ -7,6 +7,7 @@ use App\Models\AiChatSession;
 use App\Models\UserAiAssistant;
 use App\Services\Ai\AiConversationBranchService;
 use App\Services\Ai\Enums\ThinkingEffort;
+use App\Services\Ai\Science\ScienceCacheScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,7 +16,8 @@ use Illuminate\View\View;
 
 class AiWorkspaceController extends Controller
 {
-    public function __construct(private readonly AiConversationBranchService $branchService) {}
+    public function __construct(private readonly AiConversationBranchService $branchService,
+        private readonly ScienceCacheScope $scienceCacheScope) {}
 
     public function index(Request $request): View
     {
@@ -89,6 +91,10 @@ class AiWorkspaceController extends Controller
             'sessions' => $sessions,
             'thinkingEfforts' => ThinkingEffort::cases(),
             'thinkingSupported' => strtolower((string) config('services.ai_provider')) === 'deepseek',
+            'scienceKernelEnabled' => (bool) config('services.ai_science_kernel_enabled', true),
+            'scienceClientAutoExecute' => (bool) config('services.ai_science_client_auto_execute', true),
+            'scienceCacheScope' => config('services.ai_science_browser_enabled') && config('services.ai_science_kernel_enabled', true)
+                ? $this->scienceCacheScope->forUser((int) $user->id) : null,
             'hasEarlierMessages' => isset($lineage) && $lineage->count() > 100,
         ]);
     }

@@ -1,0 +1,24 @@
+{
+  "source": "Ideal source=10 V at src relative to ground. R1=1 kohm src->n1. R2=2 kohm n1->n2. R3=3 kohm n2->gnd. C1=100 uF n1->gnd. C2=220 uF n2->gnd. V1(0)=0 V; V2(0)=0 V. t_start=0 s; t_end=2 s. Compute n1,n2 voltages, local target 1e-8 V.",
+  "domain_model": {
+    "version": "model-v1",
+    "domain": "rc_linear",
+    "nodes": [
+      {"id": "gnd", "kind": "ground"},
+      {"id": "src", "kind": "fixed", "voltage": {"value": 10, "unit": "V", "quote": "source=10 V"}},
+      {"id": "n1", "kind": "dynamic", "initial": {"value": 0, "unit": "V", "quote": "V1(0)=0 V"}},
+      {"id": "n2", "kind": "dynamic", "initial": {"value": 0, "unit": "V", "quote": "V2(0)=0 V"}}
+    ],
+    "components": [
+      {"id": "R1", "type": "resistor", "from": "src", "to": "n1", "value": {"value": 1, "unit": "kohm", "quote": "R1=1 kohm"}, "quote": "R1=1 kohm src->n1"},
+      {"id": "R2", "type": "resistor", "from": "n1", "to": "n2", "value": {"value": 2, "unit": "kohm", "quote": "R2=2 kohm"}, "quote": "R2=2 kohm n1->n2"},
+      {"id": "R3", "type": "resistor", "from": "n2", "to": "gnd", "value": {"value": 3, "unit": "kohm", "quote": "R3=3 kohm"}, "quote": "R3=3 kohm n2->gnd"},
+      {"id": "C1", "type": "capacitor", "from": "n1", "to": "gnd", "value": {"value": 100, "unit": "uF", "quote": "C1=100 uF"}, "quote": "C1=100 uF n1->gnd"},
+      {"id": "C2", "type": "capacitor", "from": "n2", "to": "gnd", "value": {"value": 220, "unit": "uF", "quote": "C2=220 uF"}, "quote": "C2=220 uF n2->gnd"}
+    ],
+    "t_start": {"value": 0, "unit": "s", "quote": "t_start=0 s"},
+    "t_end": {"value": 2, "unit": "s", "quote": "t_end=2 s"},
+    "tolerance": 1e-8,
+    "outputs": ["n1", "n2"]
+  }
+}

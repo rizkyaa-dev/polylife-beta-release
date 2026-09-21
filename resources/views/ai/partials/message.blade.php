@@ -23,11 +23,24 @@
                     <ol class="ai-process-steps">
                         @foreach ($run->steps as $step)
                             <li class="ai-process-step ai-process-step-{{ $step->kind }}" data-status="{{ $step->status }}">
-                                <span class="ai-process-step-mark">@if ($step->kind === 'tool_call')<x-ai.icon name="tool" />@endif</span>
-                                <span>
+                                <span class="ai-process-step-mark">@if ($step->kind === 'tool_call')<x-ai.icon :name="($step->public_metadata['execution_mode'] ?? null) === 'client_script' ? 'terminal' : 'tool'" />@endif</span>
+                                <div>
                                     <strong>{{ $step->label }}</strong>
+                                    @php($localComputation = \App\Services\Ai\Science\Client\ClientComputationPresenter::details($step->private_payload))
+                                    @if ($localComputation)
+                                        <details class="ai-client-computation">
+                                            <summary>Skrip dan hasil lokal · belum terverifikasi independen</summary>
+                                            <pre>{{ $localComputation['source'] }}
+
+Input:
+{{ json_encode($localComputation['inputs'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}
+
+Hasil:
+{{ json_encode($localComputation['result'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                                        </details>
+                                    @endif
                                     <small>{{ $step->kind === 'tool_call' ? 'Aktivitas alat' : 'Pemrosesan AI' }}@if ($step->duration_ms !== null) · {{ max(1, (int) round($step->duration_ms / 1000)) }} dtk @endif · {{ $step->status === 'failed' ? 'Gagal' : 'Selesai' }}</small>
-                                </span>
+                                </div>
                             </li>
                         @endforeach
                     </ol>
@@ -39,7 +52,7 @@
                 <div class="ai-message-text" data-message-text>{{ $message->content }}</div>
                 <form class="ai-message-edit-form" data-ai-edit-form hidden>
                     <label class="sr-only" for="ai-edit-{{ $message->id ?? 'template' }}">Edit pesan</label>
-                    <textarea id="ai-edit-{{ $message->id ?? 'template' }}" maxlength="2000" rows="2" data-ai-edit-input>{{ $message->content }}</textarea>
+                    <textarea id="ai-edit-{{ $message->id ?? 'template' }}" maxlength="{{ \App\Services\Ai\AiMessageLimits::MAX_CHARACTERS }}" rows="2" data-ai-edit-input>{{ $message->content }}</textarea>
                     <p class="ai-message-edit-error" data-ai-edit-error hidden role="alert"></p>
                     <div class="ai-message-edit-actions">
                         <button type="button" class="ai-button ai-button-quiet" data-ai-edit-cancel>Batal</button>

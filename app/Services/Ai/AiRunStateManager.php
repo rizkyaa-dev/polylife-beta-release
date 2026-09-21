@@ -3,6 +3,7 @@
 namespace App\Services\Ai;
 
 use App\Models\AiChatRun;
+use App\Models\AiScienceExecution;
 use Illuminate\Support\Facades\DB;
 
 final class AiRunStateManager
@@ -37,13 +38,15 @@ final class AiRunStateManager
         return $runIds->count();
     }
 
-    public function fail(AiChatRun|int $run, string $errorCode, bool $retryable, ?int $durationMs = null): void
+    public function fail(AiChatRun|int $run, string $errorCode, bool $retryable, ?int $durationMs = null, ?int $expectedAttempt = null, ?string $expectedClaimToken = null): void
     {
         $runId = $run instanceof AiChatRun ? $run->id : $run;
 
-        DB::transaction(function () use ($runId, $errorCode, $retryable, $durationMs): void {
+        DB::transaction(function () use ($runId, $errorCode, $retryable, $durationMs, $expectedAttempt, $expectedClaimToken): void {
             $lockedRun = AiChatRun::query()->lockForUpdate()->find($runId);
-            if (! $lockedRun || $lockedRun->status !== 'running') {
+            if (! $lockedRun || $lockedRun->status !== 'running'
+                || ($expectedAttempt !== null && $lockedRun->attempts !== $expectedAttempt)
+                || ($expectedClaimToken !== null && $lockedRun->claim_token !== $expectedClaimToken)) {
                 return;
             }
 
@@ -88,6 +91,8 @@ final class AiRunStateManager
         $run->load(['session', 'branch', 'userMessage']);
         $run->userMessage?->update(['status' => 'failed', 'error_code' => $errorCode]);
         $run->steps()->where('status', 'running')->update(['status' => 'failed']);
+        AiScienceExecution::query()->where('run_id', $run->id)->whereNotIn('status', ['completed', 'failed', 'cancelled'])
+            ->update(['status' => $errorCode === 'user_cancelled' ? 'cancelled' : 'failed', 'private_payload' => null]);
         $run->update([
             'status' => 'failed',
             'duration_ms' => $durationMs,

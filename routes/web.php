@@ -4,6 +4,8 @@ use App\Http\Controllers\Admin\AffiliationBroadcastController as AdminAffiliatio
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Ai\AiChatController;
 use App\Http\Controllers\Ai\AiChatSessionController;
+use App\Http\Controllers\Ai\AiScienceExecutionController;
+use App\Http\Controllers\Ai\AiScienceWorkerBootstrapController;
 use App\Http\Controllers\Ai\AiWorkspaceController;
 use App\Http\Controllers\BroadcastImageController;
 use App\Http\Controllers\CatatanController;
@@ -36,6 +38,9 @@ use Illuminate\Support\Facades\Route;
 
 $userWriteMiddleware = ['throttle:workspace-write', 'prevent-duplicate-write'];
 $bulkWriteMiddleware = ['throttle:bulk-write', 'prevent-duplicate-write'];
+
+Route::get('/ai/science/client-worker.js', AiScienceWorkerBootstrapController::class)
+    ->name('ai.science.worker-bootstrap');
 
 Route::get('media/broadcasts/{path}', BroadcastImageController::class)
     ->where('path', '.*')
@@ -122,6 +127,8 @@ Route::prefix('workspace')->middleware(['auth', 'active-account', 'workspace-acc
     Route::patch('ai/settings/thinking', [AiWorkspaceController::class, 'updateThinking'])->middleware($userWriteMiddleware)->name('ai.settings.thinking.update');
     Route::post('ai/chat', [AiChatController::class, 'sendMessage'])->middleware([...$userWriteMiddleware, 'throttle:ai-chat'])->name('ai.chat');
     Route::get('ai/runs/{run}', [AiChatController::class, 'runStatus'])->whereNumber('run')->name('ai.runs.show');
+    Route::post('ai/science/{execution}/claim', [AiScienceExecutionController::class, 'claim'])->whereNumber('execution')->middleware('throttle:60,1')->name('ai.science.claim');
+    Route::post('ai/science/{execution}/submit', [AiScienceExecutionController::class, 'submit'])->whereNumber('execution')->middleware('throttle:60,1')->name('ai.science.submit');
     Route::post('ai/runs/{run}/cancel', [AiChatController::class, 'cancelRun'])->whereNumber('run')->middleware($userWriteMiddleware)->name('ai.runs.cancel');
     Route::patch('ai/messages/{message}/edit', [AiChatController::class, 'editMessage'])->whereNumber('message')->middleware([...$userWriteMiddleware, 'throttle:ai-chat'])->name('ai.messages.edit');
     Route::post('ai/branches/{branch}/activate', [AiChatSessionController::class, 'activateBranch'])->whereNumber('branch')->middleware($userWriteMiddleware)->name('ai.branches.activate');

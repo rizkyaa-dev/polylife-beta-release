@@ -8,6 +8,7 @@ use App\Services\Ai\ActionProposalExecutor;
 use App\Services\Ai\AiActionReceiptPresenter;
 use App\Services\Ai\AiAgentOrchestrator;
 use App\Services\Ai\AiChatResponseFactory;
+use App\Services\Ai\AiMessageLimits;
 use App\Services\Ai\AiRunErrorPresenter;
 use App\Services\Ai\AiRunStateManager;
 use App\Services\Ai\Exceptions\AiActionException;
@@ -15,6 +16,7 @@ use App\Services\Ai\Exceptions\AiConversationBusyException;
 use App\Services\Ai\Exceptions\AiIdempotencyConflictException;
 use App\Services\Ai\Exceptions\AiSystemCapacityException;
 use App\Services\Ai\Exceptions\AiUserCapacityException;
+use App\Services\Ai\Science\ScienceExecutionBroker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -29,14 +31,16 @@ class AiChatController extends Controller
         private readonly AiChatResponseFactory $responseFactory,
         private readonly AiRunErrorPresenter $errorPresenter,
         private readonly AiRunStateManager $runStateManager,
-        private readonly AiActionReceiptPresenter $receiptPresenter
+        private readonly AiActionReceiptPresenter $receiptPresenter,
+        private readonly ScienceExecutionBroker $scienceBroker
     ) {}
 
     public function sendMessage(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'message' => ['required', 'string', 'max:2000'],
+            'message' => ['required', 'string', 'max:'.AiMessageLimits::MAX_CHARACTERS],
             'request_id' => ['nullable', 'uuid'],
+            'science_client' => ['sometimes', 'boolean'],
             'session_id' => [
                 'nullable',
                 'integer',
@@ -49,7 +53,8 @@ class AiChatController extends Controller
                 $request->user(),
                 $validated['message'],
                 $validated['session_id'] ?? null,
-                $validated['request_id'] ?? null
+                $validated['request_id'] ?? null,
+                (bool) ($validated['science_client'] ?? false)
             );
 
             return response()->json($this->acceptedResponse($result), 202);
@@ -90,8 +95,9 @@ class AiChatController extends Controller
             ->where('status', 'completed')
             ->firstOrFail();
         $validated = $request->validate([
-            'message' => ['required', 'string', 'max:2000'],
+            'message' => ['required', 'string', 'max:'.AiMessageLimits::MAX_CHARACTERS],
             'request_id' => ['nullable', 'uuid'],
+            'science_client' => ['sometimes', 'boolean'],
         ]);
 
         try {
@@ -100,7 +106,8 @@ class AiChatController extends Controller
                     $request->user(),
                     $ownedMessage->id,
                     $validated['message'],
-                    $validated['request_id'] ?? null
+                    $validated['request_id'] ?? null,
+                    (bool) ($validated['science_client'] ?? false)
                 )
             ), 202);
         } catch (AiConversationBusyException $exception) {
@@ -170,10 +177,12 @@ class AiChatController extends Controller
             'status' => 'running',
             'run_id' => $chatRun->id,
             'phase' => $chatRun->heartbeat_at === null ? 'queued' : 'processing',
+            'science_execution' => $this->scienceBroker->offer($chatRun),
             'steps' => $chatRun->steps()->get()->map(fn ($step) => [
                 'kind' => $step->kind,
                 'status' => $step->status,
                 'label' => $step->label,
+                'execution_mode' => $step->public_metadata['execution_mode'] ?? null,
             ])->values(),
         ], 202);
     }

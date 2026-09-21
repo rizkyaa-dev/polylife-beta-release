@@ -24,7 +24,8 @@ final class AiCodeGenerationAgent
         AiCodingBrief $brief,
         AiCodingRoute $route,
         LlmRequestOptions $options,
-        ?string $sourceArtifact = null
+        ?string $sourceArtifact = null,
+        ?array $scienceContract = null
     ): LlmResponse {
         if ($route->language !== $brief->language) {
             throw AiProviderException::invalidCodingResponse();
@@ -47,9 +48,10 @@ final class AiCodeGenerationAgent
             'original_request' => $prompt,
             'source_artifact' => $sourceArtifact,
             'design_plan' => $designPlan,
+            'science_contract' => $scienceContract,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 
-        $systemInstruction = $this->promptBuilder->build($brief, $route, $sourceArtifact !== null);
+        $systemInstruction = $this->promptBuilder->build($brief, $route, $sourceArtifact !== null, $scienceContract !== null);
 
         $response = $this->llmClient->chat(
             [new LlmMessage(role: 'user', content: "<delegated_coding_request>\n{$payload}\n</delegated_coding_request>")],

@@ -8,6 +8,7 @@ use App\Models\AiChatMessage;
 use App\Models\AiChatRun;
 use App\Models\AiChatRunStep;
 use App\Models\AiChatSession;
+use App\Models\AiScienceExecution;
 use App\Models\User;
 use App\Models\UserAiAssistant;
 use App\Services\Ai\Actions\AiWriteActionRegistry;
@@ -18,6 +19,13 @@ use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\Enums\ThinkingEffort;
 use App\Services\Ai\Exceptions\AiProviderException;
 use App\Services\Ai\Exceptions\AiRunCancelledException;
+use App\Services\Ai\Science\AiScienceAgent;
+use App\Services\Ai\Science\AiScienceDelegation;
+use App\Services\Ai\Science\Client\ClientComputationAgent;
+use App\Services\Ai\Science\Client\ScienceCapabilityTelemetry;
+use App\Services\Ai\Science\ScienceCheckpoint;
+use App\Services\Ai\Science\ScienceContractStore;
+use App\Services\Ai\Science\ScienceExecutionBroker;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -43,7 +51,13 @@ class AiAgentOrchestrator
         private readonly AiCodingInstructionRouter $codingInstructionRouter,
         private readonly AiCodingDelegation $codingDelegation,
         private readonly AiCodeGenerationAgent $codeGenerationAgent,
-        private readonly AiDesignArtifactEvaluator $designEvaluator
+        private readonly AiDesignArtifactEvaluator $designEvaluator,
+        private readonly AiScienceAgent $scienceAgent,
+        private readonly AiScienceDelegation $scienceDelegation,
+        private readonly ScienceContractStore $scienceContracts,
+        private readonly ScienceExecutionBroker $scienceBroker,
+        private readonly ClientComputationAgent $clientComputation,
+        private readonly ScienceCapabilityTelemetry $scienceTelemetry
     ) {}
 
     /**
@@ -61,9 +75,9 @@ class AiAgentOrchestrator
     }
 
     /** @return array{session: AiChatSession, branch: AiChatBranch, user_message: AiChatMessage, run: AiChatRun} */
-    public function enqueue(User $user, string $userPrompt, ?int $sessionId = null, ?string $requestId = null): array
+    public function enqueue(User $user, string $userPrompt, ?int $sessionId = null, ?string $requestId = null, bool $scienceClient = false): array
     {
-        $turn = $this->branchService->beginTurn($user, $userPrompt, $sessionId, requestId: $requestId);
+        $turn = $this->branchService->beginTurn($user, $userPrompt, $sessionId, requestId: $requestId, scienceClient: $scienceClient);
         if ($turn['is_new'] ?? true) {
             $this->dispatchTurn($turn['run'], $user);
         }
@@ -86,13 +100,13 @@ class AiAgentOrchestrator
     }
 
     /** @return array{session: AiChatSession, branch: AiChatBranch, user_message: AiChatMessage, run: AiChatRun} */
-    public function enqueueEdit(User $user, int $messageId, string $userPrompt, ?string $requestId = null): array
+    public function enqueueEdit(User $user, int $messageId, string $userPrompt, ?string $requestId = null, bool $scienceClient = false): array
     {
         $message = AiChatMessage::query()
             ->whereKey($messageId)
             ->whereHas('session', fn ($query) => $query->where('user_id', $user->id))
             ->firstOrFail();
-        $turn = $this->branchService->beginTurn($user, $userPrompt, $message->session_id, $message->id, $requestId);
+        $turn = $this->branchService->beginTurn($user, $userPrompt, $message->session_id, $message->id, $requestId, $scienceClient);
         if ($turn['is_new'] ?? true) {
             $this->dispatchTurn($turn['run'], $user);
         }
@@ -101,15 +115,32 @@ class AiAgentOrchestrator
     }
 
     /** @return array<string, mixed>|null */
-    public function processRun(int $runId): ?array
+    public function processRun(int $runId, ?callable $onClaim = null, ?string $claimToken = null): ?array
     {
-        $run = DB::transaction(function () use ($runId): ?AiChatRun {
+        $resume = null;
+        $run = DB::transaction(function () use ($runId, &$resume, $claimToken): ?AiChatRun {
             $run = AiChatRun::query()->lockForUpdate()->find($runId);
-            if (! $run || $run->status !== 'running' || $run->heartbeat_at !== null) {
+            if (! $run || $run->status !== 'running') {
+                return null;
+            }
+            if ($run->science_execution_id) {
+                $execution = AiScienceExecution::query()->where('run_id', $run->id)->lockForUpdate()->find($run->science_execution_id);
+                if (! $execution || $execution->status !== 'ready') {
+                    return null;
+                }
+                if ($execution->deadline_at->lessThanOrEqualTo(now())) {
+                    $this->runStateManager->fail($run, 'science_execution_expired', true);
+
+                    return null;
+                }
+                $resume = $execution;
+                $execution->update(['status' => 'resuming', 'lease_expires_at' => $execution->deadline_at->copy()->addSeconds(30)]);
+            } elseif ($run->heartbeat_at !== null) {
                 return null;
             }
             $run->update([
                 'attempts' => $run->attempts + 1,
+                'claim_token' => $claimToken,
                 'heartbeat_at' => now(),
                 'lease_expires_at' => now()->addMinutes(6),
                 'error_code' => null,
@@ -120,6 +151,9 @@ class AiAgentOrchestrator
         });
         if (! $run) {
             return null;
+        }
+        if ($onClaim !== null) {
+            $onClaim($run->attempts);
         }
 
         $run->load(['session.user', 'branch', 'userMessage']);
@@ -134,7 +168,7 @@ class AiAgentOrchestrator
                 'user_message' => $run->userMessage,
                 'run' => $run,
                 'parent_id' => $run->userMessage->parent_message_id,
-            ]);
+            ], $resume);
         } catch (AiRunCancelledException) {
             return null;
         }
@@ -144,12 +178,13 @@ class AiAgentOrchestrator
      * @param  array{session: AiChatSession, branch: AiChatBranch, user_message: AiChatMessage, run: AiChatRun, parent_id: ?int}  $turn
      * @return array<string, mixed>
      */
-    private function runTurn(User $user, string $userPrompt, array $turn): array
+    private function runTurn(User $user, string $userPrompt, array $turn, ?AiScienceExecution $resume = null): array
     {
         $session = $turn['session'];
         $branch = $turn['branch'];
         $userMessage = $turn['user_message'];
         $run = $turn['run'];
+        $expectedAttempt = (int) $run->attempts;
         $startedAt = microtime(true);
         $run->update(['heartbeat_at' => now(), 'lease_expires_at' => now()->addMinutes(6)]);
 
@@ -161,7 +196,7 @@ class AiAgentOrchestrator
             ]
         );
 
-        $systemInstruction = $this->instructionBuilder->build($user, $assistant).$this->codingDelegation->instruction();
+        $systemInstruction = $this->instructionBuilder->build($user, $assistant).$this->codingDelegation->instruction().$this->scienceDelegation->instruction();
         $minimumOutputTokens = 0;
         $thinkingEffort = $assistant->thinking_effort ?? ThinkingEffort::High;
         $runStartedAt = hrtime(true) / 1_000_000_000;
@@ -169,6 +204,10 @@ class AiAgentOrchestrator
         $run->update(['lease_expires_at' => now()->addSeconds($this->inferencePolicy->runTimeoutSeconds($thinkingEffort) + 30)]);
 
         $lineage = $this->branchService->recentLineage($session, $turn['parent_id']);
+        $availableScience = $this->scienceContracts->ancestors($lineage);
+        if ($availableScience->isNotEmpty()) {
+            $systemInstruction .= "\nScientific contract step IDs available on this branch: ".implode(', ', $availableScience->keys()->all()).'. Use science_step_id when implementing a calculator from one of these results.';
+        }
         $sourceArtifacts = $lineage->filter(fn (AiChatMessage $message) => $message->role === 'assistant'
             && $message->status === 'completed' && str_contains($message->content, '```'))->keyBy('id');
         if ($sourceArtifacts->isNotEmpty()) {
@@ -176,7 +215,7 @@ class AiAgentOrchestrator
         }
         $messageHistory = $this->contextAssembler->assemble($lineage, $branch);
         $messageHistory[] = new LlmMessage(role: 'user', content: $userPrompt);
-        $tools = [...$this->toolSelection->declarations($userPrompt, $messageHistory), $this->codingDelegation->declaration()];
+        $tools = [...$this->toolSelection->declarations($userPrompt, $messageHistory), $this->codingDelegation->declaration(), $this->scienceDelegation->declaration()];
         $proposals = [];
         $proposalRows = [];
         $toolResultsByInvocation = [];
@@ -187,6 +226,32 @@ class AiAgentOrchestrator
         $stepSequence = 0;
         $totalToolCalls = 0;
         $delegationBoundaryEnforced = false;
+
+        if ($resume !== null) {
+            $saved = ScienceCheckpoint::decode($resume->private_payload['checkpoint']);
+            $messageHistory = $saved['history'];
+            $systemInstruction = $saved['system_instruction'];
+            $tools = $saved['tools'];
+            $thinkingEffort = ThinkingEffort::from($saved['thinking_effort']);
+            $iterations = $saved['iterations'];
+            $stepSequence = $saved['step_sequence'];
+            $totalToolCalls = $saved['total_tool_calls'];
+            $toolResultsByInvocation = $saved['invocation_results'];
+            $proposals = $saved['proposals'];
+            $proposalRows = $saved['proposal_rows'];
+            $delegationBoundaryEnforced = $saved['boundary_enforced'];
+            $remaining = (float) now()->diffInMilliseconds($resume->deadline_at, false) / 1000;
+            $deadlineAt = hrtime(true) / 1_000_000_000 + $remaining;
+            $runStartedAt = $deadlineAt - $saved['run_budget_seconds'];
+            $startedAt = (float) $saved['processing_started_at'];
+            $result = $resume->private_payload['result'];
+            $toolResultsByInvocation[$saved['pending_invocation_key']] = $result;
+            $messageHistory[] = new LlmMessage('tool', toolResult: [
+                'call_id' => $saved['pending_call_id'], 'tool_name' => AiScienceDelegation::TOOL_NAME,
+                'result' => $this->scienceDelegation->toolResult($result)]);
+            $availableScience->put($resume->step_id, AiChatRunStep::query()->findOrFail($resume->step_id));
+            $this->heartbeat($run, $deadlineAt);
+        }
 
         try {
             while ($iterations < self::MAX_TOOL_ROUNDS) {
@@ -203,10 +268,10 @@ class AiAgentOrchestrator
                         $messageHistory,
                         $tools,
                         $systemInstruction,
-                        $this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens)->withGuard(fn () => $this->ensureRunIsActive($run))
+                        $this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens)->withGuard(fn () => $this->ensureRunIsActive($run, $expectedAttempt))
                     )
                 );
-                $this->ensureRunIsActive($run);
+                $this->ensureRunIsActive($run, $expectedAttempt);
                 if ($response->isTruncated()) {
                     throw AiProviderException::truncated();
                 }
@@ -244,7 +309,7 @@ class AiAgentOrchestrator
                 );
 
                 foreach ($response->toolCalls as $call) {
-                    $this->ensureRunIsActive($run);
+                    $this->ensureRunIsActive($run, $expectedAttempt);
                     $toolStep = $this->startStep(
                         $run->id,
                         ++$stepSequence,
@@ -266,6 +331,8 @@ class AiAgentOrchestrator
                                 throw ValidationException::withMessages(['delegation' => 'Selesaikan tool workspace terlebih dahulu; delegasi harus dipanggil sendiri.']);
                             }
                             $brief = $this->codingDelegation->brief($call->arguments, $userPrompt, $this->codingInstructionRouter);
+                            $scienceId = $call->arguments['science_step_id'] ?? null;
+                            $scienceContract = $scienceId === null ? null : $this->scienceContracts->resolve((int) $scienceId, $availableScience);
                             $sourceId = $call->arguments['source_message_id'] ?? null;
                             $source = $sourceId === null ? null : $sourceArtifacts->get($sourceId);
                             if ($sourceId !== null && $source === null) {
@@ -280,19 +347,19 @@ class AiAgentOrchestrator
                             $this->heartbeat($run, $deadlineAt);
                             // Retain the validated brief privately even when generation fails.
                             $coderOptions = $this->requestOptions($thinkingEffort, $deadlineAt, max(0, (int) config('services.ai_coding_output_tokens', 16384)), true)
-                                ->withGuard(fn () => $this->ensureRunIsActive($run));
+                                ->withGuard(fn () => $this->ensureRunIsActive($run, $expectedAttempt));
                             $toolStep->update([
                                 'public_metadata' => ['outcome' => 'started', 'language' => $brief->language, 'runtime' => $brief->runtime, 'prompt_version' => AiCodingPromptBuilder::VERSION],
                                 'private_payload' => [
-                                    'coding_brief' => $brief->toArray(), 'source_message_id' => $sourceId,
+                                    'coding_brief' => $brief->toArray(), 'source_message_id' => $sourceId, 'science_contract' => $scienceContract,
                                     'execution_policy' => ['thinking_effort' => $thinkingEffort->value, 'request_timeout_seconds' => $coderOptions->timeoutSeconds, 'run_timeout_seconds' => $this->inferencePolicy->runTimeoutSeconds($thinkingEffort, true)],
                                 ],
                             ]);
-                            $generated = $this->performModelCall($toolStep, function () use ($userPrompt, $brief, $source, $coderOptions) {
+                            $generated = $this->performModelCall($toolStep, function () use ($userPrompt, $brief, $source, $coderOptions, $scienceContract) {
                                 $generated = $this->codeGenerationAgent->generate(
                                     $userPrompt, $brief, $this->codingInstructionRouter->forLanguage($brief->language),
                                     $coderOptions,
-                                    $source?->content
+                                    $source?->content, $scienceContract
                                 );
                                 if ($generated->hasToolCalls() || blank($generated->content) || ! str_contains($generated->content, '```')) {
                                     throw AiProviderException::invalidCodingResponse();
@@ -300,7 +367,7 @@ class AiAgentOrchestrator
 
                                 return $generated;
                             });
-                            $this->ensureRunIsActive($run);
+                            $this->ensureRunIsActive($run, $expectedAttempt);
                             $toolStep->update([
                                 'public_metadata' => ['outcome' => 'completed', 'language' => $brief->language, 'runtime' => $brief->runtime, 'prompt_version' => AiCodingPromptBuilder::VERSION],
                                 'private_payload' => array_merge($toolStep->private_payload, [
@@ -312,6 +379,63 @@ class AiAgentOrchestrator
                             break 2;
                         } catch (ValidationException $exception) {
                             $result = ['status' => 'invalid_arguments', 'message' => 'Perbaiki brief delegasi sebelum mencoba kembali.', 'errors' => $exception->errors()];
+                        }
+                    } elseif ($call->name === AiScienceDelegation::TOOL_NAME) {
+                        if (array_key_exists($invocationKey, $toolResultsByInvocation)) {
+                            $result = $toolResultsByInvocation[$invocationKey];
+                        } else {
+                            try {
+                                $scienceRequest = $this->scienceDelegation->request($call->arguments, $userPrompt);
+                                if ($roundToolCalls !== 1) {
+                                    throw ValidationException::withMessages(['delegation' => 'Scientific delegation must be called alone after collecting required facts.']);
+                                }
+                                $deadlineAt = max($deadlineAt, $runStartedAt + $this->inferencePolicy->scienceRunTimeoutSeconds($thinkingEffort));
+                                $this->heartbeat($run, $deadlineAt);
+                                $toolStep->update(['private_payload' => ['science_request' => $scienceRequest]]);
+                                $scienceOptions = $this->requestOptions($thinkingEffort, $deadlineAt, 8192, true)
+                                    ->withGuard(fn () => $this->ensureRunIsActive($run, $expectedAttempt));
+                                $kernelEnabled = (bool) config('services.ai_science_kernel_enabled', true);
+                                if (! $kernelEnabled) {
+                                    $result = $run->science_client && config('services.ai_science_dynamic_enabled', false)
+                                        ? $this->performModelCall($toolStep, fn () => $this->clientComputation->planLocal($scienceRequest, $scienceOptions))
+                                        : ['status' => 'unsupported', 'result' => null, 'model_verification' => 'unverified',
+                                            'model' => 'Server computation is disabled. An available browser client and enabled local computation are required; no server fallback is permitted.'];
+                                } else {
+                                    $result = $this->performModelCall($toolStep, fn () => $run->science_client
+                                    ? $this->scienceAgent->plan($scienceRequest, $scienceOptions)
+                                    : $this->scienceAgent->solve($scienceRequest, $scienceOptions));
+                                }
+                                $this->ensureRunIsActive($run, $expectedAttempt);
+                                if ($kernelEnabled && $result['status'] === 'unsupported') {
+                                    $this->scienceTelemetry->record('unsupported', $result['capability_gaps'] ?? []);
+                                    if ($run->science_client && config('services.ai_science_dynamic_enabled', false)) {
+                                        $result = $this->performModelCall($toolStep,
+                                            fn () => $this->clientComputation->plan($scienceRequest, $result, $scienceOptions));
+                                        $this->ensureRunIsActive($run, $expectedAttempt);
+                                        $this->scienceTelemetry->record($result['status'] === 'ready' ? 'prepared' : 'failure', $result['kernel_fallback']['capability_gaps'] ?? []);
+                                    }
+                                }
+                                if ($run->science_client && $result['status'] === 'ready') {
+                                    $this->scienceBroker->suspend($run, $toolStep, $result, [
+                                        'history' => $messageHistory, 'system_instruction' => $systemInstruction, 'tools' => $tools,
+                                        'thinking_effort' => $thinkingEffort->value, 'iterations' => $iterations,
+                                        'step_sequence' => $stepSequence, 'total_tool_calls' => $totalToolCalls,
+                                        'invocation_results' => $toolResultsByInvocation, 'proposals' => $proposals,
+                                        'proposal_rows' => $proposalRows, 'boundary_enforced' => $delegationBoundaryEnforced,
+                                        'run_budget_seconds' => $deadlineAt - $runStartedAt, 'processing_started_at' => $startedAt,
+                                        'pending_invocation_key' => $invocationKey, 'pending_call_id' => $call->id,
+                                    ], $deadlineAt);
+
+                                    return $turn + ['phase' => 'awaiting_science'];
+                                }
+                                $result['science_step_id'] = $toolStep->id;
+                                $toolStep->update(['private_payload' => array_merge($toolStep->private_payload ?? [], $result)]);
+                                $availableScience->put($toolStep->id, $toolStep);
+                                $toolResultsByInvocation[$invocationKey] = $result;
+                            } catch (ValidationException $exception) {
+                                $result = ['status' => 'invalid_arguments', 'errors' => $exception->errors(),
+                                    'message' => 'Scientific model or inputs were invalid; no verified result is available.'];
+                            }
                         }
                     } elseif (array_key_exists($invocationKey, $toolResultsByInvocation)) {
                         $result = [
@@ -373,7 +497,8 @@ class AiAgentOrchestrator
                         'status' => $toolFailed ? 'failed' : 'completed',
                         'duration_ms' => $this->elapsedMilliseconds($toolStartedAt),
                         'public_metadata' => ['outcome' => $toolFailed ? 'failed' : 'completed'],
-                        'private_payload' => $result,
+                        'private_payload' => $call->name === AiScienceDelegation::TOOL_NAME
+                            ? array_merge($toolStep->private_payload ?? [], $result) : $result,
                     ]);
                     $this->heartbeat($run, $deadlineAt);
 
@@ -384,7 +509,8 @@ class AiAgentOrchestrator
                         toolResult: [
                             'call_id' => $call->id,
                             'tool_name' => $call->name,
-                            'result' => $result,
+                            'result' => $call->name === AiScienceDelegation::TOOL_NAME
+                                ? $this->scienceDelegation->toolResult($result) : $result,
                         ]
                     );
                 }
@@ -402,10 +528,10 @@ class AiAgentOrchestrator
                         $messageHistory,
                         [],
                         $this->instructionBuilder->forFinalAnswer($systemInstruction),
-                        $this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens)->withGuard(fn () => $this->ensureRunIsActive($run))
+                        $this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens)->withGuard(fn () => $this->ensureRunIsActive($run, $expectedAttempt))
                     )
                 );
-                $this->ensureRunIsActive($run);
+                $this->ensureRunIsActive($run, $expectedAttempt);
                 if ($finalResponse->isTruncated()) {
                     throw AiProviderException::truncated();
                 }
@@ -421,10 +547,10 @@ class AiAgentOrchestrator
                 }
             }
 
-            $this->ensureRunIsActive($run);
-            $assistantMessage = DB::transaction(function () use ($userMessage, $session, $branch, $run, $proposalRows, $proposals, $finalReply, $finalReasoningContent, $startedAt): AiChatMessage {
+            $this->ensureRunIsActive($run, $expectedAttempt);
+            $assistantMessage = DB::transaction(function () use ($userMessage, $session, $branch, $run, $proposalRows, $proposals, $finalReply, $finalReasoningContent, $startedAt, $expectedAttempt): AiChatMessage {
                 $lockedRun = AiChatRun::query()->lockForUpdate()->findOrFail($run->id);
-                if ($lockedRun->status !== 'running') {
+                if ($lockedRun->status !== 'running' || $lockedRun->attempts !== $expectedAttempt) {
                     throw new AiRunCancelledException;
                 }
                 $userMessage->update(['status' => 'completed', 'error_code' => null]);
@@ -454,6 +580,12 @@ class AiAgentOrchestrator
                     'heartbeat_at' => now(),
                     'lease_expires_at' => null,
                 ]);
+                if ($lockedRun->science_execution_id) {
+                    $execution = AiScienceExecution::query()->where('run_id', $run->id)->lockForUpdate()->find($lockedRun->science_execution_id);
+                    if ($execution) {
+                        $this->scienceBroker->settle($execution);
+                    }
+                }
                 $session->update(['active_branch_id' => $branch->id]);
                 $session->touch();
 
@@ -468,7 +600,8 @@ class AiAgentOrchestrator
                 $run,
                 $errorCode,
                 $retryable,
-                $this->elapsedMilliseconds($startedAt)
+                $this->elapsedMilliseconds($startedAt),
+                $expectedAttempt
             );
 
             throw $exception;
@@ -614,10 +747,10 @@ class AiAgentOrchestrator
         ]);
     }
 
-    private function ensureRunIsActive(AiChatRun $run): void
+    private function ensureRunIsActive(AiChatRun $run, ?int $expectedAttempt = null): void
     {
         $run->refresh();
-        if ($run->status !== 'running') {
+        if ($run->status !== 'running' || ($expectedAttempt !== null && $run->attempts !== $expectedAttempt)) {
             throw new AiRunCancelledException;
         }
     }

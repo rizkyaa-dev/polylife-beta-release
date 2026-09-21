@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import laravel from 'laravel-vite-plugin';
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, command }) => {
     const env = loadEnv(mode, process.cwd(), '');
     const normalizeAppUrl = (value) => {
         if (!value) {
@@ -21,6 +21,12 @@ export default defineConfig(({ mode }) => {
     const hmrProtocol = env.VITE_HMR_PROTOCOL ?? appUrl?.protocol?.replace(':', '') ?? 'http';
 
     return {
+        // Builds must not invalidate a running dev server's optimizer cache.
+        cacheDir: `node_modules/.vite-polylife/${command}`,
+        optimizeDeps: {
+            exclude: ['quickjs-emscripten-core', '@jitl/quickjs-singlefile-browser-release-sync'],
+        },
+        worker: { format: 'es' },
         plugins: [
             laravel({
                 input: [

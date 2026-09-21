@@ -7,6 +7,7 @@ class ToolActivityPresenter
     public function label(string $toolName): string
     {
         return match ($toolName) {
+            'delegate_science_problem' => 'Memodelkan dan menghitung masalah sains',
             'get_upcoming_schedule' => 'Membaca jadwal kuliah',
             'get_financial_summary' => 'Memeriksa ringkasan keuangan',
             'get_pending_tasks' => 'Memeriksa tugas yang belum selesai',

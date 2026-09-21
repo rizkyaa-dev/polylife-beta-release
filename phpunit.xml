@@ -19,6 +19,9 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="AI_SCIENCE_KERNEL_ENABLED" value="true" force="true"/>
+        <env name="AI_SCIENCE_BROWSER_ENABLED" value="false" force="true"/>
+        <env name="AI_SCIENCE_DYNAMIC_ENABLED" value="false" force="true"/>
         <env name="APP_KEY" value="base64:2fl+Ktvkfl+Fuz4Qp/A75G2RTiWVA/UcTi/gDWXzoa8="/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

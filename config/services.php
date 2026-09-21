@@ -62,6 +62,9 @@ return [
     'ai_queue_connection' => env('AI_QUEUE_CONNECTION'),
     'ai_fast_queue' => env('AI_FAST_QUEUE', 'ai-fast'),
     'ai_heavy_queue' => env('AI_HEAVY_QUEUE', 'ai-heavy'),
+    'ai_compute_queue' => env('AI_COMPUTE_QUEUE', 'ai-compute'),
+    'ai_science_browser_enabled' => (bool) env('AI_SCIENCE_BROWSER_ENABLED', false),
+    'ai_science_kernel_enabled' => (bool) env('AI_SCIENCE_KERNEL_ENABLED', true),
     'ai_redispatch_after_seconds' => (int) env('AI_REDISPATCH_AFTER_SECONDS', 120),
     'ai_worker_start_timeout_seconds' => (int) env('AI_WORKER_START_TIMEOUT_SECONDS', 300),
     'ai_rate_limit_per_minute' => (int) env('AI_RATE_LIMIT_PER_MINUTE', 8),
@@ -77,5 +80,8 @@ return [
     'ai_max_tool_calls_per_response' => (int) env('AI_MAX_TOOL_CALLS_PER_RESPONSE', 8),
     'ai_max_tool_calls_per_run' => (int) env('AI_MAX_TOOL_CALLS_PER_RUN', 16),
     'ai_coding_output_tokens' => (int) env('AI_CODING_OUTPUT_TOKENS', 16384),
+    'ai_science_dynamic_enabled' => (bool) env('AI_SCIENCE_DYNAMIC_ENABLED', false),
+    'ai_science_client_auto_execute' => (bool) env('AI_SCIENCE_CLIENT_AUTO_EXECUTE', true),
+    'ai_science_capability_telemetry_enabled' => (bool) env('AI_SCIENCE_CAPABILITY_TELEMETRY_ENABLED', false),
 
 ];

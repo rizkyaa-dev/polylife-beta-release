@@ -12,6 +12,7 @@ use App\Http\Middleware\WorkspaceAccessMiddleware;
 use App\Services\Ai\AiDataRetentionService;
 use App\Services\Ai\AiRunDispatcher;
 use App\Services\Ai\AiRunStateManager;
+use App\Services\Ai\Science\ScienceExecutionBroker;
 use App\Services\ReminderPushService;
 use App\Support\Security\ProxyTrustSettings;
 use Illuminate\Console\Scheduling\Schedule;
@@ -54,6 +55,9 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withSchedule(function (Schedule $schedule): void {
+        $schedule->call(function () {
+            app(ScienceExecutionBroker::class)->recover();
+        })->name('ai.science.recover')->everyMinute()->withoutOverlapping();
         $schedule->call(function () {
             app(ReminderPushService::class)->sendDueReminderPushes();
         })

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="id">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kalkulator osilator — fixture pengujian</title>
+<style>
+body{margin:0;padding:24px;background:#0f172a;color:#e2e8f0;font:16px system-ui}
+main{max-width:600px;margin:auto}h1{font-size:26px;color:#c7d2fe}input{display:block;box-sizing:border-box;width:100%;padding:12px;margin:8px 0 24px;background:#1e293b;color:white;border:1px solid #94a3b8;border-radius:8px}a{color:#c7d2fe}:focus-visible{outline:2px solid #a5b4fc;outline-offset:3px}output{display:block;overflow-wrap:anywhere;margin:12px 0}p{line-height:1.5}
+</style>
+<main>
+<h1>Kalkulator osilator teredam</h1>
+<p>Fixture integrasi: m=1 kg, c=0,4 kg/s, k=4 N/m. x(0)=1 m, v(0)=0 m/s, tanpa gaya luar. Formulasi fisika belum terverifikasi.</p>
+<a href="#hasil">Lihat hasil</a>
+<label for="time">Waktu (detik)</label><input id="time" type="number" min="0" max="100" step="0.1" value="5">
+<section id="hasil"><h2>Hasil analitik model ini</h2><output id="position"></output><output id="velocity"></output></section>
+</main>
+<script>
+const time=document.querySelector('#time');
+function calculate(){const t=time.valueAsNumber;if(!Number.isFinite(t)||t<0||t>100){document.querySelector('#position').textContent='Waktu tidak valid.';document.querySelector('#velocity').textContent='';return;}const w=Math.sqrt(3.96),e=Math.exp(-0.2*t);document.querySelector('#position').textContent='x = '+(e*(Math.cos(w*t)+0.2/w*Math.sin(w*t))).toFixed(10)+' m';document.querySelector('#velocity').textContent='v = '+(-4/w*e*Math.sin(w*t)).toFixed(10)+' m/s';}
+time.addEventListener('input',calculate);calculate();
+</script>
+</html>

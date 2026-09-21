@@ -10,6 +10,9 @@ class AiChatRun extends Model
 {
     protected $fillable = [
         'request_id',
+        'science_client',
+        'science_execution_id',
+        'claim_token',
         'request_fingerprint',
         'session_id',
         'branch_id',
@@ -29,6 +32,8 @@ class AiChatRun extends Model
         'completed_at',
     ];
 
+    protected $hidden = ['claim_token'];
+
     protected $casts = [
         'started_at' => 'datetime',
         'heartbeat_at' => 'datetime',
@@ -36,6 +41,9 @@ class AiChatRun extends Model
         'lease_expires_at' => 'datetime',
         'completed_at' => 'datetime',
         'retryable' => 'boolean',
+        'science_client' => 'boolean',
+        'science_execution_id' => 'integer',
+        'attempts' => 'integer',
     ];
 
     public function steps(): HasMany

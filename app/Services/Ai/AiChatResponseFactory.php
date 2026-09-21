@@ -3,6 +3,7 @@
 namespace App\Services\Ai;
 
 use App\Models\AiChatRun;
+use App\Services\Ai\Science\Client\ClientComputationPresenter;
 
 final class AiChatResponseFactory
 {
@@ -56,6 +57,8 @@ final class AiChatResponseFactory
                     'kind' => $step->kind,
                     'status' => $step->status,
                     'label' => $step->label,
+                    'execution_mode' => $step->public_metadata['execution_mode'] ?? null,
+                    'client_computation' => ClientComputationPresenter::details($step->private_payload),
                     'duration_ms' => $step->duration_ms,
                 ])->values(),
             ],

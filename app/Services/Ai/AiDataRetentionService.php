@@ -5,6 +5,7 @@ namespace App\Services\Ai;
 use App\Models\AiActionProposal;
 use App\Models\AiChatMessage;
 use App\Models\AiChatRunStep;
+use App\Models\AiScienceExecution;
 
 final class AiDataRetentionService
 {
@@ -24,6 +25,8 @@ final class AiDataRetentionService
             ->whereNotNull('private_payload')
             ->where('created_at', '<=', $cutoff)
             ->update(['private_payload' => null]);
+        AiScienceExecution::query()->where('created_at', '<=', $cutoff)->whereNotNull('private_payload')
+            ->whereIn('status', ['completed', 'cancelled', 'failed'])->update(['private_payload' => null]);
         $proposalsRedacted = AiActionProposal::query()
             ->where('status', '!=', 'pending')
             ->where('updated_at', '<=', $cutoff)

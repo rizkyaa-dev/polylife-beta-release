@@ -14,6 +14,7 @@ use App\Services\Ai\Contracts\LlmClientInterface;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\DTOs\LlmResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -21,6 +22,43 @@ use Tests\TestCase;
 class AiConversationBranchTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_send_accepts_eight_thousand_characters_without_truncation(): void
+    {
+        Queue::fake();
+        $text = str_repeat('a', 8000);
+
+        $this->actingAs($this->activeUser())->postJson(route('ai.chat'), ['message' => $text])
+            ->assertAccepted();
+
+        $this->assertDatabaseHas('ai_chat_messages', ['role' => 'user', 'content' => $text]);
+    }
+
+    public function test_edit_accepts_eight_thousand_characters_and_rejects_an_oversized_message(): void
+    {
+        $user = $this->activeUser();
+        $this->fakeReplies('Jawaban awal');
+        $first = app(AiAgentOrchestrator::class)->handle($user, 'Prompt awal');
+        Queue::fake();
+        $text = str_repeat('b', 8000);
+
+        $this->actingAs($user)->patchJson(route('ai.messages.edit', $first['user_message']), ['message' => $text.'b'])
+            ->assertUnprocessable()->assertJsonValidationErrors('message');
+        $this->patchJson(route('ai.messages.edit', $first['user_message']), ['message' => $text])
+            ->assertAccepted();
+
+        $this->assertDatabaseHas('ai_chat_messages', ['role' => 'user', 'content' => $text]);
+    }
+
+    public function test_send_rejects_more_than_eight_thousand_characters_without_creating_a_run(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->activeUser())->postJson(route('ai.chat'), ['message' => str_repeat('a', 8001)])
+            ->assertUnprocessable()->assertJsonValidationErrors('message');
+
+        $this->assertDatabaseCount('ai_chat_runs', 0);
+        $this->assertDatabaseCount('ai_chat_messages', 0);
+    }
 
     public function test_edit_creates_a_new_branch_without_mutating_or_deleting_the_old_context(): void
     {
@@ -183,6 +221,47 @@ class AiConversationBranchTest extends TestCase
         ])->assertStatus(429)->assertHeader('Retry-After', '5');
 
         $this->assertDatabaseCount('ai_chat_runs', 1);
+    }
+
+    public function test_idempotent_retry_still_returns_the_existing_run_when_global_capacity_is_full(): void
+    {
+        Queue::fake();
+        config(['services.ai_max_active_runs_global' => 1]);
+        $user = $this->activeUser();
+        $id = (string) Str::uuid();
+        $orchestrator = app(AiAgentOrchestrator::class);
+        $first = $orchestrator->enqueue($user, 'Retry at full capacity', requestId: $id);
+        $retry = $orchestrator->enqueue($user, 'Retry at full capacity', requestId: $id);
+        $this->assertSame($first['run']->id, $retry['run']->id);
+        $this->assertDatabaseCount('ai_chat_sessions', 1);
+        Queue::assertPushed(ProcessAiChatRun::class, 1);
+    }
+
+    public function test_terminal_run_releases_global_capacity_without_a_counter_reconciliation(): void
+    {
+        Queue::fake();
+        config(['services.ai_max_active_runs_global' => 1]);
+        $orchestrator = app(AiAgentOrchestrator::class);
+        $first = $orchestrator->enqueue($this->activeUser(), 'First admission');
+        $first['run']->update(['status' => 'completed', 'completed_at' => now()]);
+        $next = $orchestrator->enqueue($this->activeUser(), 'Admission after completion');
+        $this->assertNotSame($first['run']->id, $next['run']->id);
+        $this->assertSame(1, AiChatRun::where('status', 'running')->count());
+    }
+
+    public function test_missing_admission_seed_fails_closed_without_leaking_a_session(): void
+    {
+        Queue::fake();
+        DB::table('ai_run_admission_locks')->delete();
+        try {
+            app(AiAgentOrchestrator::class)->enqueue($this->activeUser(), 'Must not bypass admission');
+            $this->fail('Missing admission lock must not authorize a run');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('AI admission lock is missing', $exception->getMessage());
+        }
+        $this->assertDatabaseCount('ai_chat_sessions', 0);
+        $this->assertDatabaseCount('ai_chat_runs', 0);
+        Queue::assertNothingPushed();
     }
 
     public function test_expired_run_is_recovered_before_a_new_turn_is_accepted(): void

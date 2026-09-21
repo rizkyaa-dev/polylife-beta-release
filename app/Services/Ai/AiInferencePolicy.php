@@ -7,6 +7,11 @@ use App\Services\Ai\Enums\ThinkingEffort;
 
 final class AiInferencePolicy
 {
+    public function scienceRunTimeoutSeconds(ThinkingEffort $effort): int
+    {
+        return $this->runTimeoutSeconds($effort, true);
+    }
+
     public function runTimeoutSeconds(ThinkingEffort $effort, bool $coding = false): int
     {
         if ($coding) {

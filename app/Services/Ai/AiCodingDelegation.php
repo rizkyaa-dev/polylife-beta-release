@@ -36,6 +36,7 @@ Penyempurnaan presentasi boleh mencakup variasi komposisi, treatment aset, hover
 visual_direction hanya memiliki keys style, colors, layout; tiap field maksimal 300 karakter. Gunakan 1-2 kalimat padat, bukan spesifikasi panjang. Setiap item requirements/acceptance_criteria maksimal 500 karakter.
 Pisahkan refinement desain dari kemampuan produk baru di SELURUH brief. Jangan menyisipkan filter proyek, theme switching atau workflow baru ke arah visual/asumsi saat tidak diminta. Color_mode unknown tidak menambah theme switching; gunakan satu mode yang sesuai arah terpilih. Kualitas bukan sinonim jumlah fitur maupun sedikitnya kode.
 Jika merevisi kode yang sudah ada, set source_message_id ke ID pesan asisten sumber pada daftar artefak yang disediakan sistem. Jangan mengarang ID.
+Untuk kalkulator/simulasi yang memakai hasil delegate_science_problem, kirim science_step_id yang diberikan tool atau daftar kontrak pada cabang ini. Jangan menyalin ulang persamaan/satuan sebagai pengganti kontrak rujukan; backend mengirim kontrak aslinya kepada coder. Jangan mengarang ID.
 Selesaikan tool workspace lain terlebih dahulu. Delegasi coding harus menjadi satu-satunya tool call dalam respons tersebut dan merupakan hasil akhir turn, bukan bahan untuk ditulis ulang oleh Anda.
 PROMPT;
     }
@@ -82,6 +83,7 @@ PROMPT;
                     'runnable' => ['type' => 'boolean'],
                     'design_intent' => AiDesignIntent::declaration(),
                     'source_message_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Optional existing assistant artifact ID for revisions.'],
+                    'science_step_id' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Scientific contract step ID returned by delegate_science_problem or listed as available on this branch.'],
                 ],
                 'required' => ['language', 'runtime', 'files', 'requirements', 'acceptance_criteria'],
                 'additionalProperties' => false,
@@ -100,6 +102,7 @@ PROMPT;
             'visual_direction' => ['sometimes', 'array:style,colors,layout'], 'visual_direction.*' => ['string', 'max:300'],
             'runnable' => ['sometimes', 'boolean'],
             'source_message_id' => ['sometimes', 'integer', 'min:1'],
+            'science_step_id' => ['sometimes', 'integer', 'min:1'],
         ], AiDesignIntent::validationRules()))->validate();
 
         return $this->builder->fromResponse(json_encode($arguments, JSON_THROW_ON_ERROR), $prompt, $router->forLanguage($arguments['language']));

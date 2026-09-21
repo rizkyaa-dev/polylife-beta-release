@@ -1,6 +1,6 @@
 <form class="ai-composer" data-ai-form>
     <label for="ai-message" class="sr-only">Pesan untuk {{ $assistant->assistant_name }}</label>
-    <textarea id="ai-message" name="message" rows="1" maxlength="2000" required data-ai-input placeholder="Tanya atau minta bantuan {{ $assistant->assistant_name }}…" aria-describedby="ai-input-hint"></textarea>
+    <textarea id="ai-message" name="message" rows="1" maxlength="{{ \App\Services\Ai\AiMessageLimits::MAX_CHARACTERS }}" required data-ai-input placeholder="Tanya atau minta bantuan {{ $assistant->assistant_name }}…" aria-describedby="ai-input-hint"></textarea>
     <div class="ai-composer-toolbar">
         @unless ($thinkingSupported)
             <span class="ai-composer-caption">Asisten PolyLife</span>

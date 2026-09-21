@@ -5,6 +5,9 @@ import { initCodeArtifacts } from './code-artifacts';
 import { runWhenPageIsActive } from '../support/page-activation';
 import { PendingAiTurn, isDefinitiveFailure } from './turn-recovery';
 import { observeAiRun } from './run-observer';
+import { ScienceCoordinator } from './science/coordinator.js';
+import { renderMessageMath } from './math-renderer.js';
+import { requestClientApproval } from './science/client/approval.js';
 
 runWhenPageIsActive(() => {
     const root = document.querySelector('[data-ai-workspace]');
@@ -23,11 +26,17 @@ function createRequestId() {
 }
 
 function initWorkspace(root) {
+    if (/^[a-f0-9]{64}$/.test(root.dataset.scienceCacheScope ?? '')) {
+        void import('./science/cache.js')
+            .then(({ ScienceResultCache }) => new ScienceResultCache().prepare(root.dataset.scienceCacheScope))
+            .catch(() => {}); // Optional storage must never block chat.
+    }
     const input = root.querySelector('[data-ai-input]');
     const form = root.querySelector('[data-ai-form]');
     const send = root.querySelector('[data-ai-send]');
     const messages = root.querySelector('[data-ai-messages]');
     const list = root.querySelector('[data-ai-message-list]');
+    void renderMessageMath(list);
     const error = root.querySelector('[data-ai-error]');
     const errorText = error.querySelector('[data-ai-error-text]');
     const sendIcon = send.querySelector('[data-ai-send-icon]');
@@ -77,7 +86,9 @@ function initWorkspace(root) {
         resize();
         try {
             const url = root.dataset.cancelRunUrlTemplate.replace('__RUN__', activeRunId);
+            const cancellingRunId = activeRunId;
             await postJson(url, {});
+            root.dispatchEvent(new CustomEvent('ai:run-cancelled', { detail: { runId: cancellingRunId } }));
             if (!busy) {
                 retryRequest?.message?.remove();
                 retryRequest = null;
@@ -123,6 +134,7 @@ function initWorkspace(root) {
         if (role === 'assistant' && metadata.run) appendProcess(message, metadata.run);
         proposals.forEach(proposal => message.querySelector('[data-message-proposals]').append(createProposal(root, proposal)));
         list.append(message);
+        if (role === 'assistant') void renderMessageMath(message);
         scrollToLatest();
         return message;
     };
@@ -150,7 +162,8 @@ function initWorkspace(root) {
         form.setAttribute('aria-busy', 'true');
         resize();
         try {
-            const data = await retryRequest.reconcile(payload => postJson(root.dataset.chatUrl, payload));
+            const data = await retryRequest.reconcile(payload => postJson(root.dataset.chatUrl,
+                { ...payload, science_client: typeof Worker === 'function' && Boolean(globalThis.crypto?.randomUUID) }));
             sessionId = data.session_id;
             root.dataset.sessionId = sessionId;
             history.update(sessionId, prompt.slice(0, 60));
@@ -320,11 +333,12 @@ function appendProcess(message, run) {
         const mark = document.createElement('span');
         mark.className = 'ai-process-step-mark';
         if (step.kind === 'tool_call') {
-            const icon = message.closest('[data-ai-workspace]')?.querySelector('[data-ai-tool-icon-template]')
-                ?? document.querySelector('[data-ai-tool-icon-template]');
+            const selector = step.execution_mode === 'client_script' ? '[data-ai-terminal-icon-template]' : '[data-ai-tool-icon-template]';
+            const icon = message.closest('[data-ai-workspace]')?.querySelector(selector)
+                ?? document.querySelector(selector);
             if (icon) mark.append(icon.content.firstElementChild.cloneNode(true));
         }
-        const copy = document.createElement('span');
+        const copy = document.createElement('div');
         const label = document.createElement('strong');
         label.textContent = step.label;
         const meta = document.createElement('small');
@@ -332,6 +346,16 @@ function appendProcess(message, run) {
         const duration = step.duration_ms === null ? '' : ` · ${Math.max(1, Math.round(step.duration_ms / 1000))} dtk`;
         meta.textContent = `${type}${duration} · ${step.status === 'failed' ? 'Gagal' : 'Selesai'}`;
         copy.append(label, meta);
+        if (step.client_computation) {
+            const detail = document.createElement('details');
+            detail.className = 'ai-client-computation';
+            const summary = document.createElement('summary');
+            summary.textContent = 'Skrip dan hasil lokal · belum terverifikasi independen';
+            const code = document.createElement('pre');
+            code.textContent = `${step.client_computation.source}\n\nInput:\n${JSON.stringify(step.client_computation.inputs, null, 2)}\n\nHasil:\n${JSON.stringify(step.client_computation.result, null, 2)}`;
+            detail.append(summary, code);
+            copy.append(detail);
+        }
         item.append(mark, copy);
         steps.append(item);
     });
@@ -395,6 +419,7 @@ function initMessageInteractions(root, state) {
             const url = root.dataset.editUrlTemplate.replace('__MESSAGE__', message.dataset.messageId);
             const accepted = await turn.reconcile(payload => sendJson(url, 'PATCH', {
                 message: payload.message, request_id: payload.request_id,
+                science_client: typeof Worker === 'function' && Boolean(globalThis.crypto?.randomUUID),
             }));
             state.setActiveRunId(accepted.run_id);
             const data = await waitForRun(root, accepted.run_id);
@@ -484,17 +509,41 @@ function initEarlierMessages(root, list) {
 
 async function waitForRun(root, runId) {
     const url = root.dataset.runUrlTemplate.replace('__RUN__', runId);
-    return observeAiRun(url, { onProgress: data => {
-        const activeStep = data.steps?.at(-1);
-        const thinkingCopy = root.querySelector('[data-ai-thinking-indicator] [data-ai-thinking-copy]');
-        if (thinkingCopy) {
-            thinkingCopy.textContent = data.phase === 'queued'
-                ? 'Menunggu proses AI'
-                : activeStep?.kind === 'tool_call'
-                    ? activeStep.label
-                    : 'Memproses permintaan';
-        }
-    } });
+    const science = new ScienceCoordinator({ kernelEnabled: root.dataset.scienceKernelEnabled === 'true',
+        autoExecute: root.dataset.scienceClientAutoExecute === 'true',
+        requestApproval: (claim, signal) => requestClientApproval(root, claim, signal) });
+    const dispose = () => science.dispose();
+    // Release browser compute on the server acknowledgement, not the next poll.
+    const cancelled = event => { if (event.detail?.runId === runId) dispose(); };
+    root.addEventListener('ai:run-cancelled', cancelled);
+    globalThis.addEventListener('pagehide', dispose, { once: true });
+    try {
+        return await observeAiRun(url, { onProgress: data => {
+            science.observe(data.science_execution);
+            const activeStep = data.steps?.at(-1);
+            const mark = root.querySelector('[data-ai-thinking-indicator] .ai-message-mark');
+            const executionMode = activeStep?.execution_mode === 'client_script' ? 'client_script' : 'normal';
+            if (mark && mark.dataset.executionMode !== executionMode) {
+                const icon = executionMode === 'client_script'
+                    ? root.querySelector('[data-ai-terminal-icon-template]')?.content.firstElementChild
+                    : root.querySelector('[data-ai-thinking-template]')?.content.querySelector('.ai-icon');
+                if (icon) mark.replaceChildren(icon.cloneNode(true));
+                mark.dataset.executionMode = executionMode;
+            }
+            const thinkingCopy = root.querySelector('[data-ai-thinking-indicator] [data-ai-thinking-copy]');
+            if (thinkingCopy) {
+                thinkingCopy.textContent = data.phase === 'queued'
+                    ? 'Menunggu proses AI'
+                    : activeStep?.kind === 'tool_call'
+                        ? activeStep.label
+                        : 'Memproses permintaan';
+            }
+        } });
+    } finally {
+        root.removeEventListener('ai:run-cancelled', cancelled);
+        globalThis.removeEventListener('pagehide', dispose);
+        science.dispose();
+    }
 }
 
 function initSettingsEffortSlider(root) {

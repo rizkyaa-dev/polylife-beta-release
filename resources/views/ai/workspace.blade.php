@@ -8,6 +8,9 @@
     $activeThinkingEffort = $assistant->thinking_effort ?? \App\Services\Ai\Enums\ThinkingEffort::High;
 @endphp
 <main class="ai-workspace {{ $hasMessages ? 'has-messages' : '' }}" data-ai-workspace
+    data-science-kernel-enabled="{{ $scienceKernelEnabled ? 'true' : 'false' }}"
+    data-science-client-auto-execute="{{ $scienceClientAutoExecute ? 'true' : 'false' }}"
+    @if ($scienceCacheScope) data-science-cache-scope="{{ $scienceCacheScope }}" @endif
     data-session-id="{{ $currentSession?->id }}"
     data-active-run-id="{{ $activeRun?->id }}"
     data-active-run-prompt="{{ $activeRun?->userMessage?->content }}"
@@ -81,6 +84,7 @@
         </article>
     </template>
     <template data-ai-tool-icon-template><x-ai.icon name="tool" /></template>
+    <template data-ai-terminal-icon-template><x-ai.icon name="terminal" /></template>
     <template data-ai-proposal-template>@include('ai.partials.proposal', ['proposal' => [], 'state' => null])</template>
     @include('ai.partials.code-preview')
 </main>

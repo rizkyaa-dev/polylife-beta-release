@@ -8,12 +8,35 @@ use App\Models\AiChatSession;
 use App\Models\User;
 use App\Models\UserAiAssistant;
 use App\Services\Ai\Enums\ThinkingEffort;
+use App\Services\Ai\Science\ScienceCacheScope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class AiWorkspaceViewTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_composer_and_edit_template_share_the_message_character_limit(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now(), 'account_status' => 'active']);
+        $response = $this->actingAs($user)->get(route('ai.workspace', ['new' => 1]));
+
+        $response->assertOk()->assertSee('maxlength="8000"', false)->assertDontSee('maxlength="2000"', false);
+        $this->assertGreaterThanOrEqual(2, substr_count($response->getContent(), 'maxlength="8000"'));
+    }
+
+    public function test_science_cache_scope_is_rendered_only_when_browser_compute_is_enabled(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now(), 'account_status' => 'active']);
+        config(['services.ai_science_browser_enabled' => false]);
+        $this->actingAs($user)->get(route('ai.workspace', ['new' => 1]))
+            ->assertOk()->assertDontSee('data-science-cache-scope', false);
+
+        config(['services.ai_science_browser_enabled' => true]);
+        $expected = app(ScienceCacheScope::class)->forUser($user->id);
+        $this->get(route('ai.workspace', ['new' => 1]))
+            ->assertOk()->assertSee('data-science-cache-scope="'.$expected.'"', false);
+    }
 
     public function test_ai_mode_uses_chat_navigation_and_workspace_mode_keeps_workspace_navigation(): void
     {
