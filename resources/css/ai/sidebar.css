@@ -10,73 +10,8 @@
     right: 1rem;
 }
 
-.workspace-mode-switch {
-    display: flex;
-    flex-shrink: 0;
-    gap: .25rem;
-    padding: .25rem;
-    margin: 0 0 1rem;
-    overflow: visible;
-    border: 1px solid var(--ai-line);
-    border-radius: .875rem;
-    background: var(--ai-control);
-}
-
-#app-sidebar .workspace-mode-switch {
-    flex: 0 0 auto;
-}
-
-.workspace-mode-link {
-    min-height: 44px;
-    min-width: 0;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: .5rem;
-    border-radius: .625rem;
-    font-size: .78125rem;
-    font-weight: 600;
-    letter-spacing: .01em;
-    color: var(--ai-muted);
-    transition: color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
-}
-
-.workspace-mode-link[aria-current] {
-    background: var(--ai-selected);
-    color: var(--ai-accent);
-    box-shadow: none;
-}
-
-.dark .workspace-mode-link[aria-current] {
-    background: var(--ai-selected);
-    color: var(--ai-accent);
-    box-shadow: none;
-}
-
-.workspace-mode-link:hover {
-    background: var(--ai-soft);
-    color: var(--ai-text);
-}
-
-.dark .workspace-mode-link:hover {
-    background: var(--ai-soft);
-    color: var(--ai-text);
-}
-
-.workspace-mode-link[aria-current]:hover {
-    background: var(--ai-selected);
-    color: var(--ai-accent);
-}
-
-.dark .workspace-mode-link[aria-current]:hover {
-    background: var(--ai-selected);
-    color: var(--ai-accent);
-}
-
-.workspace-mode-link .ai-icon {
-    width: 1rem;
-    height: 1rem;
+#app-sidebar .sidebar-brand-subtitle {
+    color: var(--ai-brand-subtitle);
 }
 
 .ai-sidebar-nav {
@@ -115,12 +50,12 @@
 }
 
 .ai-new-chat {
-    border: 2px solid var(--ai-control-line);
+    border: 1px solid var(--ai-control-line);
     background: var(--ai-surface);
     color: var(--ai-text);
     font-weight: 600;
     border-radius: var(--ai-radius);
-    box-shadow: 3px 3px 0 0 var(--ai-shadow-color);
+    box-shadow: none;
 }
 
 .ai-new-chat .ai-icon {
@@ -151,7 +86,7 @@
     gap: .55rem;
     padding: 0 .7rem;
     overflow: hidden;
-    border: 2px solid var(--ai-control-line);
+    border: 1px solid var(--ai-control-line);
     border-radius: var(--ai-radius);
     background: var(--ai-control);
     color: var(--ai-muted);

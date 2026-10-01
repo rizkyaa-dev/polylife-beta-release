@@ -1,0 +1,12 @@
+/* Workspace account layout keeps the existing button and avatar styles. */
+#app-sidebar.sidebar-mode-workspace .sidebar-footer {
+    flex-shrink: 0;
+    padding-top: .875rem;
+    gap: .75rem;
+}
+
+body:not(.sidebar-collapsed) #app-sidebar.sidebar-mode-workspace .sidebar-footer-controls {
+    justify-content: flex-end;
+    margin-left: auto;
+    gap: .5rem;
+}

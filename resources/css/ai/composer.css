@@ -17,7 +17,7 @@
 
 .ai-composer {
     padding: .5rem 1rem;
-    border: 2px solid var(--ai-control-line);
+    border: 1px solid var(--ai-control-line);
     border-radius: 1.75rem;
     background: var(--ai-surface);
     box-shadow: var(--ai-card-shadow);
@@ -38,7 +38,7 @@
     border: 0;
     border-radius: 0;
     background: transparent;
-    padding: .1rem .25rem .15rem;
+    padding: .35rem .25rem 0;
     color: var(--ai-text);
     font-size: 1rem;
     line-height: 1.65;
@@ -367,7 +367,7 @@
     padding: .25rem .55rem;
     border: 0;
     border-radius: .65rem;
-    background: var(--ai-control);
+    background: transparent;
     color: var(--ai-muted);
     font-size: .8125rem;
     cursor: pointer;
@@ -527,16 +527,16 @@
     gap: .5rem;
     min-height: 44px;
     padding: .5rem .75rem;
-    border: 2px solid var(--ai-line);
+    border: 1px solid var(--ai-line);
     border-radius: var(--ai-radius);
     color: var(--ai-text);
     font-size: .875rem;
     background: var(--ai-control);
     text-align: left;
-    box-shadow: var(--ai-card-shadow);
+    box-shadow: none;
 }
 
-.ai-suggestions button:hover {
+.ai-suggestions button:not(:disabled):hover {
     color: var(--ai-accent);
     background: var(--ai-selected);
     border-color: var(--ai-accent);
@@ -550,11 +550,11 @@
 }
 
 .ai-composer-note {
-    margin: .75rem auto 0;
+    margin: .5rem auto 0;
     max-width: 36rem;
     text-align: center;
     font-size: .8125rem;
-    line-height: 1.6;
+    line-height: 1.4;
     color: var(--ai-muted);
 }
 

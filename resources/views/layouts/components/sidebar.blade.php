@@ -62,8 +62,6 @@
     $userDisplayName = $userProfileName !== '' ? $userProfileName : ($userName !== '' ? $userName : ($userEmail !== '' ? $userEmail : 'Pengguna'));
     $userInitial = $user ? mb_strtoupper(mb_substr($userDisplayName, 0, 1)) : 'P';
     $userAvatarUrl = $userProfile?->avatar_url;
-    $sidebarTopLabel = $userEmail !== '' ? $userEmail : ($userName !== '' ? $userName : 'Pengguna');
-    $sidebarBottomLabel = $userDisplayName;
     $announcementUnreadCount = 0;
 
     if (! $guestMode && $user) {
@@ -80,8 +78,8 @@
         <div class="sidebar-brand-icon hidden h-10 w-10 rounded-2xl bg-indigo-500/90 text-white font-semibold grid place-items-center">PL</div>
         <div class="flex flex-col">
             <span class="text-2xl font-extrabold sidebar-brand-text text-slate-900 dark:text-white">PolyLife</span>
-            <span class="text-xs tracking-[0.35em] uppercase text-slate-400 dark:text-slate-500 sidebar-brand-text">
-                {{ $guestMode ? 'Guest' : 'Workspace' }}
+            <span class="text-xs tracking-[0.35em] uppercase sidebar-brand-subtitle sidebar-brand-text">
+                {{ $guestMode ? 'Guest' : ($aiMode ? 'AI Assistance' : 'Workspace') }}
             </span>
         </div>
     </div>
@@ -127,50 +125,12 @@
                 'avatarUrl' => $userAvatarUrl,
             ])
         @else
-        <div class="flex items-center gap-3 min-w-0 sidebar-user">
-            @auth
-                <a href="{{ route('profile') }}"
-                   class="sidebar-user-avatar grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-2xl bg-indigo-500 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2 focus:ring-offset-white dark:bg-indigo-400/30 dark:text-indigo-100 dark:focus:ring-indigo-300 dark:focus:ring-offset-slate-950 {{ request()->routeIs('profile') ? 'ring-2 ring-indigo-300 dark:ring-indigo-400/70' : '' }}"
-                   title="Buka profil"
-                   aria-label="Buka profil"
-                   data-profile-avatar-frame
-                   data-profile-avatar-initial="{{ $userInitial }}"
-                   data-profile-avatar-alt=""
-                   data-sidebar-profile-link>
-                    @if ($userAvatarUrl)
-                        <img src="{{ $userAvatarUrl }}" alt="" class="h-full w-full object-cover">
-                    @else
-                        {{ $userInitial }}
-                    @endif
-                </a>
-            @else
-                <div class="sidebar-user-avatar h-10 w-10 rounded-2xl bg-indigo-500 text-white font-semibold grid place-items-center dark:bg-indigo-400/30 dark:text-indigo-100">
-                    {{ $userInitial }}
-                </div>
-            @endauth
-            <div class="min-w-0 flex-1 sidebar-user-text">
-                <p class="text-sm leading-tight font-medium text-slate-700 dark:text-slate-100 break-all">
-                    @auth {{ $sidebarTopLabel }} @else Mode tamu @endauth
-                </p>
-            </div>
-        </div>
-
-        @auth
-            <div class="w-full space-y-1">
-                <p class="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Masuk sebagai</p>
-                <div class="text-sm font-semibold text-slate-800 dark:text-slate-100 break-all" data-profile-display-name>
-                    {{ $sidebarBottomLabel }}
-                </div>
-                <form method="POST" action="{{ route('logout') }}" class="mt-2" data-theme-logout-form>
-                    @csrf
-                    <input type="hidden" name="theme_preference" value="" disabled data-theme-logout-input>
-                    <button type="submit"
-                        class="w-full inline-flex items-center justify-center rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:text-white">
-                        Logout
-                    </button>
-                </form>
-            </div>
-        @endauth
+            @include('layouts.components.sidebar-account', [
+                'displayName' => $userDisplayName,
+                'email' => $userEmail,
+                'initial' => $userInitial,
+                'avatarUrl' => $userAvatarUrl,
+            ])
         @endif
 
         <div class="sidebar-footer-controls flex items-center flex-shrink-0 gap-2">

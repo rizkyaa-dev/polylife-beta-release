@@ -103,7 +103,7 @@ body[data-ai-mode="1"] {
     background: transparent;
 }
 
-.ai-button-quiet:hover, .ai-icon-button:hover {
+.ai-button-quiet:not(:disabled):hover, .ai-icon-button:not(:disabled):hover {
     background: var(--ai-soft);
     color: var(--ai-text);
 }
@@ -111,16 +111,20 @@ body[data-ai-mode="1"] {
 .ai-button-primary, .ai-send-button {
     color: var(--ai-on-primary);
     background: var(--ai-primary);
-    border: 2px solid var(--ai-primary-edge);
-    box-shadow: 3px 3px 0 0 var(--ai-shadow-color);
+    border: 1px solid var(--ai-primary-edge);
+    box-shadow: var(--ai-primary-shadow);
 }
 
-.ai-button-primary:hover, .ai-send-button:hover {
+.ai-button-primary:not(:disabled):hover, .ai-send-button:not(:disabled):hover {
     background: var(--ai-primary-hover);
 }
 
 .ai-workspace button:disabled {
-    opacity: .5;
+    opacity: 1;
+    color: var(--ai-disabled-ink);
+    background: var(--ai-disabled-surface);
+    border-color: var(--ai-disabled-line);
+    box-shadow: none;
     cursor: not-allowed;
 }
 

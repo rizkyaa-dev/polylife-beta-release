@@ -6,6 +6,7 @@
 body[data-ai-mode="1"] {
     color-scheme: light;
     --ai-brand: #8181ff;
+    --ai-brand-subtitle: #615b74;
     --ai-canvas: #fdfbff;
     --ai-grid-color: rgb(129 129 255 / .02);
     --ai-grid-size: 4rem;
@@ -41,6 +42,7 @@ body[data-ai-mode="1"] {
 .dark .ai-history-menu,
 .dark body[data-ai-mode="1"] {
     color-scheme: dark;
+    --ai-brand-subtitle: #aca4bf;
     --ai-canvas: #121020;
     --ai-grid-color: rgb(129 129 255 / .04);
     --ai-sidebar: #151927;
@@ -63,4 +65,64 @@ body[data-ai-mode="1"] {
     --ai-shadow-color: #111525;
     --ai-primary-edge: #6262b3;
     --ai-decoration: #222738;
+}
+
+/* One tonal family for AI content, its sidebar, and menus portaled to the body. */
+.ai-workspace,
+#app-sidebar.sidebar-mode-ai,
+.ai-history-menu,
+body[data-ai-mode="1"] {
+    --ai-sidebar: #f1edf7;
+    --ai-surface: #fcfaff;
+    --ai-control: #f3f0fa;
+    --ai-soft: #ede8f7;
+    --ai-text: #302d40;
+    --ai-muted: #615b74;
+    --ai-line: #d7cfe7;
+    --ai-control-line: #8a809a;
+    --ai-selected: #eae5f7;
+    --ai-code-surface: var(--ai-control);
+    --ai-code-header: var(--ai-soft);
+    --ai-decoration: var(--ai-surface);
+    --ai-shadow: 0 8px 24px rgb(43 35 63 / .08);
+    --ai-card-shadow: 0 4px 16px rgb(43 35 63 / .08);
+    --ai-primary-shadow: 0 2px 8px rgb(90 78 160 / .16);
+    --ai-disabled-surface: #e3ddf0;
+    --ai-disabled-ink: #716783;
+    --ai-disabled-line: #b1a5c9;
+}
+
+.dark .ai-workspace,
+.dark #app-sidebar.sidebar-mode-ai,
+.dark .ai-history-menu,
+.dark body[data-ai-mode="1"] {
+    --ai-sidebar: #171323;
+    --ai-surface: #1d1a2d;
+    --ai-control: #191626;
+    --ai-soft: #272238;
+    --ai-text: #d5d0e4;
+    --ai-muted: #aca4bf;
+    --ai-line: #42394f;
+    --ai-control-line: #766b8b;
+    --ai-selected: #302840;
+    --ai-code-surface: var(--ai-control);
+    --ai-code-header: var(--ai-soft);
+    --ai-decoration: var(--ai-surface);
+    --ai-shadow: 0 8px 24px rgb(0 0 0 / .16);
+    --ai-card-shadow: 0 4px 16px rgb(0 0 0 / .18);
+    --ai-primary-shadow: 0 2px 8px rgb(0 0 0 / .18);
+    --ai-disabled-surface: #2c2540;
+    --ai-disabled-ink: #a79bbb;
+    --ai-disabled-line: #514565;
+}
+
+/* History selection needs a clearer tonal step on the pale sidebar. */
+#app-sidebar.sidebar-mode-ai {
+    --ai-soft: #e8e1f2;
+    --ai-selected: #ded5f0;
+}
+
+.dark #app-sidebar.sidebar-mode-ai {
+    --ai-soft: #272238;
+    --ai-selected: #302840;
 }

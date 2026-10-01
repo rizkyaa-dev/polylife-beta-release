@@ -1,4 +1,5 @@
 @import './ai-workspace.css';
+@import './workspace-sidebar.css';
 
 @tailwind base;
 @tailwind components;

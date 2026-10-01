@@ -14,36 +14,65 @@ yang sudah ada tetap menjadi sumber pilihan mode.
 
 Penyempurnaan berikutnya mengambil referensi dari `layouts/guest.blade.php`,
 `livewire/pages/auth/login.blade.php`, dan `.auth-input` dalam `app.css`:
-aksen lilac, sudut kartu membulat, batas yang lebih tegas, serta bayangan
-offset seperti kartu. Identitas tersebut diterapkan ke composer, tombol utama,
-kartu saran, tombol percakapan baru, dan dialog pengaturan.
+aksen lilac dan sudut kartu membulat. Permukaan konten AI memakai satu keluarga
+violet netral untuk menyatu dengan canvas, dengan bayangan lembut pada composer
+dan dialog. Outline composer dan tombol utama 1px; pintasan tanpa bayangan.
+Palet ini di-scope ke workspace AI, sidebar AI, dan menu riwayat.
+Sidebar workspace tetap memakai permukaannya sendiri; switch memiliki modul
+serta token mandiri agar warna, ukuran, dan posisinya konsisten di kedua mode.
 
-Intensitas diturunkan untuk halaman percakapan panjang: shadow offset 2–4px,
-aksen lilac, dan permukaan kontrol solid. Canvas AI mengikuti referensi login
+Intensitas diturunkan untuk halaman percakapan panjang melalui outline yang
+lebih ringan, aksen lilac, dan permukaan kontrol solid. Canvas AI mengikuti referensi login
 dengan grid lilac statis yang samar; tidak ada dekorasi besar di belakang teks.
 Grid CSS berjarak 64px dengan garis 1px, opacity 2% pada light dan 4% pada
 dark. Warna canvas `#FDFBFF` dan `#121020` serta grid dimiliki `theme.css`.
 Grid menjadi background, sehingga tidak menambah elemen, menghalangi klik,
-atau mengubah posisi konten. Sidebar dan switch tetap memakai tampilan yang sama.
+atau mengubah posisi konten. Sidebar tetap solid tanpa grid.
+
+Sidebar AI memakai canvas `#F1EDF7` / `#171323`, dengan kontrol dari keluarga
+violet netral area chat. Riwayat hover dan aktif dibedakan melalui permukaan
+tonal; pilihan aktif tetap memakai penanda lilac dan teks tebal. Pada light,
+hover `#E8E1F2` dan aktif `#DED5F0` memberi pemisahan lebih jelas.
+Pencarian serta tombol percakapan baru memakai outline 1px tanpa bayangan offset.
+Fokus keyboard tetap eksplisit; tata letak akun dan tombol footer tetap sama.
+Subtitle brand bersama memakai `brand-subtitle` yang lebih terbaca di kedua
+mode, dengan font, ukuran, tracking, dan posisi yang tetap.
 
 Token `brand` menjadi sumber warna `#8181FF` untuk kedua mode. Tombol utama
 memakai alias token tersebut dengan tinta gelap agar label tetap terbaca.
+Token `primary-shadow` dan `disabled-surface/ink/line` mengatur tombol secara
+eksplisit. Disabled memakai opacity 1 dan bayangan kosong; hover hanya berlaku
+pada tombol aktif. Pill token transparan saat idle, mengikuti warna form,
+dan menampilkan permukaan tonal saat hover/fokus.
 Aksen greeting dan ikon assistant juga memakai warna brand. Teks kecil,
 tautan, dan fokus memakai variasi lilac yang disesuaikan kontrasnya melalui
 token `accent`; seluruh warna tetap dimiliki `theme.css`.
 
 Layout akun pengguna, susunan workspace, seluruh font/font-family dan identitas
-teks PolyLife tetap memakai implementasi workspace yang ada. Tidak ada perubahan
-Blade, JavaScript, route, atau preferensi tema dalam penyempurnaan ini.
+teks PolyLife tetap memakai implementasi workspace yang ada. Perubahan Blade
+memakai class warna subtitle semantik dan label `AI Assistance` pada mode AI.
+Tidak ada perubahan JavaScript, route, atau preferensi tema.
 Token `shadow-color`, `card-shadow`, `primary-edge`, dan `decoration` dimiliki
 `theme.css`; komponen tetap memakai token semantik.
 
-Validasi palette dan grid: **18 tes kontras light/dark lulus**, build produksi Vite
+Validasi palette, sidebar, switch, menu, dan grid: **30 tes kontras light/dark lulus**,
+**147 tes JavaScript lulus**, **15 tes PHP lulus (102 assertions)**, build produksi Vite
 dan `git diff --check` lulus. Browser interaktif tetap tidak terhubung; referensi
 login diperiksa dari source yang dipakai route `/login`, tanpa verifikasi
 visual langsung.
 
 ## Struktur untuk pemeliharaan
+
+Susunan akun juga diterapkan pada sidebar workspace melalui partial
+`layouts/components/sidebar-account.blade.php`: avatar, nama dan email dua
+baris, lalu Logout di kanan. `workspace-sidebar.css` hanya mengatur layout
+footer serta alignment kontrol bawah. Class tampilan avatar, Logout, tema,
+pengumuman, dan collapse tetap memakai implementasi workspace; palet AI tidak
+diterapkan ke tombol workspace. Nama/email panjang dipotong dengan ellipsis,
+dan hook pembaruan profil serta penyimpanan tema saat logout tetap tersedia.
+Aturan collapsed yang sudah ada tetap berlaku.
+Validasi perubahan ini: **31 tes PHP lulus (184 assertions)** untuk profil,
+workspace AI, dan navigasi mode; build produksi serta pemeriksaan diff lulus.
 
 `resources/css/ai-workspace.css` menjadi entry point CSS. Ia mengimpor modul
 berikut, yang dibundel Vite menjadi aset aplikasi yang sama:
@@ -51,6 +80,7 @@ berikut, yang dibundel Vite menjadi aset aplikasi yang sama:
 | Modul | Tanggung jawab |
 | --- | --- |
 | `ai/theme.css` | Seluruh palette light/dark, peran warna, lebar konten, radius |
+| `workspace-mode-switch.css` | Palet dan geometri switch bersama, termasuk collapse dan fokus |
 | `ai/sidebar.css` | Navigasi, riwayat, menu riwayat, akun compact |
 | `ai/layout.css` | Susunan halaman, header, welcome, tombol umum |
 | `ai/composer.css` | Composer, token, penalaran, kartu saran |
@@ -67,7 +97,8 @@ Tidak ada framework, dependency, state tema, atau migrasi tambahan.
 ## Keputusan visual dan interaksi
 
 - Identitas PolyLife dan switch mode memakai komponen sidebar workspace yang
-  sama, termasuk font 24px/800, subtitle Workspace, tinggi brand 48px, dan jarak
+  sama, termasuk font 24px/800, subtitle `AI Assistance` pada AI / `Workspace`
+  pada workspace, tinggi brand 48px, dan jarak
   bawah 32px pada desktop. Tidak ada override brand khusus AI. Brand tidak
   menyusut di kedua mode; ukuran dan aturan switch yang sama berlaku juga pada
   sidebar collapsed. Hanya indikator mode aktif mengikuti halaman yang dibuka.
@@ -87,8 +118,11 @@ Tidak ada framework, dependency, state tema, atau migrasi tambahan.
   tooltip dan deskripsi aksesibilitas, dan input
   berukuran 16px dengan line height yang lebih lega.
   Padding vertikal composer 8px dan minimum textarea 32px menjaga tinggi kosong
-  sekitar 96px, dengan target kontrol tetap 44px. Textarea tetap bertambah
-  tinggi mengikuti isi; jarak catatan ke composer 12px.
+  sekitar 94px. Padding textarea atas 5.6px dan bawah 0 menggeser teks sekitar
+  4px ke bawah tanpa menambah tinggi satu baris; target kontrol tetap 44px.
+  Textarea tetap bertambah
+  tinggi mengikuti isi; catatan chat memakai jarak atas dan bawah 8px,
+  line-height 1.4, serta alignment tengah. Jarak bawah tetap menghormati safe area.
 - Welcome hanya menampilkan sapaan dan pertanyaan utama, tanpa ikon bintang.
   Sapaan, composer, dan pintasan memakai lebar serta tepi kiri yang sama;
   kelompoknya dipusatkan secara vertikal tanpa offset desktop tambahan.
@@ -116,6 +150,15 @@ Tidak ada framework, dependency, state tema, atau migrasi tambahan.
 - Scroll riwayat tetap terpisah dari tombol/pencarian. Kontrol composer dapat
   membungkus, termasuk angka token panjang; panel detail mengikuti batas
   composer. Viewport pendek menggunakan panel fixed yang dapat digulir.
+- Gap antar pesan 12px, dikurangi menjadi 8px khusus user ke asisten (termasuk
+  indikator pemrosesan). Jawaban asisten ke pertanyaan berikutnya memakai
+  jarak 40px agar pergantian giliran lebih jelas; jarak panel proses ke jawaban
+  tetap 4px. Pada perangkat
+  dengan hover dan pointer presisi, toolbar Edit tanpa navigasi versi berada
+  di samping bubble, sehingga baris tersembunyinya tidak menyisakan ruang 44px.
+  Bubble menyisakan lebar untuk target tombol; hover dan fokus keyboard tetap
+  menampilkannya. Navigasi versi dan kontrol layar sentuh tetap dalam alur
+  dokumen, dengan target tombol 44px. Line-height isi jawaban tetap 1.8.
 - Alignment welcome memakai `safe center` sehingga overflow bergerak ke awal
   yang dapat dijangkau. Browser lama mendapat fallback `center` dan aturan
   viewport pendek yang eksplisit.
@@ -130,12 +173,15 @@ berlaku pada sidebar AI untuk mengatasi specificity layout bersama.
 ## Kontras dan verifikasi
 
 Tes mengikuti pewarisan mode dan alias token CSS, memakai nilai warna sRGB
-aktual dari `theme.css`: teks utama, teks bantu,
+aktual dari `theme.css` dan `workspace-mode-switch.css`: teks utama, teks bantu,
 placeholder, aksen, status, dan label tombol minimum 4.5:1; fokus serta batas
 input minimum 3:1. Greeting berukuran besar dan ikon assistant memakai brand
 dengan minimum 3:1. Pembatas dekoratif tidak dinilai seperti batas input.
 Pemeriksaan grid menghitung warna hasil compositing pada garis dan persilangannya,
 agar kontras terhadap canvas berpola juga terukur.
+Palet sidebar, menu yang dipindah ke body, dan switch dibaca dari selector
+masing-masing; tes sidebar tidak memakai warna foreground area chat sebagai
+pengganti. Subtitle bersama diuji pada permukaan AI dan workspace.
 Ambang mengacu pada [WCAG contrast minimum](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)
 dan [non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html).
 Ini tidak menyatakan sertifikasi WCAG seluruh aplikasi atau hasil medis.

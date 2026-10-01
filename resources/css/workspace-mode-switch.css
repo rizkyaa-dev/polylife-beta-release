@@ -1,0 +1,90 @@
+/* Shared mode navigation owns its palette independently of each page's theme. */
+.workspace-mode-switch {
+    --mode-line: #c5cce6;
+    --mode-control: #edf0f8;
+    --mode-muted: #555d76;
+    --mode-selected: #e4e6fa;
+    --mode-accent: #5555a4;
+    --mode-soft: #e3e7f2;
+    --mode-text: #2d2d3c;
+    display: flex;
+    flex-shrink: 0;
+    gap: .25rem;
+    padding: .25rem;
+    margin: 0 0 1rem;
+    overflow: visible;
+    border: 1px solid var(--mode-line);
+    border-radius: .875rem;
+    background: var(--mode-control);
+}
+
+.dark .workspace-mode-switch {
+    --mode-line: #444d6a;
+    --mode-control: #1e2333;
+    --mode-muted: #a3adc5;
+    --mode-selected: #30364d;
+    --mode-accent: #aaaaff;
+    --mode-soft: #2b3145;
+    --mode-text: #ced3e4;
+}
+
+#app-sidebar .workspace-mode-switch {
+    flex: 0 0 auto;
+}
+
+.workspace-mode-link {
+    min-height: 44px;
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    border-radius: .625rem;
+    font-size: .78125rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+    color: var(--mode-muted);
+    transition: color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.workspace-mode-link:hover {
+    background: var(--mode-soft);
+    color: var(--mode-text);
+}
+
+.workspace-mode-link[aria-current],
+.workspace-mode-link[aria-current]:hover {
+    background: var(--mode-selected);
+    color: var(--mode-accent);
+    box-shadow: none;
+}
+
+#app-sidebar .workspace-mode-link:focus-visible {
+    outline: 2px solid var(--mode-accent);
+    outline-offset: 3px;
+}
+
+.workspace-mode-link .ai-icon {
+    width: 1rem;
+    height: 1rem;
+}
+
+@media (min-width: 1025px) {
+    .sidebar-collapsed .workspace-mode-switch {
+        flex-direction: column;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        gap: .4rem;
+    }
+
+    .sidebar-collapsed .workspace-mode-link {
+        flex: none;
+        width: 44px;
+    }
+
+    .sidebar-collapsed .workspace-mode-link span {
+        display: none;
+    }
+}

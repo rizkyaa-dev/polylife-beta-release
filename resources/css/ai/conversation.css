@@ -2,6 +2,7 @@
     justify-content: flex-start;
     overflow: hidden;
     padding-top: 0;
+    padding-bottom: max(.5rem, env(safe-area-inset-bottom));
 }
 
 .ai-messages {
@@ -18,13 +19,21 @@
     margin-inline: auto;
     padding: 1.25rem 0 1.5rem;
     display: grid;
-    gap: 1.5rem;
+    gap: .75rem;
 }
 
 .ai-message {
     display: flex;
     gap: .85rem;
     min-width: 0;
+}
+
+.ai-message-user + .ai-message-assistant {
+    margin-top: -.25rem;
+}
+
+.ai-message-assistant + .ai-message-user {
+    margin-top: 1.75rem;
 }
 
 .ai-message-body {
@@ -378,6 +387,7 @@
 }
 
 .ai-message-user .ai-message-body {
+    position: relative;
     flex: 0 1 auto;
     width: fit-content;
     max-width: min(85%, 36rem);
@@ -475,7 +485,7 @@
 }
 
 .ai-process {
-    margin-bottom: 1rem;
+    margin-bottom: .25rem;
     color: var(--ai-muted);
 }
 

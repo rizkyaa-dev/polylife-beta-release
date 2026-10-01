@@ -1,5 +1,6 @@
 /* AI UI entry point. Palette and component styles have one owner each. */
 @import './ai/theme.css';
+@import './workspace-mode-switch.css';
 @import './ai/sidebar.css';
 @import './ai/layout.css';
 @import './ai/composer.css';

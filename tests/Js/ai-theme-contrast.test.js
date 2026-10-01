@@ -2,25 +2,32 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const css = readFileSync(new URL('../../resources/css/ai/theme.css', import.meta.url), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '');
-const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+function readRules(path) {
+    const css = readFileSync(new URL(path, import.meta.url), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '');
+    return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+}
 
-function palette(dark) {
+const rules = readRules('../../resources/css/ai/theme.css');
+const switchRules = readRules('../../resources/css/workspace-mode-switch.css');
+
+function palette(dark, targets = ['.ai-workspace'], source = rules, prefix = 'ai-') {
     const declarations = darkRule => {
-        const rule = rules.find(([, selectors]) => selectors.includes('.ai-workspace')
-            && selectors.includes('.dark') === darkRule);
-        assert.ok(rule, `The ${darkRule ? 'dark' : 'light'} AI palette must be declared.`);
-        return Object.fromEntries([...rule[2].matchAll(/--ai-([\w-]+)\s*:\s*([^;]+);/g)]
-            .map(([, name, value]) => [name, value.trim()]));
+        const matching = source.filter(([, selectors]) => selectors.split(',').some(selector =>
+            targets.some(target => selector.trim() === `${darkRule ? '.dark ' : ''}${target}`)));
+        assert.ok(matching.length, `The ${darkRule ? 'dark' : 'light'} palette for ${targets.join(', ')} must be declared.`);
+        return Object.assign({}, ...matching.map(([, , body]) =>
+            Object.fromEntries([...body.matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)]
+                .map(([, name, value]) => [name, value.trim()]))));
     };
     const colors = { ...declarations(false), ...(dark ? declarations(true) : {}) };
     const resolve = (name, trail = new Set()) => {
         assert.ok(!trail.has(name), `Circular theme alias: ${name}`);
-        const alias = colors[name]?.match(/^var\(--ai-([\w-]+)\)$/);
+        const alias = colors[name]?.match(/^var\(--([\w-]+)\)$/);
         return alias ? resolve(alias[1], new Set([...trail, name])) : colors[name];
     };
-    return Object.fromEntries(Object.keys(colors).map(name => [name, resolve(name)]));
+    return Object.fromEntries(Object.keys(colors).filter(name => name.startsWith(prefix))
+        .map(name => [name.slice(prefix.length), resolve(name)]));
 }
 
 function luminance(hex) {
@@ -52,6 +59,9 @@ function gridCanvas(colors, layers) {
 for (const dark of [false, true]) {
     const mode = dark ? 'dark' : 'light';
     const colors = palette(dark);
+    const sidebar = palette(dark, ['#app-sidebar', '#app-sidebar.sidebar-mode-ai']);
+    const menu = palette(dark, ['.ai-history-menu']);
+    const modeSwitch = palette(dark, ['.workspace-mode-switch'], switchRules, 'mode-');
 
     test(`${mode}: text and controls remain readable over grid lines and intersections`, () => {
         for (const layers of [1, 2]) {
@@ -71,27 +81,27 @@ for (const dark of [false, true]) {
         assertContrast(colors, 'brand', 'decoration', 3);
     });
 
-    test(`${mode}: normal text stays readable across chat, sidebar, controls, and code`, () => {
-        for (const surface of ['canvas', 'sidebar', 'surface', 'control', 'soft', 'selected', 'code-surface', 'code-header']) {
+    test(`${mode}: normal text stays readable across chat, controls, and code`, () => {
+        for (const surface of ['canvas', 'surface', 'control', 'soft', 'selected', 'code-surface', 'code-header']) {
             assertContrast(colors, 'text', surface, 4.5);
         }
     });
 
     test(`${mode}: secondary text and placeholders retain normal-text contrast`, () => {
-        for (const surface of ['canvas', 'sidebar', 'surface', 'control', 'soft', 'selected', 'code-header']) {
+        for (const surface of ['canvas', 'surface', 'control', 'soft', 'selected', 'code-header']) {
             assertContrast(colors, 'muted', surface, 4.5);
         }
     });
 
     test(`${mode}: accent text remains readable in links, active navigation, and token details`, () => {
-        for (const surface of ['canvas', 'sidebar', 'surface', 'control', 'soft', 'selected']) {
+        for (const surface of ['canvas', 'surface', 'control', 'soft', 'selected']) {
             assertContrast(colors, 'accent', surface, 4.5);
         }
     });
 
     test(`${mode}: error and confirmed-action status text stays readable`, () => {
         for (const status of ['danger', 'success']) {
-            for (const surface of ['canvas', 'sidebar', 'surface', 'control', 'soft']) {
+            for (const surface of ['canvas', 'surface', 'control', 'soft']) {
                 assertContrast(colors, status, surface, 4.5);
             }
         }
@@ -105,16 +115,66 @@ for (const dark of [false, true]) {
         assertContrast(colors, 'selection-mark', 'primary', 3);
     });
 
+    test(`${mode}: disabled controls keep a visible label and icon without whole-button opacity`, () => {
+        assertContrast(colors, 'disabled-ink', 'disabled-surface', 3);
+    });
+
     test(`${mode}: keyboard-focus rings are visible against their adjacent surfaces`, () => {
-        for (const surface of ['canvas', 'sidebar', 'surface', 'control', 'soft', 'selected']) {
+        for (const surface of ['canvas', 'surface', 'control', 'soft', 'selected']) {
             assertContrast(colors, 'accent', surface, 3);
         }
     });
 
     test(`${mode}: essential input outlines remain distinguishable from input and outer surfaces`, () => {
         // Decorative dividers intentionally use a separate, softer `line` token.
-        for (const surface of ['canvas', 'sidebar', 'surface', 'control']) {
+        for (const surface of ['canvas', 'surface', 'control']) {
             assertContrast(colors, 'control-line', surface, 3);
+        }
+    });
+
+    test(`${mode}: actual sidebar text stays readable in idle, hover, and selected states`, () => {
+        for (const surface of ['sidebar', 'surface', 'control', 'soft', 'selected']) {
+            for (const foreground of ['text', 'muted', 'accent', 'danger']) {
+                assertContrast(sidebar, foreground, surface, 4.5);
+            }
+        }
+    });
+
+    test(`${mode}: sidebar search outlines, active markers, and keyboard focus remain visible`, () => {
+        for (const surface of ['sidebar', 'surface', 'control', 'soft', 'selected']) {
+            assertContrast(sidebar, 'accent', surface, 3);
+        }
+        for (const surface of ['sidebar', 'surface', 'control']) {
+            assertContrast(sidebar, 'control-line', surface, 3);
+        }
+    });
+
+    test(`${mode}: shared brand subtitle stays readable in both AI and workspace sidebars`, () => {
+        const shared = palette(dark, ['#app-sidebar']);
+        assert.equal(shared['brand-subtitle'], sidebar['brand-subtitle']);
+        assertContrast(sidebar, 'brand-subtitle', 'sidebar', 4.5);
+        // Shared workspace uses white / slate-950 surfaces rather than the AI palette.
+        assertContrast({ ...shared, 'workspace-sidebar': dark ? '#020617' : '#ffffff' },
+            'brand-subtitle', 'workspace-sidebar', 4.5);
+    });
+
+    test(`${mode}: body-portaled history menus retain readable labels and visible focus`, () => {
+        for (const surface of ['surface', 'soft']) {
+            for (const foreground of ['text', 'muted', 'danger']) {
+                assertContrast(menu, foreground, surface, 4.5);
+            }
+            assertContrast(menu, 'accent', surface, 3);
+        }
+    });
+
+    test(`${mode}: independently themed mode switch retains readable states in either sidebar`, () => {
+        assertContrast(modeSwitch, 'muted', 'control', 4.5);
+        assertContrast(modeSwitch, 'text', 'soft', 4.5);
+        assertContrast(modeSwitch, 'accent', 'selected', 4.5);
+        const adjacent = { ...modeSwitch, 'ai-sidebar': sidebar.sidebar,
+            'workspace-sidebar': dark ? '#020617' : '#ffffff' };
+        for (const surface of ['control', 'soft', 'selected', 'ai-sidebar', 'workspace-sidebar']) {
+            assertContrast(adjacent, 'accent', surface, 3);
         }
     });
 }

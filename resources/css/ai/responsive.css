@@ -73,21 +73,7 @@
     .ai-mobile-sidebar-close {
         display: none;
     }
-    .has-messages .ai-chat-stage {
-        padding-bottom: 1.25rem;
-    }
-    .sidebar-collapsed .workspace-mode-switch {
-        flex-direction: column;
-        border: 0;
-        background: transparent;
-        padding: 0;
-        gap: .4rem;
-    }
-    .sidebar-collapsed .workspace-mode-link {
-        flex: none;
-        width: 44px;
-    }
-    .sidebar-collapsed .workspace-mode-link span, .sidebar-collapsed .ai-history-content {
+    .sidebar-collapsed .ai-history-content {
         display: none;
     }
     .sidebar-collapsed #app-sidebar .sidebar-footer > .w-full {
@@ -172,6 +158,15 @@
     .ai-message-user .ai-message-actions {
         opacity: 0;
         transition: opacity 120ms ease;
+    }
+    /* A hidden edit-only toolbar should not reserve an empty row below the bubble. */
+    .ai-message-user .ai-message-body {
+        max-width: min(85%, 36rem, calc(100% - 3rem));
+    }
+    .ai-message-user .ai-message-actions:has(.ai-version-nav[hidden]) {
+        position: absolute;
+        top: 0;
+        right: calc(100% + .25rem);
     }
     .ai-message-user:hover .ai-message-actions, .ai-message-user:focus-within .ai-message-actions {
         opacity: 1;
