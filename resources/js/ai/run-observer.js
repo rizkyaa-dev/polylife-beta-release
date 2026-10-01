@@ -9,7 +9,8 @@ export async function observeAiRun(url, {
     hidden = () => globalThis.document?.hidden ?? false,
     random = Math.random,
     onProgress = () => {},
-    timeoutMs = 360_000,
+    onStatus = () => {},
+    timeoutMs = 540_000,
 } = {}) {
     const startedAt = now();
     let failures = 0;
@@ -22,8 +23,10 @@ export async function observeAiRun(url, {
             }
             failures = 0;
         } catch (error) {
+            data = undefined;
             if (++failures >= 3) throw error;
         }
+        if (data) onStatus(data);
         if (data?.status === 'success') return data;
         if (data?.status === 'failed') throw terminalRunError(data.message || 'Proses AI gagal diselesaikan.');
         if (data?.status === 'cancelled') throw terminalRunError(data.message || 'Proses AI dihentikan.', true);

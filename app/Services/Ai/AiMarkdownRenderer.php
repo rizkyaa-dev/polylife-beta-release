@@ -9,7 +9,7 @@ class AiMarkdownRenderer
 {
     public function __construct(private readonly AiCodeArtifactRenderer $codeArtifactRenderer) {}
 
-    public function render(?string $markdown): string
+    public function render(?string $markdown, ?array $manifest = null): string
     {
         if ($markdown === null || $markdown === '') {
             return '';
@@ -25,6 +25,6 @@ class AiMarkdownRenderer
         $sanitized = strip_tags($html, '<p><br><strong><em><ul><ol><li><blockquote><pre><code><a><del><h1><h2><h3><h4><hr><table><thead><tbody><tr><th><td><span>');
         $sanitized = preg_replace('/(<table\b[^>]*>.*?<\/table>)/s', '<div class="ai-table-scroll" tabindex="0" role="region" aria-label="Tabel jawaban">$1</div>', $sanitized) ?? $sanitized;
 
-        return $this->codeArtifactRenderer->decorate($sanitized);
+        return $this->codeArtifactRenderer->decorate($sanitized, $manifest);
     }
 }

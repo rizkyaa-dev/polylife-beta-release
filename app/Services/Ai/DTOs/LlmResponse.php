@@ -11,7 +11,8 @@ class LlmResponse
         public readonly ?string $content,
         public readonly array $toolCalls = [],
         public readonly ?string $finishReason = null,
-        public readonly ?string $reasoningContent = null
+        public readonly ?string $reasoningContent = null,
+        public readonly ?LlmTokenUsage $usage = null
     ) {}
 
     public function hasToolCalls(): bool

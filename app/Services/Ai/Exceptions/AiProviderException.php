@@ -40,6 +40,16 @@ final class AiProviderException extends RuntimeException
         return new self('provider_response_truncated', true, 'Respons penyedia AI terpotong sebelum selesai.');
     }
 
+    public static function invalidResponse(): self
+    {
+        return new self('provider_response_invalid', true, 'Respons penyedia AI kosong atau tidak sesuai kontrak.');
+    }
+
+    public static function blockedResponse(): self
+    {
+        return new self('provider_response_blocked', false, 'Penyedia AI tidak dapat menjawab permintaan ini.');
+    }
+
     public static function invalidCodingResponse(): self
     {
         return new self(

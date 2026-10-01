@@ -2,10 +2,10 @@
 
 namespace App\Services\Ai\Science;
 
-use App\Services\Ai\Contracts\LlmClientInterface;
 use App\Services\Ai\DTOs\LlmMessage;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\Exceptions\AiProviderException;
+use App\Services\Ai\LlmInference;
 use App\Services\Ai\Science\Client\ScienceCapabilityTelemetry;
 use App\Services\Ai\Science\Models\ScienceModelRegistry;
 use Illuminate\Support\Facades\Validator;
@@ -15,7 +15,7 @@ use JsonException;
 
 final class AiScienceAgent
 {
-    public function __construct(private readonly LlmClientInterface $client, private readonly ScienceSolverRegistry $solvers,
+    public function __construct(private readonly LlmInference $client, private readonly ScienceSolverRegistry $solvers,
         private readonly AiScienceDelegation $delegation, private readonly ScienceModelRegistry $models) {}
 
     public function solve(array $request, LlmRequestOptions $options): array
@@ -97,8 +97,14 @@ PROMPT, $options);
         if ($response->hasToolCalls() || mb_strlen($response->content ?? '') > 24000) {
             throw ValidationException::withMessages(['science_plan' => 'Scientific planner must return bounded JSON without tool calls.']);
         }
+        $rawContent = trim((string) ($response->content ?? ''));
+        $start = strpos($rawContent, '{');
+        $end = strrpos($rawContent, '}');
+        $jsonCandidate = ($start !== false && $end !== false && $end >= $start)
+            ? substr($rawContent, $start, $end - $start + 1)
+            : $rawContent;
         try {
-            $plan = json_decode($response->content ?? '', true, 32, JSON_THROW_ON_ERROR);
+            $plan = json_decode($jsonCandidate, true, 32, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             throw ValidationException::withMessages(['science_plan' => 'Scientific planner returned invalid JSON.']);
         }
@@ -136,7 +142,8 @@ PROMPT, $options);
             // Trusted method descriptions prevent final narration from treating
             // planner guesses about solver capabilities as registry facts.
             'solver_capabilities' => array_map(fn ($specification) => array_intersect_key($specification,
-                array_flip(['name', 'method', 'limits', 'limitations'])), $specifications)];
+                array_flip(['name', 'method', 'limits', 'limitations'])), $specifications),
+            'token_usage' => $response->usage?->toArray()];
     }
 
     /** Deterministic completion; never calls the model again on resume/fallback. */

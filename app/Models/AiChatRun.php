@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Ai\DTOs\LlmTokenUsage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +24,11 @@ class AiChatRun extends Model
         'attempts',
         'dispatch_attempts',
         'duration_ms',
+        'prompt_tokens',
+        'completion_tokens',
+        'total_tokens',
+        'model_calls',
+        'measured_model_calls',
         'error_code',
         'retryable',
         'started_at',
@@ -44,6 +50,11 @@ class AiChatRun extends Model
         'science_client' => 'boolean',
         'science_execution_id' => 'integer',
         'attempts' => 'integer',
+        'prompt_tokens' => 'integer',
+        'completion_tokens' => 'integer',
+        'total_tokens' => 'integer',
+        'model_calls' => 'integer',
+        'measured_model_calls' => 'integer',
     ];
 
     public function steps(): HasMany
@@ -69,5 +80,23 @@ class AiChatRun extends Model
     public function userMessage(): BelongsTo
     {
         return $this->belongsTo(AiChatMessage::class, 'user_message_id');
+    }
+
+    public function tokenUsage(): LlmTokenUsage
+    {
+        return new LlmTokenUsage(
+            promptTokens: (int) ($this->prompt_tokens ?? 0),
+            completionTokens: (int) ($this->completion_tokens ?? 0),
+            totalTokens: (int) ($this->total_tokens ?? 0)
+        );
+    }
+
+    public function tokenUsageStatus(): string
+    {
+        if ($this->model_calls > 0 && $this->model_calls === $this->measured_model_calls) {
+            return 'complete';
+        }
+
+        return $this->measured_model_calls > 0 || $this->total_tokens > 0 ? 'partial' : 'unknown';
     }
 }

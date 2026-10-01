@@ -77,25 +77,38 @@ class GeminiLlmClient implements LlmClientInterface
             throw AiProviderException::forStatus($response->status());
         }
 
-        $data = $response->json();
-        $candidate = $data['candidates'][0] ?? null;
-
-        if (! $candidate) {
-            return new LlmResponse('Tidak ada respons dari AI.');
+        $data = LlmResponseValidator::object($response->json());
+        $usage = LlmTokenUsageParser::gemini($data['usageMetadata'] ?? null);
+        $options?->usageObserver?->__invoke($usage);
+        $feedback = isset($data['promptFeedback']) ? LlmResponseValidator::object($data['promptFeedback']) : [];
+        if (filled($feedback['blockReason'] ?? null)) {
+            throw AiProviderException::blockedResponse();
         }
-
+        $candidates = LlmResponseValidator::list($data['candidates'] ?? null);
+        $candidate = LlmResponseValidator::object($candidates[0] ?? null);
+        $finishReason = LlmResponseValidator::optionalText($candidate['finishReason'] ?? null);
+        if (in_array($finishReason, ['SAFETY', 'RECITATION', 'BLOCKLIST', 'PROHIBITED_CONTENT', 'SPII'], true)) {
+            throw AiProviderException::blockedResponse();
+        }
+        $candidateContent = ! isset($candidate['content']) && $finishReason === 'MAX_TOKENS'
+            ? ['parts' => []] : LlmResponseValidator::object($candidate['content'] ?? null);
+        $parts = LlmResponseValidator::list($candidateContent['parts'] ?? null);
         $content = null;
         $toolCalls = [];
 
-        foreach ($candidate['content']['parts'] ?? [] as $part) {
+        foreach ($parts as $part) {
+            $part = LlmResponseValidator::object($part);
             if (isset($part['text'])) {
-                $content = ($content !== null ? $content."\n" : '').$part['text'];
+                $content = ($content !== null ? $content."\n" : '').LlmResponseValidator::optionalText($part['text']);
             }
 
             if (isset($part['functionCall'])) {
-                $fc = $part['functionCall'];
+                $fc = LlmResponseValidator::object($part['functionCall']);
+                if (! is_string($fc['name'] ?? null) || blank($fc['name'])) {
+                    throw AiProviderException::invalidResponse();
+                }
                 $toolCalls[] = new LlmToolCall(
-                    id: (string) ($fc['id'] ?? Str::uuid()),
+                    id: LlmResponseValidator::optionalText($fc['id'] ?? null) ?? (string) Str::uuid(),
                     name: (string) ($fc['name'] ?? ''),
                     arguments: is_array($fc['args'] ?? null) ? $fc['args'] : [],
                     argumentError: isset($fc['args']) && ! is_array($fc['args'])
@@ -105,11 +118,12 @@ class GeminiLlmClient implements LlmClientInterface
             }
         }
 
-        return new LlmResponse(
+        return LlmResponseValidator::usable(new LlmResponse(
             content: $content,
             toolCalls: $toolCalls,
-            finishReason: $candidate['finishReason'] ?? null
-        );
+            finishReason: $finishReason,
+            usage: $usage
+        ));
     }
 
     /**

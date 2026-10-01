@@ -6,6 +6,7 @@ use App\Models\Todolist;
 use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 
 final class ManageTodolistTool implements AiToolInterface
 {
@@ -57,7 +58,7 @@ final class ManageTodolistTool implements AiToolInterface
                 'rename' => "Ubah To-Do: {$todo->nama_item} menjadi {$newName}",
                 default => 'Perubahan To-Do tidak valid',
             },
-            'payload' => ['todolist_id' => $todo->id, 'operation' => $operation, 'new_name' => $newName ?: null],
+            'payload' => ['expected_record_hash' => ProposalFreshnessGuard::snapshot($todo), 'todolist_id' => $todo->id, 'operation' => $operation, 'new_name' => $newName ?: null],
         ];
     }
 }

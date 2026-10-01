@@ -6,6 +6,7 @@ use App\Models\Tugas;
 use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 
 final class ManageTugasTool implements AiToolInterface
 {
@@ -57,7 +58,7 @@ final class ManageTugasTool implements AiToolInterface
                 'rename' => "Ubah Tugas: {$task->nama_tugas} menjadi {$newName}",
                 default => 'Perubahan tugas tidak valid',
             },
-            'payload' => ['tugas_id' => $task->id, 'operation' => $operation, 'new_name' => $newName ?: null],
+            'payload' => ['expected_record_hash' => ProposalFreshnessGuard::snapshot($task), 'tugas_id' => $task->id, 'operation' => $operation, 'new_name' => $newName ?: null],
         ];
     }
 }

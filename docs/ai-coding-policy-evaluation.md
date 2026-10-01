@@ -1,5 +1,14 @@
 # Coding policy v1: implementation and evaluation
 
+This document preserves the September v1 experiment. The current implementation
+is `coding-policy-v4-validated-artifacts` (October 1). The historical timings and
+screenshots below are not measurements of v4. Current acceptance uses a shared
+fence parser, one source block per brief file with matching language, complete
+HTML envelopes, and bounded static HTML checks. An invalid artifact receives one
+isolated repair within the original deadline; a second failure rejects the run.
+Runtime correctness, visual rendering and scientific truth still require separate
+evaluation. See [the hardening report](ai-hardening-2026-10-01.md).
+
 ## Ownership
 
 - `AiCodingDelegation` asks the main agent to limit the brief to agreed needs and

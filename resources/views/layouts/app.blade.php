@@ -478,7 +478,7 @@
     @livewireStyles
 </head>
 
-<body class="app-shell antialiased bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100" data-guest-mode="{{ $guestMode ? '1' : '0' }}">
+<body class="app-shell antialiased bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100" data-guest-mode="{{ $guestMode ? '1' : '0' }}" data-ai-mode="{{ ! $guestMode && request()->routeIs('ai.*') ? '1' : '0' }}">
     <div id="app-shell" class="min-h-screen flex">
         @include($sidebarView ?? 'layouts.components.sidebar')
         <div class="sidebar-backdrop hidden lg:hidden" data-mobile-sidebar-backdrop></div>

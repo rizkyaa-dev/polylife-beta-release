@@ -12,6 +12,8 @@ final class AiRunErrorPresenter
             'provider_rate_limited' => 'Penyedia AI sedang sibuk. Tunggu sebentar lalu coba lagi.',
             'provider_unavailable' => 'Penyedia AI sementara tidak tersedia. Pesanmu aman dan bisa dicoba lagi.',
             'provider_response_truncated' => 'Jawaban AI terpotong sebelum selesai. Pesanmu aman dan bisa dicoba lagi.',
+            'provider_response_invalid' => 'Penyedia AI mengirim respons yang tidak valid. Pesanmu aman dan bisa dicoba lagi.',
+            'provider_response_blocked' => 'Penyedia AI tidak dapat menjawab permintaan ini. Coba sesuaikan permintaanmu.',
             'coding_agent_invalid_response' => 'Agen coding belum menghasilkan artifact yang valid. Pesanmu aman dan bisa dicoba lagi.',
             'provider_authentication', 'provider_request_invalid' => 'Layanan AI belum dapat memproses permintaan ini. Hubungi pengelola aplikasi.',
             'run_lease_expired' => 'Proses sebelumnya terhenti sebelum selesai. Pesanmu aman dan bisa dicoba lagi.',

@@ -25,7 +25,7 @@ final class UpdateKegiatanAction implements AiWriteAction
     {
         return Validator::make($payload, [
             'kegiatan_id' => ['required', 'integer'],
-            'expected_updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
             'jadwal_id' => ['required', 'integer'],
             'nama_kegiatan' => ['required', 'string', 'max:100'],
             'lokasi' => ['nullable', 'string', 'max:100'],
@@ -42,8 +42,8 @@ final class UpdateKegiatanAction implements AiWriteAction
             ->whereHas('jadwal', fn ($query) => $query->where('user_id', $user->id))
             ->lockForUpdate()
             ->findOrFail($validated['kegiatan_id']);
-        $this->freshness->assertUnchanged($activity, $validated['expected_updated_at'], 'Kegiatan');
-        unset($validated['kegiatan_id'], $validated['expected_updated_at']);
+        $this->freshness->assertUnchanged($activity, $validated['expected_record_hash'], 'Kegiatan');
+        unset($validated['kegiatan_id'], $validated['expected_record_hash']);
 
         return ($this->saveKegiatan)($activity, (int) $user->id, $validated);
     }

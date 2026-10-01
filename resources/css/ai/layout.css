@@ -1,0 +1,155 @@
+.ai-workspace {
+    color: var(--ai-text);
+    background-color: var(--ai-canvas);
+    background-image:
+        linear-gradient(to right, var(--ai-grid-color) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--ai-grid-color) 1px, transparent 1px);
+    background-size: var(--ai-grid-size) var(--ai-grid-size);
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    font-size: 1rem;
+    line-height: 1.65;
+}
+
+body[data-ai-mode="1"] {
+    background: var(--ai-canvas);
+    color: var(--ai-text);
+}
+
+.ai-workspace [hidden], .ai-sidebar-nav [hidden] {
+    display: none !important;
+}
+
+.ai-topbar {
+    flex-shrink: 0;
+    padding: 1rem 1.25rem;
+    background: transparent;
+}
+
+.ai-topbar-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+}
+
+.ai-topbar-heading {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: .75rem;
+}
+
+.ai-assistant-title {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+}
+
+.ai-assistant-name {
+    min-width: 0;
+    /* Match the PolyLife line's baseline independently of the label's font size. */
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 2rem;
+    overflow-wrap: anywhere;
+}
+
+.ai-assistant-name > span {
+    font-size: 1.125rem;
+    line-height: 1.4;
+    letter-spacing: -.01em;
+}
+
+.ai-assistant-tone {
+    flex-shrink: 0;
+    white-space: nowrap;
+    color: var(--ai-muted);
+    font-size: .8125rem;
+    line-height: 1rem;
+}
+
+.ai-topbar .mobile-nav-trigger {
+    padding: 0;
+}
+
+.ai-button, .ai-icon-button, .ai-send-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    gap: .5rem;
+    border-radius: .75rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: .875rem;
+    font-weight: 600;
+    transition: background-color 150ms ease, color 150ms ease;
+}
+
+.ai-button {
+    padding: .65rem 1rem;
+}
+
+.ai-button-quiet, .ai-icon-button {
+    color: var(--ai-muted);
+    background: transparent;
+}
+
+.ai-button-quiet:hover, .ai-icon-button:hover {
+    background: var(--ai-soft);
+    color: var(--ai-text);
+}
+
+.ai-button-primary, .ai-send-button {
+    color: var(--ai-on-primary);
+    background: var(--ai-primary);
+    border: 2px solid var(--ai-primary-edge);
+    box-shadow: 3px 3px 0 0 var(--ai-shadow-color);
+}
+
+.ai-button-primary:hover, .ai-send-button:hover {
+    background: var(--ai-primary-hover);
+}
+
+.ai-workspace button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.ai-chat-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    justify-content: safe center;
+    min-height: 0;
+    padding: 1rem 1.5rem max(1rem, env(safe-area-inset-bottom));
+    overflow-y: auto;
+}
+
+.ai-welcome {
+    width: min(100%, var(--ai-content-width));
+    flex-shrink: 0;
+    padding: 0 0 2rem;
+}
+
+.ai-welcome h1 {
+    font-size: clamp(1.8rem, 2.7vw, 2.5rem);
+    line-height: 1.3;
+    letter-spacing: -.025em;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.ai-welcome h1 span {
+    color: var(--ai-brand);
+}

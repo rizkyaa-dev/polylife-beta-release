@@ -7,6 +7,7 @@ use App\Models\AiChatRun;
 use App\Models\AiChatRunStep;
 use App\Models\AiScienceExecution;
 use App\Services\Ai\AiRunDispatcher;
+use App\Services\Ai\AiRunLock;
 use App\Services\Ai\AiRunStateManager;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\Enums\ThinkingEffort;
@@ -31,7 +32,10 @@ final class ScienceExecutionBroker
     public function suspend(AiChatRun $run, AiChatRunStep $step, array $plan, array $checkpoint, float $deadline): AiScienceExecution
     {
         return DB::transaction(function () use ($run, $step, $plan, $checkpoint, $deadline): AiScienceExecution {
-            $locked = AiChatRun::query()->lockForUpdate()->findOrFail($run->id);
+            $locked = AiRunLock::find($run->id);
+            if (! $locked) {
+                throw new AiRunCancelledException;
+            }
             if ($locked->status !== 'running' || $locked->attempts !== $run->attempts) {
                 throw new AiRunCancelledException;
             }
@@ -55,8 +59,8 @@ final class ScienceExecutionBroker
                 'label' => ($plan['execution_mode'] ?? null) === 'client_script'
                     ? (config('services.ai_science_client_auto_execute', true) ? 'Menjalankan skrip komputasi lokal' : 'Menunggu persetujuan komputasi lokal')
                     : 'Menjalankan perhitungan sains',
-                'public_metadata' => ['outcome' => 'started', 'execution_phase' => 'waiting_client',
-                    'execution_mode' => $plan['execution_mode'] ?? 'registered_kernel']]);
+                'public_metadata' => array_merge($step->fresh()->public_metadata ?? [], ['outcome' => 'started', 'execution_phase' => 'waiting_client',
+                    'execution_mode' => $plan['execution_mode'] ?? 'registered_kernel'])]);
             $locked->update(['science_execution_id' => $execution->id, 'claim_token' => null]);
             $this->dispatchCompute($execution->id, $execution->lease_expires_at);
 
@@ -213,8 +217,8 @@ final class ScienceExecutionBroker
                 $result = $this->agent->complete($payload['plan'], new LlmRequestOptions(ensureActive: $guard));
                 $result['execution'] = ['requested_runner' => 'browser', 'authoritative_runner' => 'server',
                     'verification_method' => 'server_replay', 'client_failure' => $payload['submission']['failure'] ?? null];
+                $result['science_step_id'] = $claimed->step_id;
             }
-            $result['science_step_id'] = $claimed->step_id;
         } catch (AiRunCancelledException) {
             return;
         } catch (ValidationException $exception) {
@@ -244,9 +248,9 @@ final class ScienceExecutionBroker
             $step->update(['status' => $failed ? 'failed' : 'completed',
                 'label' => $dynamic ? (($result['status'] ?? null) === 'client_computed' ? 'Komputasi lokal selesai · belum terverifikasi' : 'Komputasi lokal tidak menghasilkan jawaban') : $step->label,
                 'duration_ms' => max(0, (int) $step->created_at->diffInMilliseconds(now())),
-                'public_metadata' => ['outcome' => $failed ? 'failed' : 'completed',
+                'public_metadata' => array_merge($step->public_metadata ?? [], ['outcome' => $failed ? 'failed' : 'completed',
                     'execution_mode' => $dynamic ? 'client_script' : 'registered_kernel',
-                    'execution_phase' => $dynamic ? (($result['status'] ?? null) === 'client_computed' ? 'client_reported_unverified' : 'client_failed') : (($result['status'] ?? null) === 'unsupported' ? 'not_executed' : 'verified_server')],
+                    'execution_phase' => $dynamic ? (($result['status'] ?? null) === 'client_computed' ? 'client_reported_unverified' : 'client_failed') : (($result['status'] ?? null) === 'unsupported' ? 'not_executed' : 'verified_server')]),
                 'private_payload' => array_merge($step->private_payload ?? [], $result,
                     $dynamic ? ['client_program' => $payload['plan']['program']] : [])]);
             $run->update(['heartbeat_at' => null, 'claim_token' => null]);
@@ -336,7 +340,10 @@ final class ScienceExecutionBroker
     private function locked(AiScienceExecution $execution, callable $callback): mixed
     {
         return DB::transaction(function () use ($execution, $callback): mixed {
-            $run = AiChatRun::query()->lockForUpdate()->findOrFail($execution->run_id);
+            $run = AiRunLock::find($execution->run_id);
+            if (! $run) {
+                throw new AiRunCancelledException;
+            }
             $ticket = AiScienceExecution::query()->where('run_id', $run->id)->lockForUpdate()->findOrFail($execution->id);
 
             return $callback($run, $ticket);

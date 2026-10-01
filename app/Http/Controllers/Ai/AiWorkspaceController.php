@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AiChatSession;
 use App\Models\UserAiAssistant;
 use App\Services\Ai\AiConversationBranchService;
+use App\Services\Ai\AiTokenUsageSummary;
 use App\Services\Ai\Enums\ThinkingEffort;
 use App\Services\Ai\Science\ScienceCacheScope;
 use Illuminate\Http\JsonResponse;
@@ -37,18 +38,11 @@ class AiWorkspaceController extends Controller
         $currentSession = null;
         $activeRun = null;
 
+        // The mode entry opens a fresh composer; history links select a session explicitly.
         if ($sessionId) {
             $currentSession = AiChatSession::query()
                 ->where('user_id', $user->id)
                 ->find($sessionId);
-        }
-
-        if (! $currentSession && ! $request->boolean('new')) {
-            $currentSession = AiChatSession::query()
-                ->where('user_id', $user->id)
-                ->latest('updated_at')
-                ->latest('id')
-                ->first();
         }
 
         if ($currentSession) {
@@ -84,11 +78,22 @@ class AiWorkspaceController extends Controller
             ->limit(15)
             ->get();
 
+        $latestRun = $currentSession?->runs()
+            ->whereIn('status', ['completed', 'failed'])
+            ->latest('id')
+            ->first();
+
+        $sessionTokens = AiTokenUsageSummary::session($currentSession?->id);
+        $latestRunTokens = $latestRun ? AiTokenUsageSummary::run($latestRun)
+            : ['prompt' => 0, 'completion' => 0, 'total' => 0, 'status' => 'unknown'];
+
         return view('ai.workspace', [
             'assistant' => $assistant,
             'currentSession' => $currentSession,
             'activeRun' => $activeRun,
             'sessions' => $sessions,
+            'sessionTokens' => $sessionTokens,
+            'latestRunTokens' => $latestRunTokens,
             'thinkingEfforts' => ThinkingEffort::cases(),
             'thinkingSupported' => strtolower((string) config('services.ai_provider')) === 'deepseek',
             'scienceKernelEnabled' => (bool) config('services.ai_science_kernel_enabled', true),

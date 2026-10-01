@@ -20,7 +20,8 @@ alone serves HTTP, but intentionally does not execute long AI jobs.
 
 Run the request-fingerprint migration when deploying. Restart workers after PHP
 changes and rebuild frontend assets. Queue visibility/retry_after must exceed
-the worker's 330-second timeout. The database queue defaults to 420 seconds;
+the worker's 510-second timeout. Database, Redis and Beanstalkd reservations have
+a minimum of 540 seconds; set SQS visibility to at least 540 seconds and
 configure other backends accordingly. Providers have bounded request timeouts,
 and claimed runs receive an effort-specific turn deadline plus recovery grace.
 
@@ -51,10 +52,17 @@ the current prompt.
 
 ## Recovery safety
 
-Completion locks the run and accepts results only while its status is running.
+Completion, claim, expiry, failure and science transitions lock the session before
+the run, then the science ticket and dependent records. Completion accepts
+results only while its status is running and the worker attempt still matches.
 Claiming requires an unclaimed running run, so duplicate deliveries cannot start
 a second execution. Failed/cancelled runs are never reopened; a new generation
 uses a new run ID. This status fence rejects late results.
+
+The browser observation window is 540 seconds, covering the maximum 480-second
+coding/science budget with some queue headroom. Reaching this window is still an
+observation failure, not permission to create a second run. Token accounting is
+persisted independently of successful completion, before response validation.
 
 The scheduler expires stale leases; status polling also triggers recovery.
 Expiry rechecks the current lease under lock to avoid invalidating an extension

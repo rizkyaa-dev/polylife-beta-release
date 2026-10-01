@@ -11,6 +11,7 @@ use App\Services\Ai\AiChatResponseFactory;
 use App\Services\Ai\AiMessageLimits;
 use App\Services\Ai\AiRunErrorPresenter;
 use App\Services\Ai\AiRunStateManager;
+use App\Services\Ai\AiTokenUsageSummary;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\Exceptions\AiConversationBusyException;
 use App\Services\Ai\Exceptions\AiIdempotencyConflictException;
@@ -157,8 +158,13 @@ class AiChatController extends Controller
             return response()->json($this->responseFactory->completed($chatRun));
         }
         if ($chatRun->status === 'failed') {
+            $tokenSummary = [
+                'run' => ['tokens' => AiTokenUsageSummary::run($chatRun)],
+                'session_tokens' => AiTokenUsageSummary::session($chatRun->session_id),
+            ];
             if ($chatRun->error_code === 'user_cancelled') {
                 return response()->json([
+                    ...$tokenSummary,
                     'status' => 'cancelled',
                     'run_id' => $chatRun->id,
                     'message' => $this->errorPresenter->message($chatRun->error_code),
@@ -166,6 +172,7 @@ class AiChatController extends Controller
             }
 
             return response()->json([
+                ...$tokenSummary,
                 'status' => 'failed',
                 'run_id' => $chatRun->id,
                 'retryable' => $chatRun->retryable,

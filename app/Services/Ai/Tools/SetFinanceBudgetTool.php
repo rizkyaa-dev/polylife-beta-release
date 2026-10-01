@@ -2,9 +2,11 @@
 
 namespace App\Services\Ai\Tools;
 
+use App\Models\KeuanganBudget;
 use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
+use App\Services\Ai\ProposalFreshnessGuard;
 use App\Services\Ai\UserTimeContext;
 
 final class SetFinanceBudgetTool implements AiToolInterface
@@ -52,11 +54,14 @@ final class SetFinanceBudgetTool implements AiToolInterface
         $month = isset($arguments['month'])
             ? $this->timeContext->parse($user, $arguments['month'].'-01')
             : $this->timeContext->now($user);
+        $existing = KeuanganBudget::query()->where('user_id', $user->id)->where('kategori', $category)
+            ->where('bulan', $month->month)->where('tahun', $month->year)->first();
 
         return [
             'status' => 'proposal_created', 'tool_name' => $this->name(),
             'summary' => sprintf('Anggaran %s %s: Rp%s', $category, $month->format('Y-m'), number_format($nominal, 0, ',', '.')),
             'payload' => [
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($existing),
                 'kategori' => $category,
                 'nominal_limit' => $nominal,
                 'bulan' => (int) $month->month,

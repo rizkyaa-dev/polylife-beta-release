@@ -15,6 +15,7 @@ final class AiChatResponseFactory
         $run->loadMissing(['session', 'branch', 'userMessage', 'assistantMessage', 'steps']);
         $userMessage = $run->userMessage;
         $assistantMessage = $run->assistantMessage;
+        $manifest = AiCodeArtifactManifest::forRun($run);
         if (! $userMessage || ! $assistantMessage || ! $run->session || ! $run->branch) {
             throw new \LogicException('Run AI selesai tanpa hasil percakapan yang lengkap.');
         }
@@ -29,9 +30,10 @@ final class AiChatResponseFactory
         return [
             'status' => 'success',
             'session_id' => $run->session->id,
+            'session_tokens' => AiTokenUsageSummary::session($run->session_id),
             'active_branch_id' => $run->branch->id,
             'reply' => $assistantMessage->content,
-            'reply_html' => $this->markdownRenderer->render($assistantMessage->content),
+            'reply_html' => $this->markdownRenderer->render($assistantMessage->content, $manifest),
             'proposals' => $assistantMessage->tool_calls_json ?? [],
             'user_message' => [
                 'id' => $userMessage->id,
@@ -47,17 +49,19 @@ final class AiChatResponseFactory
             'assistant_message' => [
                 'id' => $assistantMessage->id,
                 'content' => $assistantMessage->content,
-                'html' => $this->markdownRenderer->render($assistantMessage->content),
+                'html' => $this->markdownRenderer->render($assistantMessage->content, $manifest),
             ],
             'run' => [
                 'id' => $run->id,
                 'status' => $run->status,
                 'duration_ms' => $run->duration_ms,
+                'tokens' => AiTokenUsageSummary::run($run),
                 'steps' => $run->steps->map(fn ($step) => [
                     'kind' => $step->kind,
                     'status' => $step->status,
                     'label' => $step->label,
                     'execution_mode' => $step->public_metadata['execution_mode'] ?? null,
+                    'tokens' => $step->public_metadata['tokens'] ?? null,
                     'client_computation' => ClientComputationPresenter::details($step->private_payload),
                     'duration_ms' => $step->duration_ms,
                 ])->values(),

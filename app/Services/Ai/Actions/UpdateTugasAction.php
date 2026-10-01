@@ -26,7 +26,7 @@ final class UpdateTugasAction implements AiWriteAction
     {
         return Validator::make($payload, [
             'tugas_id' => ['required', 'integer'],
-            'expected_updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
             'nama_tugas' => ['required', 'string', 'max:100'],
             'deskripsi' => ['nullable', 'string', 'max:255'],
             'deadline' => ['required', 'date_format:Y-m-d H:i:s'],
@@ -39,13 +39,13 @@ final class UpdateTugasAction implements AiWriteAction
     {
         $validated = $this->validatePayload($payload);
         $task = Tugas::query()->where('user_id', $user->id)->lockForUpdate()->findOrFail($validated['tugas_id']);
-        $this->freshness->assertUnchanged($task, $validated['expected_updated_at'], 'Tugas');
+        $this->freshness->assertUnchanged($task, $validated['expected_record_hash'], 'Tugas');
         if (isset($validated['matkul_id'])) {
             Validator::make($validated, [
                 'matkul_id' => [Rule::exists('matkuls', 'id')->where('user_id', $user->id)],
             ])->validate();
         }
-        unset($validated['tugas_id'], $validated['expected_updated_at']);
+        unset($validated['tugas_id'], $validated['expected_record_hash']);
 
         return ($this->saveTugas)($task, (int) $user->id, $validated, (bool) $validated['status_selesai']);
     }

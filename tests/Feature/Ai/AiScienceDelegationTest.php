@@ -13,6 +13,7 @@ use App\Services\Ai\DTOs\LlmResponse;
 use App\Services\Ai\DTOs\LlmToolCall;
 use App\Services\Ai\Exceptions\AiProviderException;
 use App\Services\Ai\Exceptions\AiRunCancelledException;
+use App\Services\Ai\Science\AiScienceDelegation;
 use App\Services\Ai\Science\ScienceContractStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -215,5 +216,29 @@ class AiScienceDelegationTest extends TestCase
         $step->update(['private_payload' => $payload]);
         $this->expectException(ValidationException::class);
         app(ScienceContractStore::class)->resolve($step->id, collect([$step->id => $step]));
+    }
+
+    public function test_client_script_science_step_is_not_usable_as_contract(): void
+    {
+        $step = new AiChatRunStep;
+        $step->forceFill([
+            'id' => 888,
+            'tool_name' => AiScienceDelegation::TOOL_NAME,
+            'status' => 'completed',
+            'public_metadata' => ['execution_mode' => 'client_script'],
+            'private_payload' => [
+                'status' => 'client_computed',
+                'model' => 'Client test model',
+                'execution_mode' => 'client_script',
+                'result' => [
+                    'status' => 'client_computed',
+                    'values' => ['bmi' => 22.86],
+                    'verification' => ['status' => 'client_reported_only'],
+                ],
+            ],
+        ]);
+        $this->assertFalse(app(ScienceContractStore::class)->isUsable($step));
+        $this->expectException(ValidationException::class);
+        app(ScienceContractStore::class)->resolve(888, collect([888 => $step]));
     }
 }

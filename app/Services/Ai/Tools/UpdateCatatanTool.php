@@ -6,6 +6,7 @@ use App\Models\Catatan;
 use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 
 final class UpdateCatatanTool implements AiToolInterface
 {
@@ -67,7 +68,7 @@ final class UpdateCatatanTool implements AiToolInterface
                 'isi' => $content,
                 'tanggal' => $note->tanggal->toDateString(),
                 'show_preview' => $note->show_preview,
-                'expected_updated_at' => $note->updated_at->format('Y-m-d H:i:s'),
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($note),
             ],
         ];
     }

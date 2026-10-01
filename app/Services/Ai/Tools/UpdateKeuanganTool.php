@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 use App\Services\Ai\UserTimeContext;
 
 final class UpdateKeuanganTool implements AiToolInterface
@@ -64,7 +65,7 @@ final class UpdateKeuanganTool implements AiToolInterface
             'summary' => 'Koreksi transaksi #'.$transaction->id.' '.$transaction->kategori,
             'payload' => [
                 'keuangan_id' => $transaction->id,
-                'expected_updated_at' => $transaction->updated_at->format('Y-m-d H:i:s'),
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($transaction),
                 'jenis' => $arguments['jenis'] ?? $transaction->jenis,
                 'kategori' => array_key_exists('kategori', $arguments) ? trim((string) $arguments['kategori']) : $transaction->kategori,
                 'deskripsi' => array_key_exists('deskripsi', $arguments) ? trim((string) $arguments['deskripsi']) ?: null : $transaction->deskripsi,

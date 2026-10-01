@@ -1,0 +1,206 @@
+.ai-code-preview {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 80;
+    display: flex;
+    width: min(58vw, 62rem);
+    flex-direction: column;
+    border-left: 1px solid var(--ai-line);
+    background: var(--ai-surface);
+    box-shadow: var(--ai-shadow);
+}
+
+.ai-code-preview[hidden] {
+    display: none;
+}
+
+.ai-code-preview-header {
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: .6rem 1rem;
+    border-bottom: 1px solid var(--ai-line);
+    background: var(--ai-control);
+    color: var(--ai-text);
+}
+
+.ai-code-preview-header strong {
+    overflow: hidden;
+    font-size: .875rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ai-code-preview-close {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 auto;
+    border-radius: .55rem;
+    color: var(--ai-muted);
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.ai-code-preview-close:hover {
+    background: var(--ai-soft);
+    color: var(--ai-text);
+}
+
+.ai-code-preview iframe {
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+    border: 0;
+    background: var(--ai-surface);
+}
+
+.ai-settings-dialog {
+    color: var(--ai-text);
+    background: var(--ai-surface);
+    border: 2px solid var(--ai-control-line);
+    border-radius: 1.75rem;
+    box-shadow: var(--ai-card-shadow);
+    padding: 1.25rem;
+    width: min(34rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - 2rem);
+    margin: auto;
+    overflow-y: auto;
+}
+
+.ai-settings-dialog::backdrop {
+    background: rgb(15 23 42 / .55);
+}
+
+.ai-settings-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .5rem;
+}
+
+.ai-settings-heading h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -.025em;
+}
+
+.ai-settings-heading p {
+    color: var(--ai-muted);
+    font-size: .8125rem;
+    margin-top: .4rem;
+}
+
+.ai-settings-form {
+    display: grid;
+    gap: .65rem;
+    margin-top: 1.5rem;
+}
+
+.ai-settings-form > label, .ai-settings-form legend {
+    font-size: .8125rem;
+    font-weight: 600;
+}
+
+.ai-settings-form label > span, .ai-settings-form legend {
+    color: var(--ai-muted);
+}
+
+.ai-settings-form > input, .ai-settings-form > textarea {
+    width: 100%;
+    border: 1px solid var(--ai-control-line);
+    border-radius: .65rem;
+    background: var(--ai-canvas);
+    color: var(--ai-text);
+    padding: .7rem;
+    font-size: 1rem;
+}
+
+.ai-settings-form > textarea::placeholder {
+    color: var(--ai-muted);
+}
+
+.ai-settings-form fieldset {
+    margin: .75rem 0;
+}
+
+.ai-tone-options, .ai-effort-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .6rem;
+    margin-top: .75rem;
+}
+
+.ai-tone-option {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    padding: .9rem;
+    border: 1px solid var(--ai-line);
+    border-radius: .75rem;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.ai-tone-option:has(input:checked) {
+    background: var(--ai-selected);
+    border-color: var(--ai-accent);
+}
+
+.ai-tone-option input {
+    color: var(--ai-primary);
+}
+
+.ai-square-radio-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--ai-control-line);
+    border-radius: .375rem;
+    background: var(--ai-control);
+}
+
+.ai-square-radio-mark svg {
+    width: 14px;
+    height: 14px;
+    visibility: hidden;
+}
+
+.ai-square-radio:checked + .ai-square-radio-mark {
+    border-color: var(--ai-accent);
+    background: var(--ai-primary);
+    color: var(--ai-selection-mark);
+}
+
+.ai-square-radio:checked + .ai-square-radio-mark svg {
+    visibility: visible;
+}
+
+.ai-tone-option:has(input:focus-visible) {
+    outline: 2px solid var(--ai-accent);
+    outline-offset: 3px;
+}
+
+.ai-tone-option strong {
+    display: block;
+    color: var(--ai-text);
+    font-size: .8125rem;
+}
+
+.ai-tone-option span span {
+    display: block;
+    font-size: .75rem;
+    margin-top: .2rem;
+}
+
+.ai-settings-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}

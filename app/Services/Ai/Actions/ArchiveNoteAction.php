@@ -25,7 +25,7 @@ final class ArchiveNoteAction implements AiWriteAction
     {
         return Validator::make($payload, [
             'catatan_id' => ['required', 'integer'],
-            'expected_updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
         ])->validate();
     }
 
@@ -34,7 +34,7 @@ final class ArchiveNoteAction implements AiWriteAction
         $validated = $this->validatePayload($payload);
         $note = Catatan::query()->where('user_id', $user->id)->where('status_sampah', false)
             ->lockForUpdate()->findOrFail($validated['catatan_id']);
-        $this->freshness->assertUnchanged($note, $validated['expected_updated_at'], 'Catatan');
+        $this->freshness->assertUnchanged($note, $validated['expected_record_hash'], 'Catatan');
         ($this->trashNote)($note);
 
         return $note->fresh();

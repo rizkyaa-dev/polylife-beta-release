@@ -5,6 +5,7 @@ namespace App\Services\Ai\Tools;
 use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
+use App\Services\Ai\ProposalFreshnessGuard;
 use App\Services\Ai\ReminderRecordResolver;
 use App\Services\Ai\UserTimeContext;
 
@@ -63,7 +64,7 @@ final class UpdateReminderTool implements AiToolInterface
             'summary' => 'Perbarui reminder '.$targetQuery,
             'payload' => [
                 'reminder_id' => $target->id,
-                'expected_updated_at' => $target->updated_at->format('Y-m-d H:i:s'),
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($target),
                 'reminder_target' => $type,
                 $field => $target->getAttribute($field),
                 'waktu_reminder' => $newTime,

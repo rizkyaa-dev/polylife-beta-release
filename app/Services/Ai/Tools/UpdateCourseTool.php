@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 
 final class UpdateCourseTool implements AiToolInterface
 {
@@ -66,7 +67,7 @@ final class UpdateCourseTool implements AiToolInterface
         return [
             'status' => 'proposal_created', 'tool_name' => $this->name(),
             'summary' => "Perbarui Mata Kuliah: {$course->kode} - {$course->nama}",
-            'payload' => ['matkul_id' => $course->id, 'expected_updated_at' => $course->updated_at->format('Y-m-d H:i:s')] + $payload,
+            'payload' => ['matkul_id' => $course->id, 'expected_record_hash' => ProposalFreshnessGuard::snapshot($course)] + $payload,
         ];
     }
 }

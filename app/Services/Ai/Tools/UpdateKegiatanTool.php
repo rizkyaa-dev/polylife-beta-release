@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 use App\Services\Ai\UserTimeContext;
 
 final class UpdateKegiatanTool implements AiToolInterface
@@ -76,7 +77,7 @@ final class UpdateKegiatanTool implements AiToolInterface
             'summary' => "Perbarui Kegiatan: {$activity->nama_kegiatan}",
             'payload' => [
                 'kegiatan_id' => $activity->id,
-                'expected_updated_at' => $activity->updated_at->format('Y-m-d H:i:s'),
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($activity),
                 'jadwal_id' => $scheduleId,
                 'nama_kegiatan' => array_key_exists('nama_kegiatan', $arguments) ? trim((string) $arguments['nama_kegiatan']) : $activity->nama_kegiatan,
                 'lokasi' => array_key_exists('lokasi', $arguments) ? trim((string) $arguments['lokasi']) ?: null : $activity->lokasi,

@@ -12,10 +12,14 @@ use Illuminate\Support\Facades\Log;
 
 final class ResilientLlmClient implements LlmClientInterface
 {
+    private readonly LlmInference $inference;
+
     public function __construct(
-        private readonly LlmClientInterface $client,
+        LlmClientInterface $client,
         private readonly string $provider
-    ) {}
+    ) {
+        $this->inference = new LlmInference($client);
+    }
 
     public function chat(
         array $messages,
@@ -45,7 +49,7 @@ final class ResilientLlmClient implements LlmClientInterface
                         throw AiProviderException::timeout();
                     }
                     $attemptOptions = $options->forAttempt(min($options->timeoutSeconds ?? 30, $remaining), $deadlineAt);
-                    $response = $this->client->chat($messages, $tools, $systemInstruction, $attemptOptions);
+                    $response = $this->inference->chat($messages, $tools, $systemInstruction, $attemptOptions);
                     ($options->ensureActive ?? static fn () => null)();
                     if ($this->monotonicTime() >= $deadlineAt) {
                         throw AiProviderException::timeout();

@@ -26,7 +26,7 @@ final class UpdateJadwalAction implements AiWriteAction
     {
         return Validator::make($payload, [
             'jadwal_id' => ['required', 'integer'],
-            'expected_updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
             'jenis' => ['required', Rule::in(['kuliah', 'libur', 'uts', 'uas', 'lomba', 'lainnya'])],
             'tanggal_mulai' => ['required', 'date_format:Y-m-d'],
             'tanggal_selesai' => ['required', 'date_format:Y-m-d', 'after_or_equal:tanggal_mulai'],
@@ -46,10 +46,10 @@ final class UpdateJadwalAction implements AiWriteAction
     {
         $validated = $this->validatePayload($payload);
         $schedule = Jadwal::query()->where('user_id', $user->id)->lockForUpdate()->findOrFail($validated['jadwal_id']);
-        $this->freshness->assertUnchanged($schedule, $validated['expected_updated_at'], 'Jadwal');
+        $this->freshness->assertUnchanged($schedule, $validated['expected_record_hash'], 'Jadwal');
 
         $matkulIds = $validated['matkul_ids'];
-        unset($validated['jadwal_id'], $validated['expected_updated_at'], $validated['matkul_ids']);
+        unset($validated['jadwal_id'], $validated['expected_record_hash'], $validated['matkul_ids']);
 
         return ($this->updateJadwal)($schedule, $validated, $matkulIds, false, []);
     }

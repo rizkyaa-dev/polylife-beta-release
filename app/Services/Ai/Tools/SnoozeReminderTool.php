@@ -5,6 +5,7 @@ namespace App\Services\Ai\Tools;
 use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
+use App\Services\Ai\ProposalFreshnessGuard;
 use App\Services\Ai\ReminderRecordResolver;
 use App\Services\Ai\UserTimeContext;
 
@@ -65,7 +66,7 @@ final class SnoozeReminderTool implements AiToolInterface
             'summary' => 'Tunda reminder '.$query.' ke '.$newTime->format('d M Y H:i'),
             'payload' => [
                 'reminder_id' => $reminder->id,
-                'expected_updated_at' => $reminder->updated_at->format('Y-m-d H:i:s'),
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($reminder),
                 'reminder_target' => $type,
                 $field => $reminder->getAttribute($field),
                 'waktu_reminder' => $newTime->format('Y-m-d H:i:s'),

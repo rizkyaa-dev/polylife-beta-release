@@ -89,25 +89,31 @@ class OpenAiLlmClient implements LlmClientInterface
             throw AiProviderException::forStatus($response->status());
         }
 
-        $data = $response->json();
-        $choice = $data['choices'][0] ?? null;
-
-        if (! $choice) {
-            return new LlmResponse('Tidak ada respons dari AI.');
+        $data = LlmResponseValidator::object($response->json());
+        $usage = LlmTokenUsageParser::openAi($data['usage'] ?? null);
+        $options->usageObserver?->__invoke($usage);
+        $choices = LlmResponseValidator::list($data['choices'] ?? null);
+        $choice = LlmResponseValidator::object($choices[0] ?? null);
+        $finishReason = LlmResponseValidator::optionalText($choice['finish_reason'] ?? null);
+        $choiceMessage = LlmResponseValidator::object($choice['message'] ?? null);
+        if (filled($choiceMessage['refusal'] ?? null) || ($choice['finish_reason'] ?? null) === 'content_filter') {
+            throw AiProviderException::blockedResponse();
         }
-
-        $choiceMessage = $choice['message'] ?? [];
-        $content = $choiceMessage['content'] ?? null;
-        $reasoningContent = $choiceMessage['reasoning_content'] ?? null;
+        $content = LlmResponseValidator::optionalText($choiceMessage['content'] ?? null);
+        $reasoningContent = LlmResponseValidator::optionalText($choiceMessage['reasoning_content'] ?? null);
         $toolCalls = [];
-
-        if (! empty($choiceMessage['tool_calls']) && is_array($choiceMessage['tool_calls'])) {
-            foreach ($choiceMessage['tool_calls'] as $tc) {
-                $function = $tc['function'] ?? [];
+        if (isset($choiceMessage['tool_calls'])) {
+            foreach (LlmResponseValidator::list($choiceMessage['tool_calls']) as $tc) {
+                $tc = LlmResponseValidator::object($tc);
+                $function = LlmResponseValidator::object($tc['function'] ?? null);
+                if (! is_string($function['name'] ?? null) || blank($function['name'])) {
+                    throw AiProviderException::invalidResponse();
+                }
                 $rawArgs = $function['arguments'] ?? '{}';
                 $argumentError = null;
                 if (is_array($rawArgs)) {
-                    $decodedArgs = $rawArgs;
+                    $decodedArgs = $rawArgs === [] || ! array_is_list($rawArgs) ? $rawArgs : [];
+                    $argumentError = $rawArgs !== [] && array_is_list($rawArgs) ? 'Argumen tool dari penyedia AI bukan objek JSON yang valid.' : null;
                 } else {
                     $decoded = json_decode((string) $rawArgs, true);
                     if (! is_array($decoded) || ! str_starts_with(ltrim((string) $rawArgs), '{')) {
@@ -119,7 +125,7 @@ class OpenAiLlmClient implements LlmClientInterface
                 }
 
                 $toolCalls[] = new LlmToolCall(
-                    id: (string) ($tc['id'] ?? Str::uuid()),
+                    id: LlmResponseValidator::optionalText($tc['id'] ?? null) ?? (string) Str::uuid(),
                     name: (string) ($function['name'] ?? ''),
                     arguments: $decodedArgs,
                     argumentError: $argumentError
@@ -127,12 +133,13 @@ class OpenAiLlmClient implements LlmClientInterface
             }
         }
 
-        return new LlmResponse(
+        return LlmResponseValidator::usable(new LlmResponse(
             content: $content,
             toolCalls: $toolCalls,
-            finishReason: $choice['finish_reason'] ?? null,
-            reasoningContent: is_string($reasoningContent) ? $reasoningContent : null
-        );
+            finishReason: $finishReason,
+            reasoningContent: is_string($reasoningContent) ? $reasoningContent : null,
+            usage: $usage
+        ));
     }
 
     /** @param array<string, mixed> $payload */

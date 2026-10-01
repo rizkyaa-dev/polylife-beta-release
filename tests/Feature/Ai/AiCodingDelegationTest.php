@@ -91,15 +91,18 @@ class AiCodingDelegationTest extends TestCase
         $this->assertCount(1, $client->requests[1]['messages']);
     }
 
-    public function test_intent_plan_reaches_isolated_coder_and_static_review_is_private_without_extra_inference(): void
+    public function test_static_defect_is_repaired_once_with_isolated_context_and_private_review(): void
     {
         $client = $this->client([
             $this->delegation(['design_intent' => ['goal' => 'showcase', 'expression' => 'restrained',
                 'audience' => 'UNTRUSTED_AUDIENCE_MARKER', 'accent_hex' => '#ffff00', 'assumptions' => ['Audiens belum diketahui']]]),
             new LlmResponse("```html\n<!doctype html><html><body><a href='#missing'>Project</a></body></html>\n```"),
+            new LlmResponse("```html\n<!doctype html><html><body><a href='#project'>Project</a><section id='project'>Work</section></body></html>\n```"),
         ]);
         $result = app(AiAgentOrchestrator::class)->handle(User::factory()->create(), 'buat portfolio saya');
-        $this->assertCount(2, $client->requests);
+        $this->assertCount(3, $client->requests);
+        $this->assertStringContainsString('validation_feedback', $client->requests[2]['messages'][0]->content);
+        $this->assertSame([], $client->requests[2]['tools']);
         $this->assertSame([], $client->requests[1]['tools']);
         $this->assertStringContainsString('design_plan', $client->requests[1]['messages'][0]->content);
         $this->assertStringContainsString('bukti karya', $client->requests[1]['messages'][0]->content);
@@ -109,7 +112,7 @@ class AiCodingDelegationTest extends TestCase
         $step = $result['run']->steps->firstWhere('tool_name', 'delegate_code_generation');
         $this->assertSame('showcase', $step->private_payload['coding_brief']['design_intent']['goal']);
         $this->assertSame('unverified', $step->private_payload['design_review']['render']);
-        $this->assertSame('fail', $step->private_payload['design_review']['checks']['broken_fragment_links']['status']);
+        $this->assertSame('pass', $step->private_payload['design_review']['checks']['broken_fragment_links']['status']);
         $this->assertArrayNotHasKey('design_review', $step->public_metadata);
         $this->assertSame('completed', $result['run']->status);
         $next = $this->client([new LlmResponse('Bisa, bagian mana yang mau disesuaikan?')]);

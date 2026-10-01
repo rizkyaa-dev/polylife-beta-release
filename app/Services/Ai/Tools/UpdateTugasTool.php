@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 use App\Services\Ai\UserTimeContext;
 
 final class UpdateTugasTool implements AiToolInterface
@@ -66,7 +67,7 @@ final class UpdateTugasTool implements AiToolInterface
             'summary' => "Perbarui Tugas: {$task->nama_tugas}",
             'payload' => [
                 'tugas_id' => $task->id,
-                'expected_updated_at' => $task->updated_at->format('Y-m-d H:i:s'),
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($task),
                 'nama_tugas' => array_key_exists('nama_tugas', $arguments) ? trim((string) $arguments['nama_tugas']) : $task->nama_tugas,
                 'deskripsi' => array_key_exists('deskripsi', $arguments) ? trim((string) $arguments['deskripsi']) ?: null : $task->deskripsi,
                 'deadline' => array_key_exists('deadline', $arguments) ? $this->timeContext->parse($user, $arguments['deadline'])->format('Y-m-d H:i:s') : $task->deadline->format('Y-m-d H:i:s'),

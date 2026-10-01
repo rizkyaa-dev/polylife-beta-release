@@ -41,12 +41,9 @@ final class OwnedWorkspaceRecordResolver
                 $method = $index === 0 ? 'whereRaw' : 'orWhereRaw';
                 $query->{$method}("LOWER({$column}) = ?", [mb_strtolower($search)]);
             }
-        })->first();
-        if ($exact) {
-            return $exact;
-        }
+        })->limit(2)->get();
 
-        $matches = $base->where(function (Builder $query) use ($columns, $search): void {
+        $matches = $exact->isNotEmpty() ? $exact : (clone $base)->where(function (Builder $query) use ($columns, $search): void {
             foreach ($columns as $index => $column) {
                 $method = $index === 0 ? 'where' : 'orWhere';
                 $query->{$method}($column, 'like', '%'.$search.'%');

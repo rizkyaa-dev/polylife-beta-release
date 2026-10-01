@@ -15,7 +15,8 @@ final class ReminderTargetResolver
 {
     public function __construct(private readonly OwnedWorkspaceRecordResolver $resolver) {}
 
-    public function resolve(User $user, string $type, string $search): Model
+    /** @param  null|callable(Builder): void  $scope */
+    public function resolve(User $user, string $type, string $search, ?callable $scope = null): Model
     {
         $definition = match ($type) {
             'todolist' => [Todolist::class, 'nama_item'],
@@ -31,6 +32,9 @@ final class ReminderTargetResolver
             $query->whereHas('jadwal', fn (Builder $builder) => $builder->where('user_id', $user->id));
         } else {
             $query->where('user_id', $user->id);
+        }
+        if ($scope !== null) {
+            $scope($query);
         }
 
         return $this->resolver->resolveFromOwnedQuery($query, [$column], $search, "target reminder {$type}");

@@ -1,0 +1,179 @@
+.ai-workspace :is(button, a, input, textarea, [tabindex]):focus-visible, #app-sidebar :is(a, button, input):focus-visible {
+    outline: 2px solid var(--ai-accent);
+    outline-offset: 3px;
+}
+
+/* The search wrapper owns focus feedback, not the nested input. */
+
+#app-sidebar .ai-history-search input[type="search"]:focus-visible {
+    outline: none;
+    box-shadow: none !important;
+}
+
+.ai-workspace .ai-composer textarea:focus-visible {
+    outline-offset: 0;
+    outline: none;
+}
+
+/* Panels align with the composer rather than with variable-width token values. */
+
+.ai-composer {
+    position: relative;
+}
+
+.ai-token-counter, .ai-composer .ai-thinking-control {
+    position: static;
+}
+
+.ai-token-popover, .ai-thinking-popover {
+    right: .75rem;
+    max-width: calc(100% - 1.5rem);
+}
+
+.ai-code-toolbar {
+    flex-wrap: wrap;
+}
+
+.ai-code-actions {
+    flex-wrap: wrap;
+}
+
+@media (max-width: 599px) {
+    .ai-composer {
+        padding-inline: .75rem;
+    }
+    .ai-composer-send {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .ai-token-text {
+        flex-wrap: wrap;
+    }
+    .ai-thinking-control summary {
+        padding-inline: .25rem;
+    }
+}
+
+@media (min-width: 600px) {
+    .ai-chat-stage {
+        padding-bottom: 1.5rem;
+    }
+    .ai-settings-dialog {
+        padding: 1.75rem;
+    }
+    .ai-tone-options, .ai-effort-options {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (min-width: 1025px) {
+    .ai-topbar {
+        padding: 1.5rem 2.5rem 1rem 3rem;
+    }
+    .ai-mobile-sidebar-close {
+        display: none;
+    }
+    .has-messages .ai-chat-stage {
+        padding-bottom: 1.25rem;
+    }
+    .sidebar-collapsed .workspace-mode-switch {
+        flex-direction: column;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        gap: .4rem;
+    }
+    .sidebar-collapsed .workspace-mode-link {
+        flex: none;
+        width: 44px;
+    }
+    .sidebar-collapsed .workspace-mode-link span, .sidebar-collapsed .ai-history-content {
+        display: none;
+    }
+    .sidebar-collapsed #app-sidebar .sidebar-footer > .w-full {
+        display: none;
+    }
+    .sidebar-collapsed .ai-sidebar-action {
+        padding: .75rem;
+        justify-content: center;
+    }
+    .sidebar-collapsed .ai-settings-link {
+        margin-top: 0;
+    }
+    .sidebar-collapsed #app-sidebar.sidebar-mode-ai .sidebar-footer-controls {
+        flex-direction: column;
+        align-items: center;
+        gap: .5rem;
+        width: 100%;
+    }
+    .sidebar-collapsed #app-sidebar.sidebar-mode-ai .sidebar-footer-controls button {
+        background: var(--ai-control);
+        color: var(--ai-muted);
+        border-color: var(--ai-line);
+        box-shadow: none;
+        transform: none;
+    }
+    .sidebar-collapsed #app-sidebar.sidebar-mode-ai .sidebar-footer-controls button:hover {
+        color: var(--ai-text);
+        background: var(--ai-soft);
+        box-shadow: none;
+        transform: none;
+    }
+    .sidebar-collapsed #app-sidebar.sidebar-mode-ai [data-theme-toggle] {
+        display: inline-flex;
+    }
+    .ai-workspace.has-code-preview {
+        padding-right: min(58vw, 62rem);
+    }
+}
+
+@media (max-width: 1024px) {
+    .ai-code-preview {
+        width: 100%;
+    }
+}
+
+@media (max-height: 650px) {
+    .ai-chat-stage {
+        justify-content: flex-start;
+    }
+    .ai-welcome {
+        padding-block: .5rem 1.25rem;
+    }
+    /* A fixed panel stays inside short viewports instead of clipping above the composer. */
+    .ai-token-popover, .ai-thinking-popover {
+        position: fixed;
+        inset: 1rem 1rem auto;
+        width: auto;
+        max-width: none;
+        max-height: calc(100dvh - 2rem);
+        overflow-y: auto;
+        z-index: 80;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body[data-ai-mode="1"] *, body[data-ai-mode="1"] *::before, body[data-ai-mode="1"] *::after {
+        transition: none !important;
+        animation: none !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .ai-history-menu-trigger {
+        opacity: 0;
+        pointer-events: none;
+    }
+    .ai-history-item:hover .ai-history-menu-trigger, .ai-history-item:focus-within .ai-history-menu-trigger, .ai-history-item[data-menu-open] .ai-history-menu-trigger {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .ai-message-user .ai-message-actions {
+        opacity: 0;
+        transition: opacity 120ms ease;
+    }
+    .ai-message-user:hover .ai-message-actions, .ai-message-user:focus-within .ai-message-actions {
+        opacity: 1;
+    }
+}

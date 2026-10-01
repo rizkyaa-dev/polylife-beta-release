@@ -15,7 +15,7 @@
             <div class="ai-tone-options">
                 @foreach (['friendly_peer' => ['Sahabat mahasiswa', 'Hangat dan suportif'], 'casual' => ['Santai', 'Akrab dan langsung'], 'formal' => ['Formal', 'Rapi dan terstruktur'], 'strict_coach' => ['Mentor disiplin', 'Tegas dan fokus']] as $tone => [$label, $description])
                     <label class="ai-tone-option">
-                        <input type="radio" name="personality_tone" value="{{ $tone }}" @checked(old('personality_tone', $assistant->personality_tone) === $tone)>
+                        <x-ai.square-radio name="personality_tone" :value="$tone" :checked="old('personality_tone', $assistant->personality_tone) === $tone" />
                         <span><strong>{{ $label }}</strong><span>{{ $description }}</span></span>
                     </label>
                 @endforeach

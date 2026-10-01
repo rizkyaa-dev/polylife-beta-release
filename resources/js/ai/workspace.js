@@ -1,9 +1,12 @@
+import { tokenDisplay } from './token-usage.js';
+import { createConversationScroller } from './conversation-scroller.js';
 import { postJson, sendJson } from './transport';
 import { initHistory } from './history';
 import { initProposals, createProposal } from './proposals';
 import { initCodeArtifacts } from './code-artifacts';
 import { runWhenPageIsActive } from '../support/page-activation';
 import { PendingAiTurn, isDefinitiveFailure } from './turn-recovery';
+import { PendingAiTurns } from './pending-turns.js';
 import { observeAiRun } from './run-observer';
 import { ScienceCoordinator } from './science/coordinator.js';
 import { renderMessageMath } from './math-renderer.js';
@@ -36,7 +39,8 @@ function initWorkspace(root) {
     const send = root.querySelector('[data-ai-send]');
     const messages = root.querySelector('[data-ai-messages]');
     const list = root.querySelector('[data-ai-message-list]');
-    void renderMessageMath(list);
+    const scroller = createConversationScroller(messages, list);
+    void renderMessageMath(list).then(scroller.refresh);
     const error = root.querySelector('[data-ai-error]');
     const errorText = error.querySelector('[data-ai-error-text]');
     const sendIcon = send.querySelector('[data-ai-send-icon]');
@@ -44,11 +48,12 @@ function initWorkspace(root) {
     const history = initHistory(root.dataset.workspaceUrl);
     initThinkingControl(root);
     initSettingsEffortSlider(root);
+    const tokenCounter = initTokenCounter(root, input);
+    const onRunStatus = data => tokenCounter.update(data.run?.tokens, data.session_tokens);
     let sessionId = Number(root.dataset.sessionId) || null;
     let busy = false;
-    let activeRunId = null;
     let stopping = false;
-    let retryRequest = null;
+    const pendingTurns = new PendingAiTurns();
     const showError = message => {
         errorText.textContent = message;
         error.hidden = false;
@@ -59,6 +64,7 @@ function initWorkspace(root) {
         if (existing) return existing;
         const indicator = root.querySelector('[data-ai-thinking-template]').content.firstElementChild.cloneNode(true);
         list.append(indicator);
+        scroller.refresh();
         return indicator;
     };
     const removeThinking = () => list.querySelector('[data-ai-thinking-indicator]')?.remove();
@@ -67,6 +73,7 @@ function initWorkspace(root) {
     });
 
     const resize = () => {
+        const activeRunId = pendingTurns.activeRunId;
         input.style.height = 'auto';
         input.style.height = `${input.scrollHeight}px`;
         const processing = busy || activeRunId !== null;
@@ -76,8 +83,11 @@ function initWorkspace(root) {
         stopIcon.hidden = !processing;
         send.setAttribute('aria-label', processing ? 'Hentikan respons' : 'Kirim pesan');
         send.title = processing ? 'Hentikan respons' : 'Kirim pesan';
+        tokenCounter.updateDraft();
+        scroller.refresh();
     };
     send.addEventListener('click', async event => {
+        const activeRunId = pendingTurns.activeRunId;
         if (!busy && activeRunId === null) return;
         event.preventDefault();
         if (!activeRunId || stopping) return;
@@ -87,12 +97,17 @@ function initWorkspace(root) {
         try {
             const url = root.dataset.cancelRunUrlTemplate.replace('__RUN__', activeRunId);
             const cancellingRunId = activeRunId;
-            await postJson(url, {});
+            const outcome = await postJson(url, {});
+            // Completion can win the cancellation race; retain its recoverable reply.
+            if (!['cancelled', 'failed'].includes(outcome.run_status)) return;
+            const cancelled = pendingTurns.cancel(cancellingRunId);
+            for (const { owner, turn } of cancelled) {
+                const editError = owner.querySelector('[data-ai-edit-error]');
+                if (editError) editError.hidden = true;
+                if (!busy) turn.message?.remove();
+            }
             root.dispatchEvent(new CustomEvent('ai:run-cancelled', { detail: { runId: cancellingRunId } }));
             if (!busy) {
-                retryRequest?.message?.remove();
-                retryRequest = null;
-                activeRunId = null;
                 hideError();
             }
         } catch (exception) {
@@ -116,7 +131,7 @@ function initWorkspace(root) {
             input.focus();
         });
     });
-    const scrollToLatest = () => { messages.scrollTop = messages.scrollHeight; };
+    const scrollToLatest = scroller.scrollToLatest;
     const appendMessage = (role, content, proposals = [], safeHtml = null, metadata = {}) => {
         if (metadata.id) {
             const existing = list.querySelector(`[data-message-id="${metadata.id}"]`);
@@ -134,20 +149,26 @@ function initWorkspace(root) {
         if (role === 'assistant' && metadata.run) appendProcess(message, metadata.run);
         proposals.forEach(proposal => message.querySelector('[data-message-proposals]').append(createProposal(root, proposal)));
         list.append(message);
-        if (role === 'assistant') void renderMessageMath(message);
-        scrollToLatest();
+        if (role === 'assistant') void renderMessageMath(message).then(scroller.refresh);
+        scroller.refresh();
         return message;
     };
 
     form.addEventListener('submit', async event => {
         event.preventDefault();
         const prompt = input.value.trim();
-        if (busy || !prompt) return;
+        if (busy || stopping || !prompt) return;
+        if (pendingTurns.isBlocked(form)) {
+            showError('Masih ada pengiriman yang belum selesai. Periksa atau batalkan pengiriman tersebut terlebih dahulu. Draft tetap tersedia.');
+            return;
+        }
+        let retryRequest = pendingTurns.get(form);
         if (retryRequest && retryRequest.prompt !== prompt) {
             showError('Pengiriman sebelumnya belum diketahui hasilnya. Pulihkan percakapan dengan memuat ulang sebelum mengirim pesan berbeda. Draft tetap tersedia.');
             return;
         }
         retryRequest ??= new PendingAiTurn(createRequestId(), prompt, sessionId);
+        pendingTurns.set(form, retryRequest);
         busy = true;
         hideError();
         root.classList.add('has-messages');
@@ -161,6 +182,7 @@ function initWorkspace(root) {
         input.readOnly = true;
         form.setAttribute('aria-busy', 'true');
         resize();
+        scrollToLatest();
         try {
             const data = await retryRequest.reconcile(payload => postJson(root.dataset.chatUrl,
                 { ...payload, science_client: typeof Worker === 'function' && Boolean(globalThis.crypto?.randomUUID) }));
@@ -174,9 +196,8 @@ function initWorkspace(root) {
                 setMessageIdentity(userMessage, data.user_message.id);
                 userMessage.dataset.branchId = data.user_message.branch_id;
             }
-            activeRunId = data.run_id;
             resize();
-            const completed = await waitForRun(root, data.run_id);
+            const completed = await waitForRun(root, data.run_id, onRunStatus);
             removeThinking();
             appendMessage('assistant', completed.reply, completed.proposals ?? [], completed.reply_html ?? null, {
                 id: completed.assistant_message?.id,
@@ -187,11 +208,11 @@ function initWorkspace(root) {
             const url = new URL(root.dataset.workspaceUrl);
             url.searchParams.set('session', sessionId);
             window.history.replaceState(null, '', url);
-            retryRequest = null;
+            pendingTurns.delete(form);
         } catch (exception) {
             removeThinking();
             if (isDefinitiveFailure(exception, Boolean(retryRequest?.accepted || retryRequest?.uncertain))) {
-                retryRequest = null;
+                pendingTurns.delete(form);
                 userMessage.remove();
             }
             input.value = prompt;
@@ -199,23 +220,24 @@ function initWorkspace(root) {
                 showError((exception instanceof TypeError ? 'Koneksi terputus. Periksa jaringanmu.' : exception.message) + ' Draft tetap tersedia.');
             }
         } finally {
-            activeRunId = retryRequest?.accepted?.run_id ?? null;
             busy = false;
             input.readOnly = false;
             form.setAttribute('aria-busy', 'false');
             resize();
             if (window.matchMedia('(pointer: fine)').matches) input.focus({ preventScroll: true });
-            scrollToLatest();
+            scroller.refresh();
         }
     });
 
     initMessageInteractions(root, {
-        isBusy: () => busy,
+        isBusy: owner => busy || stopping || pendingTurns.isBlocked(owner),
         setBusy: value => { busy = value; resize(); },
-        setActiveRunId: value => { activeRunId = value; resize(); },
+        refresh: resize,
+        onRunStatus,
+        pendingTurns,
         getSessionId: () => sessionId,
     });
-    initEarlierMessages(root, list);
+    initEarlierMessages(root, list, scroller);
 
     const dialog = root.querySelector('[data-ai-settings]');
     let opener;
@@ -247,7 +269,7 @@ function initWorkspace(root) {
             continuation.className = 'ai-action-acknowledgement';
             continuation.textContent = acknowledgement;
             container.append(continuation);
-            scrollToLatest();
+            scroller.refresh();
         },
     });
     initCodeArtifacts(root);
@@ -264,10 +286,10 @@ function initWorkspace(root) {
             ? list.querySelector(`[data-message-id="${root.dataset.activeRunMessageId}"]`)
             : null;
         const pendingPrompt = root.dataset.activeRunPrompt ?? '';
-        retryRequest = new PendingAiTurn(null, pendingPrompt, sessionId, { run_id: runId, session_id: sessionId });
+        const retryRequest = new PendingAiTurn(null, pendingPrompt, sessionId, { run_id: runId, session_id: sessionId });
         retryRequest.message = pendingMessage;
+        pendingTurns.set(form, retryRequest);
         busy = true;
-        activeRunId = runId;
         input.readOnly = true;
         form.setAttribute('aria-busy', 'true');
         showThinking();
@@ -275,18 +297,18 @@ function initWorkspace(root) {
         scrollToLatest();
 
         try {
-            const completed = await waitForRun(root, runId);
+            const completed = await waitForRun(root, runId, onRunStatus);
             removeThinking();
             appendMessage('assistant', completed.reply, completed.proposals ?? [], completed.reply_html ?? null, {
                 id: completed.assistant_message?.id,
                 branchId: completed.active_branch_id,
                 run: completed.run,
             });
-            retryRequest = null;
+            pendingTurns.delete(form);
         } catch (exception) {
             removeThinking();
             if (isDefinitiveFailure(exception, true)) {
-                retryRequest = null;
+                pendingTurns.delete(form);
                 pendingMessage?.remove();
             }
             input.value = pendingPrompt;
@@ -294,12 +316,11 @@ function initWorkspace(root) {
                 showError(`${exception.message} Draft tetap tersedia.`);
             }
         } finally {
-            activeRunId = retryRequest?.accepted?.run_id ?? null;
             busy = false;
             input.readOnly = false;
             form.setAttribute('aria-busy', 'false');
             resize();
-            scrollToLatest();
+            scroller.refresh();
         }
     }
 }
@@ -341,11 +362,7 @@ function appendProcess(message, run) {
         const copy = document.createElement('div');
         const label = document.createElement('strong');
         label.textContent = step.label;
-        const meta = document.createElement('small');
-        const type = step.kind === 'tool_call' ? 'Aktivitas alat' : 'Pemrosesan AI';
-        const duration = step.duration_ms === null ? '' : ` · ${Math.max(1, Math.round(step.duration_ms / 1000))} dtk`;
-        meta.textContent = `${type}${duration} · ${step.status === 'failed' ? 'Gagal' : 'Selesai'}`;
-        copy.append(label, meta);
+        copy.append(label);
         if (step.client_computation) {
             const detail = document.createElement('details');
             detail.className = 'ai-client-computation';
@@ -356,6 +373,11 @@ function appendProcess(message, run) {
             detail.append(summary, code);
             copy.append(detail);
         }
+        const meta = document.createElement('small');
+        const type = step.kind === 'tool_call' ? 'Aktivitas alat' : 'Pemrosesan AI';
+        const duration = step.duration_ms === null ? '' : ` · ${Math.max(1, Math.round(step.duration_ms / 1000))} dtk`;
+        meta.textContent = `${type}${duration} · ${step.status === 'failed' ? 'Gagal' : 'Selesai'}`;
+        copy.append(meta);
         item.append(mark, copy);
         steps.append(item);
     });
@@ -363,14 +385,15 @@ function appendProcess(message, run) {
 }
 
 function initMessageInteractions(root, state) {
-    const pendingEdits = new WeakMap();
+    const pendingTurns = state.pendingTurns;
     root.addEventListener('click', async event => {
         const message = event.target.closest('.ai-message-user');
         if (!message) return;
 
         if (event.target.closest('[data-ai-edit-open]')) {
-            if (state.isBusy() || !message.dataset.messageId) return;
-            setEditMode(message, true);
+            const form = message.querySelector('[data-ai-edit-form]');
+            if (state.isBusy(form) || !message.dataset.messageId) return;
+            setEditMode(message, true, Boolean(pendingTurns.get(form)));
             return;
         }
         if (event.target.closest('[data-ai-edit-cancel]')) {
@@ -401,15 +424,15 @@ function initMessageInteractions(root, state) {
         const input = form.querySelector('[data-ai-edit-input]');
         const error = form.querySelector('[data-ai-edit-error]');
         const prompt = input.value.trim();
-        if (!prompt || state.isBusy() || !message.dataset.messageId) return;
-        let turn = pendingEdits.get(form);
+        if (!prompt || state.isBusy(form) || !message.dataset.messageId) return;
+        let turn = pendingTurns.get(form);
         if (turn && turn.prompt !== prompt) {
             error.textContent = 'Edit sebelumnya belum diketahui hasilnya. Periksa edit yang sama atau muat ulang sebelum mengubah draft.';
             error.hidden = false;
             return;
         }
         turn ??= new PendingAiTurn(createRequestId(), prompt, null);
-        pendingEdits.set(form, turn);
+        pendingTurns.set(form, turn);
 
         state.setBusy(true);
         form.setAttribute('aria-busy', 'true');
@@ -421,18 +444,18 @@ function initMessageInteractions(root, state) {
                 message: payload.message, request_id: payload.request_id,
                 science_client: typeof Worker === 'function' && Boolean(globalThis.crypto?.randomUUID),
             }));
-            state.setActiveRunId(accepted.run_id);
-            const data = await waitForRun(root, accepted.run_id);
+            state.refresh();
+            const data = await waitForRun(root, accepted.run_id, state.onRunStatus);
             const workspaceUrl = new URL(root.dataset.workspaceUrl);
             workspaceUrl.searchParams.set('session', data.session_id);
             window.location.assign(workspaceUrl);
+            pendingTurns.delete(form);
         } catch (exception) {
-            if (isDefinitiveFailure(exception, Boolean(turn.accepted || turn.uncertain))) pendingEdits.delete(form);
+            if (isDefinitiveFailure(exception, Boolean(turn.accepted || turn.uncertain))) pendingTurns.delete(form);
             if (exception.name !== 'AbortError') {
                 error.textContent = `${exception.message} Draft edit tetap tersedia.`;
                 error.hidden = false;
             }
-            state.setActiveRunId(pendingEdits.get(form)?.accepted?.run_id ?? null);
             state.setBusy(false);
             form.setAttribute('aria-busy', 'false');
             form.querySelectorAll('button, textarea').forEach(control => { control.disabled = false; });
@@ -441,12 +464,12 @@ function initMessageInteractions(root, state) {
     });
 }
 
-function setEditMode(message, editing) {
+function setEditMode(message, editing, preserveDraft = false) {
     const text = message.querySelector('[data-message-text]');
     const form = message.querySelector('[data-ai-edit-form]');
     const actions = message.querySelector('[data-ai-message-actions]');
     const input = form.querySelector('[data-ai-edit-input]');
-    if (editing) input.value = text.textContent;
+    if (editing && !preserveDraft) input.value = text.textContent;
     text.hidden = editing;
     form.hidden = !editing;
     actions.hidden = editing;
@@ -473,7 +496,7 @@ async function activateBranch(root, branchId, button) {
     }
 }
 
-function initEarlierMessages(root, list) {
+function initEarlierMessages(root, list, scroller) {
     list.addEventListener('click', async event => {
         const button = event.target.closest('[data-ai-load-earlier]');
         if (!button) return;
@@ -489,13 +512,15 @@ function initEarlierMessages(root, list) {
                 if (!response.ok) throw new Error(payload.message || 'Riwayat sebelumnya gagal dimuat.');
                 return payload;
             });
-            button.insertAdjacentHTML('afterend', data.html);
-            if (data.has_more) {
-                button.disabled = false;
-                button.textContent = 'Muat percakapan sebelumnya';
-            } else {
-                button.remove();
-            }
+            scroller.preservePosition(() => {
+                button.insertAdjacentHTML('afterend', data.html);
+                if (data.has_more) {
+                    button.disabled = false;
+                    button.textContent = 'Muat percakapan sebelumnya';
+                } else {
+                    button.remove();
+                }
+            });
         } catch (exception) {
             button.disabled = false;
             button.textContent = 'Coba muat lagi';
@@ -507,7 +532,7 @@ function initEarlierMessages(root, list) {
     });
 }
 
-async function waitForRun(root, runId) {
+async function waitForRun(root, runId, onStatus = () => {}) {
     const url = root.dataset.runUrlTemplate.replace('__RUN__', runId);
     const science = new ScienceCoordinator({ kernelEnabled: root.dataset.scienceKernelEnabled === 'true',
         autoExecute: root.dataset.scienceClientAutoExecute === 'true',
@@ -518,7 +543,7 @@ async function waitForRun(root, runId) {
     root.addEventListener('ai:run-cancelled', cancelled);
     globalThis.addEventListener('pagehide', dispose, { once: true });
     try {
-        return await observeAiRun(url, { onProgress: data => {
+        return await observeAiRun(url, { onStatus, onProgress: data => {
             science.observe(data.science_execution);
             const activeStep = data.steps?.at(-1);
             const mark = root.querySelector('[data-ai-thinking-indicator] .ai-message-mark');
@@ -658,4 +683,90 @@ function initThinkingControl(root) {
             summary.focus();
         }
     });
+}
+
+function initTokenCounter(root, input) {
+    const counter = root.querySelector('[data-ai-token-counter]');
+    if (!counter) return { update: () => {}, updateDraft: () => {} };
+
+    const trigger = counter.querySelector('[data-ai-token-trigger]');
+    const popover = counter.querySelector('[data-ai-token-popover]');
+    const inEl = counter.querySelector('[data-ai-token-in]');
+    const outEl = counter.querySelector('[data-ai-token-out]');
+    const detailIn = counter.querySelector('[data-ai-token-detail-in]');
+    const detailOut = counter.querySelector('[data-ai-token-detail-out]');
+    const detailTotal = counter.querySelector('[data-ai-token-detail-total]');
+    const sessionTotalEl = counter.querySelector('[data-ai-token-session-total]');
+    const draftRow = counter.querySelector('[data-ai-token-draft-row]');
+    const draftEstimate = counter.querySelector('[data-ai-token-draft-estimate]');
+
+    const togglePopover = show => {
+        const isOpen = show ?? popover?.hasAttribute('hidden');
+        if (isOpen) {
+            popover?.removeAttribute('hidden');
+            counter.setAttribute('data-open', 'true');
+            trigger?.setAttribute('aria-expanded', 'true');
+        } else {
+            popover?.setAttribute('hidden', '');
+            counter.removeAttribute('data-open');
+            trigger?.setAttribute('aria-expanded', 'false');
+        }
+    };
+
+    trigger?.addEventListener('click', event => {
+        event.stopPropagation();
+        togglePopover();
+    });
+
+    document.addEventListener('click', event => {
+        if (popover && !popover.hasAttribute('hidden') && !counter.contains(event.target)) {
+            togglePopover(false);
+        }
+    });
+
+    counter.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && popover && !popover.hasAttribute('hidden')) {
+            event.preventDefault();
+            togglePopover(false);
+            trigger?.focus();
+        }
+    });
+
+    const updateDraft = () => {
+        if (!draftRow || !draftEstimate) return;
+        const value = input?.value.trim() ?? '';
+        draftRow.hidden = !value;
+        draftEstimate.textContent = value ? `~${Math.max(1, Math.ceil(value.length / 3.5))} tok` : '';
+    };
+    input?.addEventListener('input', updateDraft);
+    updateDraft();
+
+    const update = (tokens, sessionTokens) => {
+        if (tokens) {
+            counter.dataset.latestPrompt = tokens.prompt ?? 0;
+            counter.dataset.latestCompletion = tokens.completion ?? 0;
+            counter.dataset.latestTotal = tokens.total ?? 0;
+            counter.dataset.latestStatus = tokens.status ?? 'unknown';
+            const display = tokenDisplay(tokens);
+            if (detailIn) detailIn.textContent = display.prompt;
+            if (detailOut) detailOut.textContent = display.completion;
+            if (detailTotal) detailTotal.textContent = display.total;
+            const label = counter.querySelector('[data-ai-token-measurement]');
+            if (label) label.textContent = display.label;
+        }
+        // Server totals are authoritative; observing the same run twice never adds twice.
+        if (sessionTokens) {
+            counter.dataset.sessionPrompt = sessionTokens.prompt ?? 0;
+            counter.dataset.sessionCompletion = sessionTokens.completion ?? 0;
+            counter.dataset.sessionTotal = sessionTokens.total ?? 0;
+            counter.dataset.sessionStatus = sessionTokens.status ?? 'unknown';
+            const display = tokenDisplay(sessionTokens);
+            if (inEl) inEl.textContent = `${display.prompt} in`;
+            if (outEl) outEl.textContent = `${display.completion} out`;
+            if (sessionTotalEl) sessionTotalEl.textContent = `${display.total} tok`;
+        }
+        updateDraft();
+    };
+
+    return { update, updateDraft };
 }

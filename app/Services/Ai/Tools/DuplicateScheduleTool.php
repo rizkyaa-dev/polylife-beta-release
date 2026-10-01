@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 use App\Services\Ai\UserTimeContext;
 
 final class DuplicateScheduleTool implements AiToolInterface
@@ -60,7 +61,7 @@ final class DuplicateScheduleTool implements AiToolInterface
             'summary' => "Duplikasi Jadwal: {$source->title} ke {$start}",
             'payload' => [
                 'source_jadwal_id' => $source->id,
-                'expected_updated_at' => $source->updated_at->format('Y-m-d H:i:s'),
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($source),
                 'title' => array_key_exists('title', $arguments) ? trim((string) $arguments['title']) ?: null : $source->title,
                 'tanggal_mulai' => $start,
                 'tanggal_selesai' => $end,

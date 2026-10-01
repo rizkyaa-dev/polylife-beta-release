@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 
 final class CopyCourseToSemesterTool implements AiToolInterface
 {
@@ -60,7 +61,7 @@ final class CopyCourseToSemesterTool implements AiToolInterface
             'summary' => "Salin {$source->kode} ke semester {$semester} sebagai {$code}",
             'payload' => [
                 'source_matkul_id' => $source->id,
-                'expected_updated_at' => $source->updated_at->format('Y-m-d H:i:s'),
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($source),
                 'kode' => $code,
                 'semester' => $semester,
             ],

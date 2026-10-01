@@ -3,6 +3,7 @@
 namespace Tests\Unit\Ai;
 
 use App\Services\Ai\AiCodeGenerationAgent;
+use App\Services\Ai\AiCodingArtifactValidator;
 use App\Services\Ai\AiCodingInstructionRouter;
 use App\Services\Ai\AiCodingPromptBuilder;
 use App\Services\Ai\Contracts\LlmClientInterface;
@@ -12,6 +13,7 @@ use App\Services\Ai\DTOs\AiDesignIntent;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\DTOs\LlmResponse;
 use App\Services\Ai\Exceptions\AiProviderException;
+use App\Services\Ai\LlmInference;
 use Tests\TestCase;
 
 class AiCodeGenerationAgentTest extends TestCase
@@ -30,7 +32,7 @@ class AiCodeGenerationAgentTest extends TestCase
             }
         };
         $brief = new AiCodingBrief('python', 'cli', ['main.py'], ['USER_ONLY_MARKER'], ['Works'], [], false);
-        $agent = new AiCodeGenerationAgent($client, app(AiCodingPromptBuilder::class), app(AiDesignIntentResolver::class));
+        $agent = new AiCodeGenerationAgent(new LlmInference($client), app(AiCodingPromptBuilder::class), app(AiDesignIntentResolver::class), app(AiCodingArtifactValidator::class));
         $agent->generate('Latest follow-up', $brief, (new AiCodingInstructionRouter)->forLanguage('python'), new LlmRequestOptions, 'SOURCE_ONLY_MARKER');
         $this->assertSame([], $client->request['tools']);
         $this->assertCount(1, $client->request['messages']);
@@ -46,7 +48,7 @@ class AiCodeGenerationAgentTest extends TestCase
     {
         $client = $this->createMock(LlmClientInterface::class);
         $client->expects($this->never())->method('chat');
-        $agent = new AiCodeGenerationAgent($client, app(AiCodingPromptBuilder::class), app(AiDesignIntentResolver::class));
+        $agent = new AiCodeGenerationAgent(new LlmInference($client), app(AiCodingPromptBuilder::class), app(AiDesignIntentResolver::class), app(AiCodingArtifactValidator::class));
         $brief = new AiCodingBrief('python', 'cli', ['main.py'], ['Print'], ['Works'], [], false);
         $this->expectException(AiProviderException::class);
         $agent->generate('Print', $brief, (new AiCodingInstructionRouter)->forLanguage('html'), new LlmRequestOptions);
@@ -66,7 +68,7 @@ class AiCodeGenerationAgentTest extends TestCase
                 return new LlmResponse("```html\n<html></html>\n```");
             }
         };
-        $agent = new AiCodeGenerationAgent($client, app(AiCodingPromptBuilder::class), app(AiDesignIntentResolver::class));
+        $agent = new AiCodeGenerationAgent(new LlmInference($client), app(AiCodingPromptBuilder::class), app(AiDesignIntentResolver::class), app(AiCodingArtifactValidator::class));
         foreach ([[], ['color_family' => 'cool'], ['accent_hex' => '#bb4400']] as $intent) {
             $brief = new AiCodingBrief('html', 'browser', ['index.html'], ['Page'], ['Works'], [], true, AiDesignIntent::fromArray($intent));
             $agent->generate('Make page', $brief, (new AiCodingInstructionRouter)->forLanguage('html'), new LlmRequestOptions);

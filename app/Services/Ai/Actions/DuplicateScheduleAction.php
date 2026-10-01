@@ -28,7 +28,7 @@ final class DuplicateScheduleAction implements AiWriteAction
     {
         return Validator::make($payload, [
             'source_jadwal_id' => ['required', 'integer'],
-            'expected_updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
             'title' => ['nullable', 'string', 'max:255'],
             'tanggal_mulai' => ['required', 'date_format:Y-m-d'],
             'tanggal_selesai' => ['required', 'date_format:Y-m-d', 'after_or_equal:tanggal_mulai'],
@@ -41,7 +41,7 @@ final class DuplicateScheduleAction implements AiWriteAction
         $validated = $this->validatePayload($payload);
         $source = Jadwal::query()->where('user_id', $user->id)->with('kegiatans')
             ->lockForUpdate()->findOrFail($validated['source_jadwal_id']);
-        $this->freshness->assertUnchanged($source, $validated['expected_updated_at'], 'Jadwal sumber');
+        $this->freshness->assertUnchanged($source, $validated['expected_record_hash'], 'Jadwal sumber');
 
         $schedule = ($this->storeSchedule)((int) $user->id, [
             'jenis' => $source->jenis,

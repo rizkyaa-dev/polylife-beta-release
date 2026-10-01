@@ -26,7 +26,7 @@ final class UpdateCourseAction implements AiWriteAction
     {
         return Validator::make($payload, [
             'matkul_id' => ['required', 'integer'],
-            'expected_updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
             'kode' => ['required', 'string', 'max:20'],
             'nama' => ['required', 'string', 'max:150'],
             'kelas' => ['required', 'string', 'max:255'],
@@ -46,11 +46,11 @@ final class UpdateCourseAction implements AiWriteAction
     {
         $validated = $this->validatePayload($payload);
         $course = Matkul::query()->ownedBy((int) $user->id)->lockForUpdate()->findOrFail($validated['matkul_id']);
-        $this->freshness->assertUnchanged($course, $validated['expected_updated_at'], 'Mata kuliah');
+        $this->freshness->assertUnchanged($course, $validated['expected_record_hash'], 'Mata kuliah');
         Validator::make($validated, [
             'kode' => [Rule::unique('matkuls', 'kode')->where('user_id', $user->id)->ignore($course->id)],
         ])->validate();
-        unset($validated['matkul_id'], $validated['expected_updated_at']);
+        unset($validated['matkul_id'], $validated['expected_record_hash']);
 
         return ($this->updateCourse)($course, $validated);
     }

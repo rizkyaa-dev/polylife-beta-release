@@ -1,0 +1,66 @@
+/* PolyLife lilac identity; use tonal ink for text without changing the brand hue. */
+
+.ai-workspace,
+#app-sidebar,
+.ai-history-menu,
+body[data-ai-mode="1"] {
+    color-scheme: light;
+    --ai-brand: #8181ff;
+    --ai-canvas: #fdfbff;
+    --ai-grid-color: rgb(129 129 255 / .02);
+    --ai-grid-size: 4rem;
+    --ai-sidebar: #e9edf6;
+    --ai-surface: #f9f9fc;
+    --ai-control: #edf0f8;
+    --ai-soft: #e3e7f2;
+    --ai-text: #2d2d3c;
+    --ai-muted: #555d76;
+    --ai-line: #c5cce6;
+    --ai-control-line: #7883a0;
+    --ai-accent: #5555a4;
+    --ai-selected: #e4e6fa;
+    --ai-primary: var(--ai-brand);
+    --ai-primary-hover: #9292ff;
+    --ai-on-primary: #24243c;
+    --ai-selection-mark: #ffffff;
+    --ai-danger: #963d4b;
+    --ai-success: #38684f;
+    --ai-code-surface: #edf0f8;
+    --ai-code-header: #e3e7f2;
+    --ai-shadow: 0 8px 24px rgb(45 45 60 / .08);
+    --ai-shadow-color: #c5d4ff;
+    --ai-primary-edge: #5555a4;
+    --ai-decoration: #f9f9fc;
+    --ai-card-shadow: 4px 4px 0 0 var(--ai-shadow-color);
+    --ai-content-width: 48rem;
+    --ai-radius: 1.125rem;
+}
+
+.dark .ai-workspace,
+.dark #app-sidebar,
+.dark .ai-history-menu,
+.dark body[data-ai-mode="1"] {
+    color-scheme: dark;
+    --ai-canvas: #121020;
+    --ai-grid-color: rgb(129 129 255 / .04);
+    --ai-sidebar: #151927;
+    --ai-surface: #222738;
+    --ai-control: #1e2333;
+    --ai-soft: #2b3145;
+    --ai-text: #ced3e4;
+    --ai-muted: #a3adc5;
+    --ai-line: #444d6a;
+    --ai-control-line: #7a87a8;
+    --ai-accent: #aaaaff;
+    --ai-selected: #30364d;
+    --ai-primary-hover: #9292ff;
+    --ai-on-primary: #24243c;
+    --ai-danger: #e4a7af;
+    --ai-success: #97bca9;
+    --ai-code-surface: #1e2333;
+    --ai-code-header: #2b3145;
+    --ai-shadow: 0 8px 24px rgb(0 0 0 / .16);
+    --ai-shadow-color: #111525;
+    --ai-primary-edge: #6262b3;
+    --ai-decoration: #222738;
+}

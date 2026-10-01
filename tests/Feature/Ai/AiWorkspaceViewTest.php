@@ -55,6 +55,41 @@ class AiWorkspaceViewTest extends TestCase
             ->assertDontSee('aria-label="Percakapan AI"', false);
     }
 
+    public function test_returning_to_ai_mode_opens_a_fresh_composer_without_creating_a_session(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now(), 'account_status' => 'active']);
+        $session = AiChatSession::create(['user_id' => $user->id, 'title' => 'Percakapan yang tersimpan']);
+        $session->messages()->create([
+            'role' => 'assistant', 'content' => 'Jawaban dari percakapan sebelumnya', 'status' => 'completed',
+        ]);
+        $sessionUrl = route('ai.workspace', ['session' => $session->id]);
+
+        $this->actingAs($user)->get($sessionUrl)
+            ->assertOk()->assertSee('Jawaban dari percakapan sebelumnya');
+        $workspace = $this->get(route('workspace.home'))->assertOk();
+        $this->assertSame(1, preg_match('/<a[^>]+href="([^"]+)"[^>]+aria-label="Mode AI"/', $workspace->getContent(), $matches));
+
+        $this->get(html_entity_decode($matches[1], ENT_QUOTES))
+            ->assertOk()
+            ->assertViewHas('currentSession', fn ($current) => $current === null)
+            ->assertViewHas('activeRun', fn ($run) => $run === null)
+            ->assertSee('Apa yang ingin kamu bereskan?')
+            ->assertSee('Percakapan yang tersimpan')
+            ->assertDontSee('Jawaban dari percakapan sebelumnya');
+        $this->get(route('ai.workspace', ['new' => 1]))
+            ->assertOk()->assertViewHas('currentSession', fn ($current) => $current === null);
+
+        $this->assertDatabaseCount('ai_chat_sessions', 1);
+        $this->assertDatabaseCount('ai_chat_messages', 1);
+        $this->assertDatabaseCount('ai_chat_branches', 0);
+        $this->assertDatabaseCount('user_ai_assistants', 0);
+
+        $this->get($sessionUrl)
+            ->assertOk()
+            ->assertViewHas('currentSession', fn ($current) => $current?->id === $session->id)
+            ->assertSee('Jawaban dari percakapan sebelumnya');
+    }
+
     public function test_deepseek_workspace_shows_accessible_thinking_control_with_saved_effort(): void
     {
         config(['services.ai_provider' => 'deepseek']);

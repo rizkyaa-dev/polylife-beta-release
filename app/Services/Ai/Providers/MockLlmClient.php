@@ -5,6 +5,7 @@ namespace App\Services\Ai\Providers;
 use App\Services\Ai\Contracts\LlmClientInterface;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\DTOs\LlmResponse;
+use App\Services\Ai\DTOs\LlmTokenUsage;
 use App\Services\Ai\DTOs\LlmToolCall;
 use Illuminate\Support\Str;
 
@@ -35,6 +36,8 @@ class MockLlmClient implements LlmClientInterface
         $lastMessage = end($messages);
         $userText = strtolower((string) ($lastMessage?->content ?? ''));
 
+        $promptTokens = max(10, (int) ceil(strlen($userText) / 4));
+
         // Deterministic heuristics for testing without external LLM
         if (str_contains($userText, 'catat pengeluaran') || str_contains($userText, 'beli')) {
             return new LlmResponse(
@@ -51,7 +54,8 @@ class MockLlmClient implements LlmClientInterface
                             'deskripsi' => 'Makan siang',
                         ]
                     ),
-                ]
+                ],
+                usage: new LlmTokenUsage($promptTokens, 45, $promptTokens + 45)
             );
         }
 
@@ -67,7 +71,8 @@ class MockLlmClient implements LlmClientInterface
                             'end_date' => now()->addDays(7)->toDateString(),
                         ]
                     ),
-                ]
+                ],
+                usage: new LlmTokenUsage($promptTokens, 35, $promptTokens + 35)
             );
         }
 
@@ -82,10 +87,17 @@ class MockLlmClient implements LlmClientInterface
                             'month' => now()->format('Y-m'),
                         ]
                     ),
-                ]
+                ],
+                usage: new LlmTokenUsage($promptTokens, 30, $promptTokens + 30)
             );
         }
 
-        return new LlmResponse('Halo! Saya asisten PolyLife siap membantu mengelola jadwal, tugas, dan keuangan Anda.');
+        $reply = 'Halo! Saya asisten PolyLife siap membantu mengelola jadwal, tugas, dan keuangan Anda.';
+        $completionTokens = max(15, (int) ceil(strlen($reply) / 4));
+
+        return new LlmResponse(
+            content: $reply,
+            usage: new LlmTokenUsage($promptTokens, $completionTokens, $promptTokens + $completionTokens)
+        );
     }
 }

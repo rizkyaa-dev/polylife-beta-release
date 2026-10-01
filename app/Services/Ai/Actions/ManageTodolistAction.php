@@ -4,11 +4,14 @@ namespace App\Services\Ai\Actions;
 
 use App\Models\Todolist;
 use App\Models\User;
+use App\Services\Ai\ProposalFreshnessGuard;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Validator;
 
 final class ManageTodolistAction implements AiWriteAction
 {
+    public function __construct(private readonly ProposalFreshnessGuard $freshness) {}
+
     public function toolName(): string
     {
         return 'manage_todolist';
@@ -17,6 +20,7 @@ final class ManageTodolistAction implements AiWriteAction
     public function validatePayload(array $payload): array
     {
         return Validator::make($payload, [
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
             'todolist_id' => ['required', 'integer'],
             'operation' => ['required', 'in:complete,reopen,rename'],
             'new_name' => ['nullable', 'required_if:operation,rename', 'string', 'max:150'],
@@ -27,6 +31,7 @@ final class ManageTodolistAction implements AiWriteAction
     {
         $validated = $this->validatePayload($payload);
         $todo = Todolist::query()->where('user_id', $user->id)->lockForUpdate()->findOrFail($validated['todolist_id']);
+        $this->freshness->assertUnchanged($todo, $validated['expected_record_hash'], 'Todolist');
 
         match ($validated['operation']) {
             'complete' => $todo->update(['status' => true]),

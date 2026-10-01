@@ -25,7 +25,7 @@ final class UpdateReminderAction implements AiWriteAction
     {
         $validated = Validator::make($payload, [
             'reminder_id' => ['required', 'integer'],
-            'expected_updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
             'reminder_target' => ['required', 'in:todolist,tugas,jadwal,kegiatan'],
             'todolist_id' => ['nullable', 'integer'],
             'tugas_id' => ['nullable', 'integer'],
@@ -48,8 +48,8 @@ final class UpdateReminderAction implements AiWriteAction
     {
         $validated = $this->validatePayload($payload);
         $reminder = Reminder::query()->where('user_id', $user->id)->lockForUpdate()->findOrFail($validated['reminder_id']);
-        $this->freshness->assertUnchanged($reminder, $validated['expected_updated_at'], 'Reminder');
-        unset($validated['reminder_id'], $validated['expected_updated_at']);
+        $this->freshness->assertUnchanged($reminder, $validated['expected_record_hash'], 'Reminder');
+        unset($validated['reminder_id'], $validated['expected_record_hash']);
 
         return ($this->updateReminder)($reminder, (int) $user->id, $validated, $validated);
     }

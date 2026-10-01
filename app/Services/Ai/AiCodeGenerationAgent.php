@@ -2,7 +2,6 @@
 
 namespace App\Services\Ai;
 
-use App\Services\Ai\Contracts\LlmClientInterface;
 use App\Services\Ai\Design\AiDesignIntentResolver;
 use App\Services\Ai\DTOs\AiCodingBrief;
 use App\Services\Ai\DTOs\AiCodingRoute;
@@ -14,9 +13,10 @@ use App\Services\Ai\Exceptions\AiProviderException;
 final class AiCodeGenerationAgent
 {
     public function __construct(
-        private readonly LlmClientInterface $llmClient,
+        private readonly LlmInference $llmClient,
         private readonly AiCodingPromptBuilder $promptBuilder,
-        private readonly AiDesignIntentResolver $designs
+        private readonly AiDesignIntentResolver $designs,
+        private readonly AiCodingArtifactValidator $artifacts
     ) {}
 
     public function generate(
@@ -53,17 +53,32 @@ final class AiCodeGenerationAgent
 
         $systemInstruction = $this->promptBuilder->build($brief, $route, $sourceArtifact !== null, $scienceContract !== null);
 
-        $response = $this->llmClient->chat(
-            [new LlmMessage(role: 'user', content: "<delegated_coding_request>\n{$payload}\n</delegated_coding_request>")],
-            [],
-            $systemInstruction,
-            $options
-        );
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            ($options->ensureActive)?->__invoke();
+            $response = $this->llmClient->chat(
+                [new LlmMessage(role: 'user', content: "<delegated_coding_request>\n{$payload}\n</delegated_coding_request>")],
+                [],
+                $systemInstruction,
+                $options
+            );
 
-        if ($response->isTruncated()) {
-            throw AiProviderException::truncated();
+            if ($response->isTruncated()) {
+                throw AiProviderException::truncated();
+            }
+            ($options->ensureActive)?->__invoke();
+            $errors = $this->artifacts->errors($response, $brief);
+            if ($errors === []) {
+                return $response;
+            }
+            if ($attempt === 0) {
+                // Repair within the same deadline and isolated envelope, never renew it.
+                $envelope = json_decode($payload, true, 32, JSON_THROW_ON_ERROR);
+                $envelope['validation_feedback'] = $errors;
+                $envelope['previous_artifact'] = mb_strcut((string) $response->content, 0, 120000, 'UTF-8');
+                $payload = json_encode($envelope, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            }
         }
 
-        return $response;
+        throw AiProviderException::invalidCodingResponse();
     }
 }

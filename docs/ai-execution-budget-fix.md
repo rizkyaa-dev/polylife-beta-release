@@ -1,5 +1,13 @@
 # AI execution budget fix
 
+Historical September investigation. Current policy supersedes the original caps:
+coding/science turn budgets are Off/Low/High/Max = 180/240/360/480 seconds;
+coder request caps are 120/180/240/360 seconds, always clamped to the remaining
+turn deadline. Chat jobs time out at 510 seconds and queue reservation is at least
+540 seconds. One structural coding repair is now permitted within the same
+deadline. The experimental results below describe the earlier patch only.
+See [current operations](AI_OPERATIONS.md) and [October hardening](ai-hardening-2026-10-01.md).
+
 ## Changes
 
 The run owns one monotonic deadline. Main planning, code generation, backoff and retries receive that same deadline through immutable request options. Five seconds are reserved for finalization. Every attempt recomputes its remaining timeout; expired work is not started and responses arriving after the operation deadline are rejected.

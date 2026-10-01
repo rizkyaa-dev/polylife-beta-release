@@ -47,7 +47,7 @@ final class ScienceContractStore
             'model_evidence' => $prepared['model_evidence']];
     }
 
-    private function isUsable(?AiChatRunStep $step): bool
+    public function isUsable(?AiChatRunStep $step): bool
     {
         if (! $step || $step->tool_name !== AiScienceDelegation::TOOL_NAME || $step->status !== 'completed') {
             return false;

@@ -6,6 +6,7 @@ use App\Models\Catatan;
 use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 
 final class ArchiveNoteTool implements AiToolInterface
 {
@@ -39,7 +40,7 @@ final class ArchiveNoteTool implements AiToolInterface
         $note = $this->resolver->resolve($user, Catatan::class, ['judul'], (string) ($arguments['target'] ?? ''), 'catatan', fn ($query) => $query->where('status_sampah', false));
 
         return ['status' => 'proposal_created', 'tool_name' => $this->name(), 'summary' => "Arsipkan Catatan: {$note->judul}", 'payload' => [
-            'catatan_id' => $note->id, 'expected_updated_at' => $note->updated_at->format('Y-m-d H:i:s'),
+            'catatan_id' => $note->id, 'expected_record_hash' => ProposalFreshnessGuard::snapshot($note),
         ]];
     }
 }

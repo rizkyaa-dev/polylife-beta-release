@@ -3,6 +3,28 @@ import assert from 'node:assert/strict';
 import { PendingAiTurn, isDefinitiveFailure, terminalRunError } from '../../resources/js/ai/turn-recovery.js';
 import { observeAiRun } from '../../resources/js/ai/run-observer.js';
 
+test('terminal polling exposes the persisted usage before reporting failure', async () => {
+    const received = [];
+    const tokens = {prompt: 100, completion: 10, total: 110, status: 'partial'};
+    await assert.rejects(observeAiRun('/run/7', {
+        read: async () => ({status: 'failed', message: 'Timeout', run: {tokens}, session_tokens: tokens}),
+        onStatus: data => received.push(data),
+    }), error => error.terminalRun === true);
+    assert.equal(received.length, 1);
+    assert.deepEqual(received[0].session_tokens, tokens);
+});
+
+test('malformed polling bodies never reach the status observer', async () => {
+    const observed = [];
+    let reads = 0;
+    await observeAiRun('/run/7', {
+        read: async () => ++reads === 1 ? {status: 'invalid'} : {status: 'success'},
+        sleep: async () => {},
+        onStatus: data => observed.push(data.status),
+    });
+    assert.deepEqual(observed, ['success']);
+});
+
 test('lost acceptance response replays the original request identity and context', async () => {
     const turn = new PendingAiTurn('request-1', 'buat portfolio', null);
     const payloads = [];

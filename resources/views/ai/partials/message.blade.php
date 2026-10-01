@@ -46,7 +46,7 @@ Hasil:
                     </ol>
                 </details>
             @endif
-            <div class="ai-message-text" data-message-text>{!! app(\App\Services\Ai\AiMarkdownRenderer::class)->render($message->content) !!}</div>
+            <div class="ai-message-text" data-message-text>{!! app(\App\Services\Ai\AiMarkdownRenderer::class)->render($message->content, \App\Services\Ai\AiCodeArtifactManifest::forRun($run)) !!}</div>
         @else
             <div class="ai-user-message-content" data-ai-user-content>
                 <div class="ai-message-text" data-message-text>{{ $message->content }}</div>

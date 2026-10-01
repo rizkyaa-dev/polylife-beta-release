@@ -12,10 +12,10 @@ use App\Models\AiScienceExecution;
 use App\Models\User;
 use App\Models\UserAiAssistant;
 use App\Services\Ai\Actions\AiWriteActionRegistry;
-use App\Services\Ai\Contracts\LlmClientInterface;
 use App\Services\Ai\Design\AiDesignArtifactEvaluator;
 use App\Services\Ai\DTOs\LlmMessage;
 use App\Services\Ai\DTOs\LlmRequestOptions;
+use App\Services\Ai\DTOs\LlmTokenUsage;
 use App\Services\Ai\Enums\ThinkingEffort;
 use App\Services\Ai\Exceptions\AiProviderException;
 use App\Services\Ai\Exceptions\AiRunCancelledException;
@@ -37,7 +37,7 @@ class AiAgentOrchestrator
     private const MAX_TOOL_ROUNDS = 4;
 
     public function __construct(
-        private readonly LlmClientInterface $llmClient,
+        private readonly LlmInference $llmClient,
         private readonly AiToolRegistry $toolRegistry,
         private readonly AiWriteActionRegistry $writeActions,
         private readonly AiSystemInstructionBuilder $instructionBuilder,
@@ -57,7 +57,8 @@ class AiAgentOrchestrator
         private readonly ScienceContractStore $scienceContracts,
         private readonly ScienceExecutionBroker $scienceBroker,
         private readonly ClientComputationAgent $clientComputation,
-        private readonly ScienceCapabilityTelemetry $scienceTelemetry
+        private readonly ScienceCapabilityTelemetry $scienceTelemetry,
+        private readonly AiTokenAccounting $tokenAccounting
     ) {}
 
     /**
@@ -119,7 +120,7 @@ class AiAgentOrchestrator
     {
         $resume = null;
         $run = DB::transaction(function () use ($runId, &$resume, $claimToken): ?AiChatRun {
-            $run = AiChatRun::query()->lockForUpdate()->find($runId);
+            $run = AiRunLock::find($runId);
             if (! $run || $run->status !== 'running') {
                 return null;
             }
@@ -209,7 +210,7 @@ class AiAgentOrchestrator
             $systemInstruction .= "\nScientific contract step IDs available on this branch: ".implode(', ', $availableScience->keys()->all()).'. Use science_step_id when implementing a calculator from one of these results.';
         }
         $sourceArtifacts = $lineage->filter(fn (AiChatMessage $message) => $message->role === 'assistant'
-            && $message->status === 'completed' && str_contains($message->content, '```'))->keyBy('id');
+            && $message->status === 'completed' && (str_contains($message->content, '```') || str_contains($message->content, '~~~')))->keyBy('id');
         if ($sourceArtifacts->isNotEmpty()) {
             $systemInstruction .= "\nArtefak pada cabang ini (ID pesan asisten, urutan lama ke baru): ".implode(', ', $sourceArtifacts->keys()->all());
         }
@@ -249,7 +250,10 @@ class AiAgentOrchestrator
             $messageHistory[] = new LlmMessage('tool', toolResult: [
                 'call_id' => $saved['pending_call_id'], 'tool_name' => AiScienceDelegation::TOOL_NAME,
                 'result' => $this->scienceDelegation->toolResult($result)]);
-            $availableScience->put($resume->step_id, AiChatRunStep::query()->findOrFail($resume->step_id));
+            $resumedStep = AiChatRunStep::query()->findOrFail($resume->step_id);
+            if ($this->scienceContracts->isUsable($resumedStep)) {
+                $availableScience->put($resume->step_id, $resumedStep);
+            }
             $this->heartbeat($run, $deadlineAt);
         }
 
@@ -268,7 +272,7 @@ class AiAgentOrchestrator
                         $messageHistory,
                         $tools,
                         $systemInstruction,
-                        $this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens)->withGuard(fn () => $this->ensureRunIsActive($run, $expectedAttempt))
+                        $this->observedOptions($this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens), $run, $reasoningStep, $expectedAttempt)
                     )
                 );
                 $this->ensureRunIsActive($run, $expectedAttempt);
@@ -346,8 +350,7 @@ class AiAgentOrchestrator
                             $deadlineAt = $runStartedAt + $this->inferencePolicy->runTimeoutSeconds($thinkingEffort, true);
                             $this->heartbeat($run, $deadlineAt);
                             // Retain the validated brief privately even when generation fails.
-                            $coderOptions = $this->requestOptions($thinkingEffort, $deadlineAt, max(0, (int) config('services.ai_coding_output_tokens', 16384)), true)
-                                ->withGuard(fn () => $this->ensureRunIsActive($run, $expectedAttempt));
+                            $coderOptions = $this->observedOptions($this->requestOptions($thinkingEffort, $deadlineAt, max(0, (int) config('services.ai_coding_output_tokens', 16384)), true), $run, $toolStep, $expectedAttempt);
                             $toolStep->update([
                                 'public_metadata' => ['outcome' => 'started', 'language' => $brief->language, 'runtime' => $brief->runtime, 'prompt_version' => AiCodingPromptBuilder::VERSION],
                                 'private_payload' => [
@@ -361,15 +364,18 @@ class AiAgentOrchestrator
                                     $coderOptions,
                                     $source?->content, $scienceContract
                                 );
-                                if ($generated->hasToolCalls() || blank($generated->content) || ! str_contains($generated->content, '```')) {
-                                    throw AiProviderException::invalidCodingResponse();
-                                }
 
                                 return $generated;
                             });
                             $this->ensureRunIsActive($run, $expectedAttempt);
+                            $publicMeta = array_merge($toolStep->fresh()->public_metadata ?? [], [
+                                'outcome' => 'completed',
+                                'language' => $brief->language,
+                                'runtime' => $brief->runtime,
+                                'prompt_version' => AiCodingPromptBuilder::VERSION,
+                            ]);
                             $toolStep->update([
-                                'public_metadata' => ['outcome' => 'completed', 'language' => $brief->language, 'runtime' => $brief->runtime, 'prompt_version' => AiCodingPromptBuilder::VERSION],
+                                'public_metadata' => $publicMeta,
                                 'private_payload' => array_merge($toolStep->private_payload, [
                                     'design_review' => $this->designEvaluator->evaluate((string) $generated->content),
                                 ]),
@@ -392,8 +398,7 @@ class AiAgentOrchestrator
                                 $deadlineAt = max($deadlineAt, $runStartedAt + $this->inferencePolicy->scienceRunTimeoutSeconds($thinkingEffort));
                                 $this->heartbeat($run, $deadlineAt);
                                 $toolStep->update(['private_payload' => ['science_request' => $scienceRequest]]);
-                                $scienceOptions = $this->requestOptions($thinkingEffort, $deadlineAt, 8192, true)
-                                    ->withGuard(fn () => $this->ensureRunIsActive($run, $expectedAttempt));
+                                $scienceOptions = $this->observedOptions($this->requestOptions($thinkingEffort, $deadlineAt, 8192, true), $run, $toolStep, $expectedAttempt);
                                 $kernelEnabled = (bool) config('services.ai_science_kernel_enabled', true);
                                 if (! $kernelEnabled) {
                                     $result = $run->science_client && config('services.ai_science_dynamic_enabled', false)
@@ -428,9 +433,14 @@ class AiAgentOrchestrator
 
                                     return $turn + ['phase' => 'awaiting_science'];
                                 }
-                                $result['science_step_id'] = $toolStep->id;
                                 $toolStep->update(['private_payload' => array_merge($toolStep->private_payload ?? [], $result)]);
-                                $availableScience->put($toolStep->id, $toolStep);
+                                if ($this->scienceContracts->isUsable($toolStep->fresh())) {
+                                    $result['science_step_id'] = $toolStep->id;
+                                    $toolStep->update(['private_payload' => array_merge($toolStep->private_payload ?? [], ['science_step_id' => $toolStep->id])]);
+                                    $availableScience->put($toolStep->id, $toolStep);
+                                } else {
+                                    unset($result['science_step_id']);
+                                }
                                 $toolResultsByInvocation[$invocationKey] = $result;
                             } catch (ValidationException $exception) {
                                 $result = ['status' => 'invalid_arguments', 'errors' => $exception->errors(),
@@ -496,7 +506,7 @@ class AiAgentOrchestrator
                     $toolStep->update([
                         'status' => $toolFailed ? 'failed' : 'completed',
                         'duration_ms' => $this->elapsedMilliseconds($toolStartedAt),
-                        'public_metadata' => ['outcome' => $toolFailed ? 'failed' : 'completed'],
+                        'public_metadata' => array_merge($toolStep->fresh()->public_metadata ?? [], ['outcome' => $toolFailed ? 'failed' : 'completed']),
                         'private_payload' => $call->name === AiScienceDelegation::TOOL_NAME
                             ? array_merge($toolStep->private_payload ?? [], $result) : $result,
                     ]);
@@ -528,7 +538,7 @@ class AiAgentOrchestrator
                         $messageHistory,
                         [],
                         $this->instructionBuilder->forFinalAnswer($systemInstruction),
-                        $this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens)->withGuard(fn () => $this->ensureRunIsActive($run, $expectedAttempt))
+                        $this->observedOptions($this->requestOptions($thinkingEffort, $deadlineAt, $minimumOutputTokens), $run, $reasoningStep, $expectedAttempt)
                     )
                 );
                 $this->ensureRunIsActive($run, $expectedAttempt);
@@ -549,7 +559,10 @@ class AiAgentOrchestrator
 
             $this->ensureRunIsActive($run, $expectedAttempt);
             $assistantMessage = DB::transaction(function () use ($userMessage, $session, $branch, $run, $proposalRows, $proposals, $finalReply, $finalReasoningContent, $startedAt, $expectedAttempt): AiChatMessage {
-                $lockedRun = AiChatRun::query()->lockForUpdate()->findOrFail($run->id);
+                $lockedRun = AiRunLock::find($run->id);
+                if (! $lockedRun) {
+                    throw new AiRunCancelledException;
+                }
                 if ($lockedRun->status !== 'running' || $lockedRun->attempts !== $expectedAttempt) {
                     throw new AiRunCancelledException;
                 }
@@ -590,7 +603,7 @@ class AiAgentOrchestrator
                 $session->touch();
 
                 return $assistantMessage;
-            });
+            }, 3);
         } catch (Throwable $exception) {
             $errorCode = $exception instanceof AiProviderException
                 ? $exception->errorCode
@@ -705,9 +718,11 @@ class AiAgentOrchestrator
         $startedAt = microtime(true);
         try {
             $response = $callback();
+            $publicMetadata = $step->fresh()->public_metadata ?? [];
             $step->update([
                 'status' => 'completed',
                 'duration_ms' => $this->elapsedMilliseconds($startedAt),
+                'public_metadata' => $publicMetadata,
             ]);
 
             return $response;
@@ -719,6 +734,12 @@ class AiAgentOrchestrator
 
             throw $exception;
         }
+    }
+
+    private function observedOptions(LlmRequestOptions $options, AiChatRun $run, AiChatRunStep $step, int $attempt): LlmRequestOptions
+    {
+        return $options->withGuard(fn () => $this->ensureRunIsActive($run, $attempt))
+            ->withUsageObserver(fn (?LlmTokenUsage $usage) => $this->tokenAccounting->record($run->id, $step->id, $attempt, $usage));
     }
 
     private function requestOptions(

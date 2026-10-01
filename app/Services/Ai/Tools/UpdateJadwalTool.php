@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\Ai\Contracts\AiToolInterface;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\OwnedWorkspaceRecordResolver;
+use App\Services\Ai\ProposalFreshnessGuard;
 use App\Services\Ai\UserTimeContext;
 
 final class UpdateJadwalTool implements AiToolInterface
@@ -74,7 +75,7 @@ final class UpdateJadwalTool implements AiToolInterface
             'summary' => "Perbarui Jadwal: {$schedule->title}",
             'payload' => [
                 'jadwal_id' => $schedule->id,
-                'expected_updated_at' => $schedule->updated_at->format('Y-m-d H:i:s'),
+                'expected_record_hash' => ProposalFreshnessGuard::snapshot($schedule),
                 'jenis' => $arguments['jenis'] ?? $schedule->jenis,
                 'tanggal_mulai' => $startDate,
                 'tanggal_selesai' => $endDate,

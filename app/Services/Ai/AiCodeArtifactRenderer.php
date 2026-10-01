@@ -14,21 +14,28 @@ final class AiCodeArtifactRenderer
         'xml' => 'xml', 'svg' => 'svg', 'markdown' => 'md', 'md' => 'md',
     ];
 
-    public function decorate(string $html): string
+    public function decorate(string $html, ?array $manifest = null): string
     {
+        $index = 0;
+
         return preg_replace_callback(
             '~<pre><code(?: class="language-([a-zA-Z0-9_+.#-]+)")?>(.*?)</code></pre>~s',
-            fn (array $match): string => $this->artifact($match[1] ?? 'text', $match[2]),
+            function (array $match) use ($manifest, &$index): string {
+                $filename = $manifest['files'][$index++] ?? null;
+                $runnable = $manifest === null ? null : (($manifest['execution']['runnable'] ?? false) && count($manifest['files'] ?? []) === 1);
+
+                return $this->artifact($match[1] ?? 'text', $match[2], $filename, $runnable);
+            },
             $html
         ) ?? $html;
     }
 
-    private function artifact(string $rawLanguage, string $escapedCode): string
+    private function artifact(string $rawLanguage, string $escapedCode, ?string $requestedFilename = null, ?bool $canRun = null): string
     {
         $language = $this->normalizeLanguage($rawLanguage);
         $extension = self::EXTENSIONS[$language] ?? 'txt';
-        $filename = 'code.'.$extension;
-        $runnable = $language === 'html';
+        $filename = htmlspecialchars(basename(str_replace('\\', '/', $requestedFilename ?? 'code.'.$extension)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $runnable = $language === 'html' && ($canRun ?? true);
         $label = htmlspecialchars($language, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
         return '<section class="ai-code-artifact" data-code-artifact data-code-language="'.$label.'" data-code-filename="'.$filename.'" data-code-runnable="'.($runnable ? 'true' : 'false').'">'

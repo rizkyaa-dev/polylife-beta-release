@@ -12,13 +12,13 @@ final class AiRunStateManager
     {
         $runId = $run instanceof AiChatRun ? $run->id : $run;
         DB::transaction(function () use ($runId): void {
-            $lockedRun = AiChatRun::query()->lockForUpdate()->find($runId);
+            $lockedRun = AiRunLock::find($runId);
             if (! $lockedRun || $lockedRun->status !== 'running'
                 || ! $lockedRun->lease_expires_at?->isPast()) {
                 return;
             }
             $this->transitionToFailed($lockedRun, 'run_lease_expired', true);
-        });
+        }, 3);
     }
 
     public function expireStale(int $limit = 100): int
@@ -43,7 +43,7 @@ final class AiRunStateManager
         $runId = $run instanceof AiChatRun ? $run->id : $run;
 
         DB::transaction(function () use ($runId, $errorCode, $retryable, $durationMs, $expectedAttempt, $expectedClaimToken): void {
-            $lockedRun = AiChatRun::query()->lockForUpdate()->find($runId);
+            $lockedRun = AiRunLock::find($runId);
             if (! $lockedRun || $lockedRun->status !== 'running'
                 || ($expectedAttempt !== null && $lockedRun->attempts !== $expectedAttempt)
                 || ($expectedClaimToken !== null && $lockedRun->claim_token !== $expectedClaimToken)) {
@@ -51,7 +51,7 @@ final class AiRunStateManager
             }
 
             $this->transitionToFailed($lockedRun, $errorCode, $retryable, $durationMs);
-        });
+        }, 3);
     }
 
     /**
@@ -66,7 +66,7 @@ final class AiRunStateManager
         $cutoff = now()->subSeconds($timeoutSeconds);
 
         return DB::transaction(function () use ($runId, $cutoff): bool {
-            $lockedRun = AiChatRun::query()->lockForUpdate()->find($runId);
+            $lockedRun = AiRunLock::find($runId);
 
             if (! $lockedRun
                 || $lockedRun->status !== 'running'
@@ -79,7 +79,7 @@ final class AiRunStateManager
             $this->transitionToFailed($lockedRun, 'worker_start_timeout', true);
 
             return true;
-        });
+        }, 3);
     }
 
     private function transitionToFailed(

@@ -25,7 +25,7 @@ final class UpdateKeuanganAction implements AiWriteAction
     {
         return Validator::make($payload, [
             'keuangan_id' => ['required', 'integer'],
-            'expected_updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
             'jenis' => ['required', 'in:pemasukan,pengeluaran'],
             'kategori' => ['required', 'string', 'max:255'],
             'deskripsi' => ['nullable', 'string'],
@@ -38,8 +38,8 @@ final class UpdateKeuanganAction implements AiWriteAction
     {
         $validated = $this->validatePayload($payload);
         $transaction = Keuangan::query()->where('user_id', $user->id)->lockForUpdate()->findOrFail($validated['keuangan_id']);
-        $this->freshness->assertUnchanged($transaction, $validated['expected_updated_at'], 'Transaksi');
-        unset($validated['keuangan_id'], $validated['expected_updated_at']);
+        $this->freshness->assertUnchanged($transaction, $validated['expected_record_hash'], 'Transaksi');
+        unset($validated['keuangan_id'], $validated['expected_record_hash']);
 
         return ($this->saveKeuangan)($transaction, (int) $user->id, $validated);
     }

@@ -10,6 +10,7 @@ use App\Services\Ai\AiAgentOrchestrator;
 use App\Services\Ai\Contracts\LlmClientInterface;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\DTOs\LlmResponse;
+use App\Services\Ai\DTOs\LlmTokenUsage;
 use App\Services\Ai\DTOs\LlmToolCall;
 use App\Services\Ai\Science\ScienceContractStore;
 use App\Services\Ai\Science\ScienceExecutionBroker;
@@ -42,20 +43,21 @@ class AiClientComputationTest extends TestCase
             {
                 $this->requests[] = compact('messages', 'systemInstruction');
                 $call = count($this->requests);
+                $respond = fn ($content, $calls = []) => new LlmResponse($content, $calls, usage: new LlmTokenUsage(100, 10, 110));
                 if ($call === 1) {
-                    return new LlmResponse(null, [new LlmToolCall('local1', 'delegate_science_problem', ['problem' => 'Compute reactor volume with D=0.08 m, L=6 m.'])]);
+                    return $respond(null, [new LlmToolCall('local1', 'delegate_science_problem', ['problem' => 'Compute reactor volume with D=0.08 m, L=6 m.'])]);
                 }
                 if ($call === 2 && ! $this->localOnly) {
-                    return new LlmResponse(json_encode(['status' => $this->kernelStatus, 'model' => 'No registered geometry solver', 'assumptions' => [], 'units' => [],
+                    return $respond(json_encode(['status' => $this->kernelStatus, 'model' => 'No registered geometry solver', 'assumptions' => [], 'units' => [],
                         ...($this->kernelStatus === 'needs_clarification' ? ['question' => 'Please supply length.'] : ['capability_gaps' => ['unsupported_domain']])]));
                 }
                 if ($call === ($this->localOnly ? 2 : 3) && $this->enabled && ($this->localOnly || $this->kernelStatus === 'unsupported')) {
-                    return new LlmResponse(json_encode(['status' => $this->clientStatus, 'model' => 'Cylinder geometry only; not a reactor simulation.', 'assumptions' => [], 'units' => ['m3'],
+                    return $respond(json_encode(['status' => $this->clientStatus, 'model' => 'Cylinder geometry only; not a reactor simulation.', 'assumptions' => [], 'units' => ['m3'],
                         ...($this->clientStatus === 'ready' ? ['program' => ['source' => 'function compute(i){const V=Math.PI*i.D*i.D*i.L/4;return {values:{V},checks:[{name:"positive volume",passed:V>0}]}}',
                             'inputs' => ['D' => .08, 'L' => 6], 'checks' => ['positive volume']]] : ['question' => 'Please supply transport data.'])]));
                 }
 
-                return new LlmResponse('Result is client-reported and not independently verified.');
+                return $respond('Result is client-reported and not independently verified.');
             }
         };
         $this->app->instance(LlmClientInterface::class, $client);
@@ -71,6 +73,7 @@ class AiClientComputationTest extends TestCase
         $s = $this->scenario(localOnly: true);
         $this->assertSame('awaiting_science', $s['processed']['phase']);
         $this->assertCount(2, $s['client']->requests);
+        $this->assertSame(220, $s['turn']['run']->fresh()->total_tokens);
         $this->assertStringContainsString('isolated client-computation', $s['client']->requests[1]['systemInstruction']);
         $ticket = AiScienceExecution::firstOrFail();
         $this->assertSame('kernel_disabled', $ticket->private_payload['plan']['routing_reason']);
@@ -84,6 +87,10 @@ class AiClientComputationTest extends TestCase
         $this->assertSame('client_computed', $ticket->fresh()->private_payload['result']['status']);
         $s['orchestrator']->processRun($s['turn']['run']->id);
         $this->assertCount(3, $s['client']->requests);
+        $run = $s['turn']['run']->fresh();
+        $this->assertSame(330, $run->total_tokens);
+        $this->assertSame('complete', $run->tokenUsageStatus());
+        $this->assertSame(110, AiChatRunStep::findOrFail($ticket->step_id)->public_metadata['tokens']['total']);
         $this->assertDatabaseCount('ai_science_capability_gaps', 0);
     }
 
@@ -125,7 +132,7 @@ class AiClientComputationTest extends TestCase
         $this->assertSame('unsupported', $result['status']);
         $this->assertNull($result['result']);
         $this->assertNull($result['execution']['authoritative_runner']);
-        $this->assertSame('client_failed', \App\Models\AiChatRunStep::findOrFail($ticket->step_id)->public_metadata['execution_phase']);
+        $this->assertSame('client_failed', AiChatRunStep::findOrFail($ticket->step_id)->public_metadata['execution_phase']);
         $s['orchestrator']->processRun($s['turn']['run']->id);
         $this->assertCount(3, $s['client']->requests);
         $this->assertSame('completed', $s['turn']['run']->fresh()->status);
@@ -163,6 +170,8 @@ class AiClientComputationTest extends TestCase
         $this->assertDatabaseHas('ai_science_capability_gaps', ['capability' => 'unsupported_domain', 'unsupported_count' => 1, 'prepared_count' => 1, 'client_result_count' => 1]);
         $step = AiChatRunStep::where('tool_name', 'delegate_science_problem')->firstOrFail();
         $this->assertSame('client_script', $step->public_metadata['execution_mode']);
+        $this->assertFalse(app(ScienceContractStore::class)->isUsable($step));
+        $this->assertArrayNotHasKey('science_step_id', $step->private_payload['result']);
         $this->expectException(ValidationException::class);
         app(ScienceContractStore::class)->resolve($step->id, collect([$step->id => $step]));
     }

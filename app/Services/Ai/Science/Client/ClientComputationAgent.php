@@ -2,17 +2,17 @@
 
 namespace App\Services\Ai\Science\Client;
 
-use App\Services\Ai\Contracts\LlmClientInterface;
 use App\Services\Ai\DTOs\LlmMessage;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\Exceptions\AiProviderException;
+use App\Services\Ai\LlmInference;
 use App\Services\Ai\Science\ScienceSolverRegistry;
 use Illuminate\Validation\ValidationException;
 use JsonException;
 
 final class ClientComputationAgent
 {
-    public function __construct(private readonly LlmClientInterface $client, private readonly ClientComputationContract $contract) {}
+    public function __construct(private readonly LlmInference $client, private readonly ClientComputationContract $contract) {}
 
     public function planLocal(array $request, LlmRequestOptions $options): array
     {
@@ -56,14 +56,26 @@ PROMPT;
                 throw AiProviderException::truncated();
             }
             try {
-                $proposal = json_decode($response->content, true, 32, JSON_THROW_ON_ERROR);
-            } catch (JsonException) {
-                throw ValidationException::withMessages(['program' => 'Invalid client-computation JSON.']);
-            }
-            if (! is_array($proposal)) {
-                throw ValidationException::withMessages(['program' => 'Expected client-computation object.']);
-            }
-            try {
+                if ($response->hasToolCalls() || strlen($response->content ?? '') > 24000) {
+                    throw ValidationException::withMessages(['program' => 'Return bounded client-computation JSON without tool calls.']);
+                }
+                $rawContent = trim((string) $response->content);
+                $start = strpos($rawContent, '{');
+                $end = strrpos($rawContent, '}');
+                $jsonCandidate = ($start !== false && $end !== false && $end >= $start)
+                    ? substr($rawContent, $start, $end - $start + 1)
+                    : $rawContent;
+
+                try {
+                    $proposal = json_decode($jsonCandidate, true, 32, JSON_THROW_ON_ERROR);
+                } catch (JsonException) {
+                    throw ValidationException::withMessages(['program' => 'Invalid client-computation JSON.']);
+                }
+
+                if (! is_array($proposal)) {
+                    throw ValidationException::withMessages(['program' => 'Expected client-computation object.']);
+                }
+
                 $plan = $this->contract->validate($proposal, $request['output_names'] ?? []);
                 break;
             } catch (ValidationException $error) {
@@ -72,7 +84,7 @@ PROMPT;
                 }
                 $envelope['validation_feedback'] = $error->errors();
                 // Bound repair context independently of provider output size.
-                $envelope['previous_proposal'] = mb_strcut($response->content, 0, 24000, 'UTF-8');
+                $envelope['previous_proposal'] = mb_strcut((string) $response->content, 0, 24000, 'UTF-8');
             }
         }
         $this->ensureActive($options);

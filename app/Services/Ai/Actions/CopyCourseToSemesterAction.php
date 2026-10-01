@@ -26,7 +26,7 @@ final class CopyCourseToSemesterAction implements AiWriteAction
     {
         return Validator::make($payload, [
             'source_matkul_id' => ['required', 'integer'],
-            'expected_updated_at' => ['required', 'date_format:Y-m-d H:i:s'],
+            'expected_record_hash' => ProposalFreshnessGuard::validationRules(),
             'kode' => ['required', 'string', 'max:20'],
             'semester' => ['required', 'integer', 'between:1,14'],
         ])->validate();
@@ -36,7 +36,7 @@ final class CopyCourseToSemesterAction implements AiWriteAction
     {
         $validated = $this->validatePayload($payload);
         $source = Matkul::query()->ownedBy((int) $user->id)->lockForUpdate()->findOrFail($validated['source_matkul_id']);
-        $this->freshness->assertUnchanged($source, $validated['expected_updated_at'], 'Mata kuliah sumber');
+        $this->freshness->assertUnchanged($source, $validated['expected_record_hash'], 'Mata kuliah sumber');
         Validator::make($validated, [
             'kode' => [Rule::unique('matkuls', 'kode')->where('user_id', $user->id)],
         ])->validate();
