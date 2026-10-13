@@ -71,4 +71,33 @@ final class AiToolSelectionService
 
         return $this->registry->getDeclarations($names);
     }
+
+    /** @return list<string> */
+    public function domainNames(): array
+    {
+        return array_keys(self::DOMAIN_TOOLS);
+    }
+
+    /** @return list<string> */
+    public function matchingDomains(string $prompt, array $history): array
+    {
+        $recent = collect($history)->where('role', 'user')->reverse()->take(2)->pluck('content')->implode(' ');
+        $text = Str::lower(Str::squish($recent.' '.$prompt));
+        $domains = collect(self::KEYWORDS)->filter(fn (array $words): bool => collect($words)
+            ->contains(fn (string $word): bool => str_contains($text, $word)))->keys();
+        if (preg_match('/\b[a-z]{2,}[- ]?\d{2,}\b/u', $text) === 1) {
+            $domains->push('courses');
+        }
+
+        return $domains->unique()->values()->all();
+    }
+
+    /** @param list<string> $domains */
+    public function forDomains(array $domains): array
+    {
+        $names = collect($domains)->flatMap(fn (string $domain): array => self::DOMAIN_TOOLS[$domain] ?? [])
+            ->unique()->values()->all();
+
+        return $this->registry->getDeclarations($names);
+    }
 }

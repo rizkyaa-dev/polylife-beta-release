@@ -1,0 +1,24 @@
+**
+!app/**
+!bootstrap/**
+!config/**
+!database/**
+!public/**
+!resources/**
+!routes/**
+!artisan
+!composer.json
+!composer.lock
+!package.json
+!package-lock.json
+!vite.config.js
+!tailwind.config.js
+!postcss.config.js
+!docs/quiz ppl/container/**
+bootstrap/cache/*.php
+database/*.sqlite*
+public/build
+public/hot
+public/storage
+public/uploads
+**/.env*

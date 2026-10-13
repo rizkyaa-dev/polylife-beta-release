@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class AiChatRun extends Model
 {
     protected $fillable = [
+        'response_mode',
+        'context_policy',
         'request_id',
         'science_client',
         'science_execution_id',
@@ -41,6 +43,7 @@ class AiChatRun extends Model
     protected $hidden = ['claim_token'];
 
     protected $casts = [
+        'context_policy' => 'array',
         'started_at' => 'datetime',
         'heartbeat_at' => 'datetime',
         'last_dispatched_at' => 'datetime',

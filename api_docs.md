@@ -431,3 +431,16 @@ curl "http://127.0.0.1:8000/api/v1/pengumuman?per_page=12" \
   -H "Accept: application/json" \
   -H "Authorization: Bearer <access_token>"
 ```
+
+## AI Web: response mode
+
+The authenticated web routes `POST /workspace/ai/chat` and `PATCH /workspace/ai/messages/{message}/edit`
+accept optional `response_mode` with `default` or `eco`. Omission keeps the existing
+Default behavior; invalid values return 422. The mode is captured with the request ID,
+so replaying the same ID with another mode returns 409. Accepted requests retain the
+existing 202 response contract. Disabled or unmigrated Eco returns 422 with
+`code: "eco_unavailable"` before admission; it never silently runs Default.
+These routes use web authentication/CSRF, independently
+of the bearer-token `/api/v1` endpoints above.
+
+See [Eco mode design, configuration, migration and verification](docs/ai-eco-mode.md).

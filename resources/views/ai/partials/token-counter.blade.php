@@ -4,8 +4,13 @@
     $measurementLabel = match ($latestRunTokens['status'] ?? 'unknown') {
         'complete' => 'Tercatat', 'partial' => 'Sebagian tercatat', default => 'Belum tercatat',
     };
+    $costProfile = config('ai_cost.enabled')
+        && strtolower((string) config('services.ai_provider')) === 'deepseek'
+        && in_array(strtolower((string) config('services.deepseek.model')), config('ai_cost.models', []), true)
+        ? config('ai_cost.profile') : null;
 @endphp
 <div class="ai-token-counter" data-ai-token-counter
+    @if($costProfile) data-cost-profile="{{ json_encode($costProfile) }}" @endif
     data-latest-status="{{ $latestRunTokens['status'] ?? 'unknown' }}"
     data-latest-prompt="{{ $latestRunTokens['prompt'] ?? 0 }}"
     data-latest-completion="{{ $latestRunTokens['completion'] ?? 0 }}"
@@ -25,16 +30,31 @@
     <div class="ai-token-popover" data-ai-token-popover hidden role="dialog" aria-label="Penggunaan token">
         <div class="ai-token-popover-head">
             <strong>Pengiriman Terakhir</strong>
-            <span class="ai-token-badge" data-ai-token-measurement>{{ $measurementLabel }}</span>
+            <span class="ai-token-popover-status">
+                <span class="ai-token-badge" data-ai-token-measurement>{{ $measurementLabel }}</span>
+                @if($costProfile)
+                    <span class="ai-token-cost" data-ai-token-cost-latest aria-label="Estimasi biaya belum tersedia" title="Estimasi biaya pengiriman terakhir pada tarif maksimum">—</span>
+                @endif
+            </span>
         </div>
         <div class="ai-token-stats">
             <div class="ai-token-stat-row">
                 <span class="ai-token-label">Input (Prompt)</span>
-                <strong data-ai-token-detail-in>{{ $tokenText($latestRunTokens, 'prompt') }}</strong>
+                <span class="ai-token-stat-values">
+                    <strong data-ai-token-detail-in>{{ $tokenText($latestRunTokens, 'prompt') }}</strong>
+                    @if($costProfile)
+                        <span class="ai-token-cost" data-ai-token-cost-input aria-label="Estimasi biaya input belum tersedia">—</span>
+                    @endif
+                </span>
             </div>
             <div class="ai-token-stat-row">
                 <span class="ai-token-label">Output (Jawaban)</span>
-                <strong data-ai-token-detail-out>{{ $tokenText($latestRunTokens, 'completion') }}</strong>
+                <span class="ai-token-stat-values">
+                    <strong data-ai-token-detail-out>{{ $tokenText($latestRunTokens, 'completion') }}</strong>
+                    @if($costProfile)
+                        <span class="ai-token-cost" data-ai-token-cost-output aria-label="Estimasi biaya output belum tersedia">—</span>
+                    @endif
+                </span>
             </div>
             <div class="ai-token-stat-row ai-token-stat-total">
                 <span class="ai-token-label">Total Pengiriman</span>
@@ -48,7 +68,15 @@
         <div class="ai-token-popover-divider"></div>
         <div class="ai-token-stat-row ai-token-session-row">
             <span class="ai-token-label">Akumulasi Sesi Ini</span>
-            <span class="ai-token-session-total" data-ai-token-session-total>{{ $tokenText($sessionTokens, 'total') }} tok</span>
+            <span class="ai-token-stat-values">
+                <span class="ai-token-session-total" data-ai-token-session-total>{{ $tokenText($sessionTokens, 'total') }} tok</span>
+                @if($costProfile)
+                    <span class="ai-token-cost" data-ai-token-cost-session aria-label="Estimasi biaya sesi belum tersedia">—</span>
+                @endif
+            </span>
         </div>
+        @if($costProfile)
+            @include('ai.partials.token-cost-summary')
+        @endif
     </div>
 </div>

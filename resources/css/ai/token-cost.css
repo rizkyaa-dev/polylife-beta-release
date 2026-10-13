@@ -1,0 +1,38 @@
+.ai-token-popover:has([data-ai-token-cost-latest]) {
+    width: min(330px, calc(100vw - 2rem));
+}
+
+.ai-token-popover-status {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+    min-width: 0;
+}
+
+.ai-token-cost {
+    color: var(--ai-muted);
+    font-size: .75rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.ai-token-stat-values {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: .5rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.ai-token-cost-note {
+    margin: .6rem 0 0;
+    color: var(--ai-muted);
+    font-size: .75rem;
+    font-weight: 400;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}

@@ -1,0 +1,869 @@
+{
+  "info": {
+    "name": "PPL Tugas 3 - PolyLife - 2405097",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api/v1"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "0 LOGIN PRASYARAT",
+      "item": [
+        {
+          "name": "00 Login Prasyarat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"1@2.c\",\n  \"password\": \"1\",\n  \"device_name\": \"postman-ppl-2405097\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "if (j.data && j.data.access_token) pm.collectionVariables.set('token', j.data.access_token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 KEUANGAN",
+      "item": [
+        {
+          "name": "101 POST Tambah keuangan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/keuangan",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"pengeluaran\",\n  \"kategori\": \"Praktikum PPL\",\n  \"deskripsi\": \"Data uji PPL 2405097\",\n  \"nominal\": 10000,\n  \"tanggal\": \"2026-10-03\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "if(j.data && j.data.id) pm.collectionVariables.set('keuangan_id', j.data.id);",
+                  "pm.test('Data tersimpan',()=>pm.expect(j.data.id).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "102 GET Daftar keuangan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/keuangan?bulan=2026-10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Data uji ada dalam daftar',()=>pm.expect(j.data.some(x=>String(x.id)===String(pm.collectionVariables.get('keuangan_id')))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "103 PUT Ubah keuangan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/keuangan/{{keuangan_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"pengeluaran\",\n  \"kategori\": \"Praktikum PPL\",\n  \"deskripsi\": \"Data uji PUT PPL 2405097\",\n  \"nominal\": 15000,\n  \"tanggal\": \"2026-10-03\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Nilai jenis sesuai',()=>pm.expect(j.data.jenis).to.eql(\"pengeluaran\"));",
+                  "pm.test('Nilai kategori sesuai',()=>pm.expect(j.data.kategori).to.eql(\"Praktikum PPL\"));",
+                  "pm.test('Nilai deskripsi sesuai',()=>pm.expect(j.data.deskripsi).to.eql(\"Data uji PUT PPL 2405097\"));",
+                  "pm.test('Nilai nominal sesuai',()=>pm.expect(Number(j.data.nominal)).to.eql(15000));",
+                  "pm.test('Nilai tanggal sesuai',()=>pm.expect(j.data.tanggal).to.eql(\"2026-10-03\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "104 PATCH Ubah keuangan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/keuangan/{{keuangan_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jenis\": \"pengeluaran\",\n  \"kategori\": \"Praktikum PPL\",\n  \"deskripsi\": \"Data uji PATCH PPL 2405097\",\n  \"nominal\": 20000,\n  \"tanggal\": \"2026-10-03\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Nilai jenis sesuai',()=>pm.expect(j.data.jenis).to.eql(\"pengeluaran\"));",
+                  "pm.test('Nilai kategori sesuai',()=>pm.expect(j.data.kategori).to.eql(\"Praktikum PPL\"));",
+                  "pm.test('Nilai deskripsi sesuai',()=>pm.expect(j.data.deskripsi).to.eql(\"Data uji PATCH PPL 2405097\"));",
+                  "pm.test('Nilai nominal sesuai',()=>pm.expect(Number(j.data.nominal)).to.eql(20000));",
+                  "pm.test('Nilai tanggal sesuai',()=>pm.expect(j.data.tanggal).to.eql(\"2026-10-03\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "105 POST Validasi kosong keuangan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/keuangan",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Rincian validasi tersedia',()=>pm.expect(j.errors).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "106 DELETE Hapus keuangan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/keuangan/{{keuangan_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Pesan hasil tersedia',()=>pm.expect(j.message).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "107 GET Verifikasi hapus keuangan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/keuangan?bulan=2026-10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Data tidak ada dalam daftar',()=>pm.expect(j.data.some(x=>String(x.id)===String(pm.collectionVariables.get('keuangan_id')))).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 TODOLIST",
+      "item": [
+        {
+          "name": "201 POST Tambah todolist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/todolist",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_item\": \"Praktikum PPL 2405097\",\n  \"status\": false,\n  \"reminder_enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "if(j.data && j.data.id) pm.collectionVariables.set('todolist_id', j.data.id);",
+                  "pm.test('Data tersimpan',()=>pm.expect(j.data.id).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "202 GET Daftar todolist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/todolist"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Data uji ada dalam daftar',()=>pm.expect(j.data.some(x=>String(x.id)===String(pm.collectionVariables.get('todolist_id')))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "203 PUT Ubah todolist",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/todolist/{{todolist_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_item\": \"Praktikum PPL 2405097 PUT\",\n  \"status\": false,\n  \"reminder_enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Nilai nama_item sesuai',()=>pm.expect(j.data.nama_item).to.eql(\"Praktikum PPL 2405097 PUT\"));",
+                  "pm.test('Nilai status sesuai',()=>pm.expect(j.data.status).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "204 PATCH Ubah todolist",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/todolist/{{todolist_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama_item\": \"Praktikum PPL 2405097 PATCH\",\n  \"status\": true,\n  \"reminder_enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Nilai nama_item sesuai',()=>pm.expect(j.data.nama_item).to.eql(\"Praktikum PPL 2405097 PATCH\"));",
+                  "pm.test('Nilai status sesuai',()=>pm.expect(j.data.status).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "205 POST Validasi kosong todolist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/todolist",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Rincian validasi tersedia',()=>pm.expect(j.errors).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "206 DELETE Hapus todolist",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/todolist/{{todolist_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Pesan hasil tersedia',()=>pm.expect(j.message).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "207 GET Verifikasi hapus todolist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/todolist"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Data tidak ada dalam daftar',()=>pm.expect(j.data.some(x=>String(x.id)===String(pm.collectionVariables.get('todolist_id')))).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 CATATAN",
+      "item": [
+        {
+          "name": "301 POST Tambah catatan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/catatan",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Praktikum PPL 2405097\",\n  \"isi\": \"Catatan awal pengujian API.\",\n  \"tanggal\": \"2026-10-03\",\n  \"show_preview\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "if(j.data && j.data.id) pm.collectionVariables.set('catatan_id', j.data.id);",
+                  "pm.test('Data tersimpan',()=>pm.expect(j.data.id).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "302 GET Daftar catatan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/catatan"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Data uji ada dalam daftar',()=>pm.expect(j.data.some(x=>String(x.id)===String(pm.collectionVariables.get('catatan_id')))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "303 PUT Ubah catatan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/catatan/{{catatan_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Praktikum PPL 2405097 PUT\",\n  \"isi\": \"Catatan setelah pengujian PUT.\",\n  \"tanggal\": \"2026-10-03\",\n  \"show_preview\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Nilai judul sesuai',()=>pm.expect(j.data.judul).to.eql(\"Praktikum PPL 2405097 PUT\"));",
+                  "pm.test('Nilai isi sesuai',()=>pm.expect(j.data.isi).to.eql(\"Catatan setelah pengujian PUT.\"));",
+                  "pm.test('Nilai tanggal sesuai',()=>pm.expect(j.data.tanggal).to.eql(\"2026-10-03\"));",
+                  "pm.test('Nilai show_preview sesuai',()=>pm.expect(j.data.show_preview).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "304 PATCH Ubah catatan",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/catatan/{{catatan_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Praktikum PPL 2405097 PATCH\",\n  \"isi\": \"Catatan setelah pengujian PATCH.\",\n  \"tanggal\": \"2026-10-03\",\n  \"show_preview\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Nilai judul sesuai',()=>pm.expect(j.data.judul).to.eql(\"Praktikum PPL 2405097 PATCH\"));",
+                  "pm.test('Nilai isi sesuai',()=>pm.expect(j.data.isi).to.eql(\"Catatan setelah pengujian PATCH.\"));",
+                  "pm.test('Nilai tanggal sesuai',()=>pm.expect(j.data.tanggal).to.eql(\"2026-10-03\"));",
+                  "pm.test('Nilai show_preview sesuai',()=>pm.expect(j.data.show_preview).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "305 POST Validasi kosong catatan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/catatan",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 422', () => pm.response.to.have.status(422));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Rincian validasi tersedia',()=>pm.expect(j.errors).to.be.an('object'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "306 DELETE Hapus catatan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/catatan/{{catatan_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Pesan hasil tersedia',()=>pm.expect(j.message).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "307 GET Verifikasi hapus catatan",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/catatan/trash"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status HTTP 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Respons JSON valid', () => pm.expect(j).to.be.an('object'));",
+                  "pm.test('Data berada di sampah',()=>pm.expect(j.data.some(x=>String(x.id)===String(pm.collectionVariables.get('catatan_id')))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

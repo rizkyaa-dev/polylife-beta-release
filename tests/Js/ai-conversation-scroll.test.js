@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import { createConversationScroller } from '../../resources/js/ai/conversation-scroller.js';
 import { PendingAiTurns } from '../../resources/js/ai/pending-turns.js';
 import { PendingAiTurn, isDefinitiveFailure } from '../../resources/js/ai/turn-recovery.js';
+import { initModeControl } from '../../resources/js/ai/mode-control.js';
 
 function layoutHarness(t) {
     const frames = new Map();
@@ -166,10 +167,11 @@ test('browser history caching retains following while leaving the page releases 
     assert.deepEqual(ui.observers[0].targets, []);
 });
 
-function workspaceHarness(t) {
+function workspaceHarness(t, responseMode = 'default') {
     const ui = layoutHarness(t);
     const handlers = new Map();
     const items = [];
+    const requests = [];
     let resolveCompletion;
     const createMessage = (role, height) => {
         const text = { textContent: '' };
@@ -190,7 +192,7 @@ function workspaceHarness(t) {
     const dialog = { querySelectorAll: () => [], addEventListener() {}, hasAttribute: () => false };
     const send = { querySelector: () => ({}), addEventListener() {}, setAttribute() {} };
     const root = {
-        dataset: { chatUrl: '/ai/chat', workspaceUrl: 'http://localhost/ai' }, classList: { add() {} },
+        dataset: { chatUrl: '/ai/chat', workspaceUrl: 'http://localhost/ai', aiResponseMode: responseMode }, classList: { add() {} },
         querySelector: selector => ({
             '[data-ai-input]': input, '[data-ai-form]': form, '[data-ai-send]': send,
             '[data-ai-messages]': ui.viewport, '[data-ai-message-list]': list,
@@ -208,20 +210,32 @@ function workspaceHarness(t) {
         root, createConversationScroller, PendingAiTurn, PendingAiTurns, isDefinitiveFailure, URL,
         document: { querySelectorAll: () => [] },
         window: { matchMedia: () => ({ matches: false }), history: { replaceState() {} } },
-        initHistory: () => ({ update() {} }), initThinkingControl() {}, initSettingsEffortSlider() {},
+        initHistory: () => ({ update() {} }), initThinkingControl() {}, initSettingsEffortSlider() {}, initModeControl,
         initTokenCounter: () => ({ update() {}, updateDraft() {} }), renderMessageMath: async () => {},
         initMessageInteractions() {}, initEarlierMessages() {}, initProposals() {}, initCodeArtifacts() {}, appendProcess() {},
         createRequestId: () => 'scroll-test', setMessageIdentity() {},
-        postJson: async () => ({ run_id: 7, session_id: 3 }),
+        postJson: async (url, payload) => { requests.push({url, payload}); return { run_id: 7, session_id: 3 }; },
         waitForRun: () => new Promise(resolve => { resolveCompletion = resolve; }),
     });
     vm.runInContext(workspace + '\ninitWorkspace(root);', context);
     ui.flush();
     return {
-        ...ui, items,
+        ...ui, items, requests,
         submit: () => handlers.get('submit')({ preventDefault() {} }),
         complete: data => resolveCompletion(data),
     };
+}
+
+for (const mode of ['default', 'eco']) {
+    test(`actual composer sends the captured ${mode} mode without changing Default payload`, async t => {
+        const ui = workspaceHarness(t, mode);
+        const sending = ui.submit();
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(ui.requests[0].payload.response_mode, mode === 'eco' ? 'eco' : undefined);
+        assert.equal(ui.requests[0].payload.message, 'Pesan baru');
+        ui.complete({reply: 'Jawaban', session_id: 3, proposals: []});
+        await sending;
+    });
 }
 
 test('actual composer reveals the thinking indicator before the server finishes', async t => {

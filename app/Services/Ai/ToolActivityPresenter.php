@@ -7,6 +7,8 @@ class ToolActivityPresenter
     public function label(string $toolName): string
     {
         return match ($toolName) {
+            'discover_workspace_tools' => 'Memilih alat workspace yang relevan',
+            'recall_conversation' => 'Membaca kembali konteks percakapan',
             'delegate_science_problem' => 'Memodelkan dan menghitung masalah sains',
             'get_upcoming_schedule' => 'Membaca jadwal kuliah',
             'get_financial_summary' => 'Memeriksa ringkasan keuangan',

@@ -60,9 +60,9 @@
     color: var(--ai-text);
     background: var(--ai-surface);
     border: 2px solid var(--ai-control-line);
-    border-radius: 1.75rem;
+    border-radius: 1.5rem;
     box-shadow: var(--ai-card-shadow);
-    padding: 1.25rem;
+    padding: 1rem;
     width: min(34rem, calc(100vw - 2rem));
     max-height: calc(100dvh - 2rem);
     margin: auto;
@@ -94,8 +94,8 @@
 
 .ai-settings-form {
     display: grid;
-    gap: .65rem;
-    margin-top: 1.5rem;
+    gap: .5rem;
+    margin-top: 1rem;
 }
 
 .ai-settings-form > label, .ai-settings-form legend {
@@ -113,7 +113,7 @@
     border-radius: .65rem;
     background: var(--ai-canvas);
     color: var(--ai-text);
-    padding: .7rem;
+    padding: .6rem;
     font-size: 1rem;
 }
 
@@ -122,21 +122,21 @@
 }
 
 .ai-settings-form fieldset {
-    margin: .75rem 0;
+    margin: .375rem 0;
 }
 
 .ai-tone-options, .ai-effort-options {
     display: grid;
     grid-template-columns: 1fr;
-    gap: .6rem;
-    margin-top: .75rem;
+    gap: .5rem;
+    margin-top: .5rem;
 }
 
 .ai-tone-option {
     display: flex;
     align-items: center;
     gap: .65rem;
-    padding: .9rem;
+    padding: .65rem;
     border: 1px solid var(--ai-line);
     border-radius: .75rem;
     cursor: pointer;
@@ -201,6 +201,6 @@
     display: flex;
     justify-content: flex-end;
     gap: .5rem;
-    margin-top: 1rem;
+    margin-top: .5rem;
     flex-wrap: wrap;
 }

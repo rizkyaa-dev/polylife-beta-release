@@ -8,6 +8,8 @@
     $activeThinkingEffort = $assistant->thinking_effort ?? \App\Services\Ai\Enums\ThinkingEffort::High;
 @endphp
 <main class="ai-workspace {{ $hasMessages ? 'has-messages' : '' }}" data-ai-workspace
+    data-ai-response-mode="eco"
+    data-mode-preference-scope="{{ $assistant->user_id }}"
     data-science-kernel-enabled="{{ $scienceKernelEnabled ? 'true' : 'false' }}"
     data-science-client-auto-execute="{{ $scienceClientAutoExecute ? 'true' : 'false' }}"
     @if ($scienceCacheScope) data-science-cache-scope="{{ $scienceCacheScope }}" @endif

@@ -59,7 +59,7 @@
         padding-bottom: 1.5rem;
     }
     .ai-settings-dialog {
-        padding: 1.75rem;
+        padding: 1.25rem;
     }
     .ai-tone-options, .ai-effort-options {
         grid-template-columns: 1fr 1fr;

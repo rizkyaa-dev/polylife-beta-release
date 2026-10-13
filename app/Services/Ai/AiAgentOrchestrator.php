@@ -2,6 +2,7 @@
 
 namespace App\Services\Ai;
 
+use App\Jobs\RefreshEcoConversationMemory;
 use App\Models\AiActionProposal;
 use App\Models\AiChatBranch;
 use App\Models\AiChatMessage;
@@ -16,7 +17,13 @@ use App\Services\Ai\Design\AiDesignArtifactEvaluator;
 use App\Services\Ai\DTOs\LlmMessage;
 use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\DTOs\LlmTokenUsage;
+use App\Services\Ai\Eco\EcoContextAssembler;
+use App\Services\Ai\Eco\EcoContextPolicy;
+use App\Services\Ai\Eco\EcoContextTools;
+use App\Services\Ai\Eco\EcoToolSelector;
+use App\Services\Ai\Enums\ResponseMode;
 use App\Services\Ai\Enums\ThinkingEffort;
+use App\Services\Ai\Exceptions\AiEcoUnavailableException;
 use App\Services\Ai\Exceptions\AiProviderException;
 use App\Services\Ai\Exceptions\AiRunCancelledException;
 use App\Services\Ai\Science\AiScienceAgent;
@@ -28,6 +35,7 @@ use App\Services\Ai\Science\ScienceContractStore;
 use App\Services\Ai\Science\ScienceExecutionBroker;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -58,7 +66,10 @@ class AiAgentOrchestrator
         private readonly ScienceExecutionBroker $scienceBroker,
         private readonly ClientComputationAgent $clientComputation,
         private readonly ScienceCapabilityTelemetry $scienceTelemetry,
-        private readonly AiTokenAccounting $tokenAccounting
+        private readonly AiTokenAccounting $tokenAccounting,
+        private readonly EcoContextAssembler $ecoContext,
+        private readonly EcoToolSelector $ecoTools,
+        private readonly EcoContextTools $ecoContextTools
     ) {}
 
     /**
@@ -68,17 +79,17 @@ class AiAgentOrchestrator
      *     proposals: list<array<string, mixed>>
      * }
      */
-    public function handle(User $user, string $userPrompt, ?int $sessionId = null): array
+    public function handle(User $user, string $userPrompt, ?int $sessionId = null, ResponseMode $responseMode = ResponseMode::Default): array
     {
-        $turn = $this->branchService->beginTurn($user, $userPrompt, $sessionId);
+        $turn = $this->branchService->beginTurn($user, $userPrompt, $sessionId, responseMode: $responseMode);
 
         return $this->runTurn($user, $userPrompt, $turn);
     }
 
     /** @return array{session: AiChatSession, branch: AiChatBranch, user_message: AiChatMessage, run: AiChatRun} */
-    public function enqueue(User $user, string $userPrompt, ?int $sessionId = null, ?string $requestId = null, bool $scienceClient = false): array
+    public function enqueue(User $user, string $userPrompt, ?int $sessionId = null, ?string $requestId = null, bool $scienceClient = false, ResponseMode $responseMode = ResponseMode::Default): array
     {
-        $turn = $this->branchService->beginTurn($user, $userPrompt, $sessionId, requestId: $requestId, scienceClient: $scienceClient);
+        $turn = $this->branchService->beginTurn($user, $userPrompt, $sessionId, requestId: $requestId, scienceClient: $scienceClient, responseMode: $responseMode);
         if ($turn['is_new'] ?? true) {
             $this->dispatchTurn($turn['run'], $user);
         }
@@ -89,25 +100,25 @@ class AiAgentOrchestrator
     /**
      * @return array<string, mixed>
      */
-    public function edit(User $user, int $messageId, string $userPrompt): array
+    public function edit(User $user, int $messageId, string $userPrompt, ResponseMode $responseMode = ResponseMode::Default): array
     {
         $message = AiChatMessage::query()
             ->whereKey($messageId)
             ->whereHas('session', fn ($query) => $query->where('user_id', $user->id))
             ->firstOrFail();
-        $turn = $this->branchService->beginTurn($user, $userPrompt, $message->session_id, $message->id);
+        $turn = $this->branchService->beginTurn($user, $userPrompt, $message->session_id, $message->id, responseMode: $responseMode);
 
         return $this->runTurn($user, $userPrompt, $turn);
     }
 
     /** @return array{session: AiChatSession, branch: AiChatBranch, user_message: AiChatMessage, run: AiChatRun} */
-    public function enqueueEdit(User $user, int $messageId, string $userPrompt, ?string $requestId = null, bool $scienceClient = false): array
+    public function enqueueEdit(User $user, int $messageId, string $userPrompt, ?string $requestId = null, bool $scienceClient = false, ResponseMode $responseMode = ResponseMode::Default): array
     {
         $message = AiChatMessage::query()
             ->whereKey($messageId)
             ->whereHas('session', fn ($query) => $query->where('user_id', $user->id))
             ->firstOrFail();
-        $turn = $this->branchService->beginTurn($user, $userPrompt, $message->session_id, $message->id, $requestId, $scienceClient);
+        $turn = $this->branchService->beginTurn($user, $userPrompt, $message->session_id, $message->id, $requestId, $scienceClient, $responseMode);
         if ($turn['is_new'] ?? true) {
             $this->dispatchTurn($turn['run'], $user);
         }
@@ -197,7 +208,15 @@ class AiAgentOrchestrator
             ]
         );
 
-        $systemInstruction = $this->instructionBuilder->build($user, $assistant).$this->codingDelegation->instruction().$this->scienceDelegation->instruction();
+        $ecoPolicy = ($run->response_mode ?? 'default') === ResponseMode::Eco->value ? EcoContextPolicy::fromArray($run->context_policy) : null;
+        if (($run->response_mode ?? 'default') === ResponseMode::Eco->value && $ecoPolicy === null) {
+            Log::warning('ai.eco.policy_unsupported', ['run_id' => $run->id, 'request_id' => $run->request_id]);
+            $this->runStateManager->fail($run, 'eco_unavailable', false, $this->elapsedMilliseconds($startedAt), $expectedAttempt);
+            throw new AiEcoUnavailableException('persisted_policy_unavailable');
+        }
+        $systemInstruction = $ecoPolicy === null
+            ? $this->instructionBuilder->build($user, $assistant).$this->codingDelegation->instruction().$this->scienceDelegation->instruction()
+            : $this->instructionBuilder->buildEco($user, $assistant, $this->codingDelegation->ecoInstruction().$this->scienceDelegation->ecoInstruction());
         $minimumOutputTokens = 0;
         $thinkingEffort = $assistant->thinking_effort ?? ThinkingEffort::High;
         $runStartedAt = hrtime(true) / 1_000_000_000;
@@ -206,22 +225,46 @@ class AiAgentOrchestrator
 
         $lineage = $this->branchService->recentLineage($session, $turn['parent_id']);
         $availableScience = $this->scienceContracts->ancestors($lineage);
+        $ecoScienceEvidenceLoaded = false;
         if ($availableScience->isNotEmpty()) {
             $systemInstruction .= "\nScientific contract step IDs available on this branch: ".implode(', ', $availableScience->keys()->all()).'. Use science_step_id when implementing a calculator from one of these results.';
+            if ($ecoPolicy !== null) {
+                $systemInstruction .= $this->scienceDelegation->ecoEvidenceInstruction();
+                $ecoScienceEvidenceLoaded = true;
+            }
         }
         $sourceArtifacts = $lineage->filter(fn (AiChatMessage $message) => $message->role === 'assistant'
             && $message->status === 'completed' && (str_contains($message->content, '```') || str_contains($message->content, '~~~')))->keyBy('id');
         if ($sourceArtifacts->isNotEmpty()) {
             $systemInstruction .= "\nArtefak pada cabang ini (ID pesan asisten, urutan lama ke baru): ".implode(', ', $sourceArtifacts->keys()->all());
         }
-        $messageHistory = $this->contextAssembler->assemble($lineage, $branch);
-        $messageHistory[] = new LlmMessage(role: 'user', content: $userPrompt);
-        $tools = [...$this->toolSelection->declarations($userPrompt, $messageHistory), $this->codingDelegation->declaration(), $this->scienceDelegation->declaration()];
+        $contextMetadata = null;
+        if ($ecoPolicy === null) {
+            $messageHistory = $this->contextAssembler->assemble($lineage, $branch);
+            $messageHistory[] = new LlmMessage(role: 'user', content: $userPrompt);
+            $tools = [...$this->toolSelection->declarations($userPrompt, $messageHistory), $this->codingDelegation->declaration(), $this->scienceDelegation->declaration()];
+        } elseif ($resume === null) {
+            $recentUsers = $lineage->where('status', 'completed')->where('role', 'user')->take(-2)
+                ->map(fn ($message) => new LlmMessage('user', $message->content))->values()->all();
+            $tools = $this->ecoTools->declarations($userPrompt, $recentUsers);
+            $prepared = $this->ecoContext->assemble($lineage, $branch, $userPrompt, $systemInstruction, $tools, $ecoPolicy);
+            $messageHistory = [...$prepared['history'], new LlmMessage('user', $userPrompt)];
+            $contextMetadata = [...$prepared['metadata'],
+                'instruction_profile' => AiSystemInstructionBuilder::ECO_PROFILE_VERSION,
+                'science_evidence_loaded' => $ecoScienceEvidenceLoaded,
+            ];
+            Log::info('ai.eco.context_prepared', ['run_id' => $run->id, 'request_id' => $run->request_id, ...$contextMetadata]);
+        } else {
+            // Resume exclusively from the checkpoint; never re-plan a suspended tool sequence.
+            $messageHistory = [];
+            $tools = [];
+        }
         $proposals = [];
         $proposalRows = [];
         $toolResultsByInvocation = [];
 
         $iterations = 0;
+        $ecoContextRoundCredit = 0;
         $finalReply = '';
         $finalReasoningContent = null;
         $stepSequence = 0;
@@ -235,6 +278,8 @@ class AiAgentOrchestrator
             $tools = $saved['tools'];
             $thinkingEffort = ThinkingEffort::from($saved['thinking_effort']);
             $iterations = $saved['iterations'];
+            $ecoContextRoundCredit = $ecoPolicy === null ? 0 : min(1, max(0, (int) ($saved['eco_context_round_credit'] ?? 0)));
+            $ecoScienceEvidenceLoaded = $ecoPolicy !== null && ($saved['eco_science_evidence_loaded'] ?? false) === true;
             $stepSequence = $saved['step_sequence'];
             $totalToolCalls = $saved['total_tool_calls'];
             $toolResultsByInvocation = $saved['invocation_results'];
@@ -258,7 +303,7 @@ class AiAgentOrchestrator
         }
 
         try {
-            while ($iterations < self::MAX_TOOL_ROUNDS) {
+            while ($iterations < self::MAX_TOOL_ROUNDS + $ecoContextRoundCredit) {
                 $iterations++;
                 $reasoningStep = $this->startStep(
                     $run->id,
@@ -266,6 +311,9 @@ class AiAgentOrchestrator
                     'reasoning_summary',
                     $iterations === 1 ? 'Memahami permintaan dan konteks' : 'Menilai hasil alat bantu'
                 );
+                if ($contextMetadata !== null && $iterations === 1) {
+                    $reasoningStep->update(['public_metadata' => ['context' => $contextMetadata]]);
+                }
                 $response = $this->performModelCall(
                     $reasoningStep,
                     fn () => $this->llmClient->chat(
@@ -282,7 +330,7 @@ class AiAgentOrchestrator
 
                 if (! $response->hasToolCalls()) {
                     if ($this->codingDelegation->containsImplementation($response->content)) {
-                        if ($delegationBoundaryEnforced || $iterations >= self::MAX_TOOL_ROUNDS) {
+                        if ($delegationBoundaryEnforced || $iterations >= self::MAX_TOOL_ROUNDS + $ecoContextRoundCredit) {
                             throw AiProviderException::invalidCodingResponse();
                         }
                         // Discard bypassed source code; never feed it back as authoritative context.
@@ -329,6 +377,35 @@ class AiAgentOrchestrator
                             'status' => 'invalid_arguments',
                             'message' => $call->argumentError,
                         ];
+                    } elseif ($ecoPolicy !== null && in_array($call->name, [EcoToolSelector::DISCOVER, EcoToolSelector::RECALL], true)) {
+                        if (array_key_exists($invocationKey, $toolResultsByInvocation)) {
+                            $result = $toolResultsByInvocation[$invocationKey];
+                        } else {
+                            try {
+                                if ($call->name === EcoToolSelector::DISCOVER) {
+                                    $additional = $this->ecoContextTools->discover($call->arguments);
+                                    $tools = $this->ecoTools->merge($tools, $additional);
+                                    $result = ['status' => 'tools_available', 'tool_names' => array_column($additional, 'name')];
+                                } else {
+                                    $result = $this->ecoContextTools->recall($user, $session, $turn['parent_id'], $call->arguments, $ecoPolicy);
+                                    foreach ($result['messages'] as $source) {
+                                        if ($source['artifact']) {
+                                            $sourceArtifacts->put($source['message_id'], (new AiChatMessage)->forceFill([
+                                                'id' => $source['message_id'], 'content' => $source['content'],
+                                            ]));
+                                        }
+                                    }
+                                }
+                                $toolResultsByInvocation[$invocationKey] = $result;
+                                // One preparation round does not consume a workspace/science
+                                // reasoning round. Tool-count limits and the original deadline still apply.
+                                if ($roundToolCalls === 1) {
+                                    $ecoContextRoundCredit = 1;
+                                }
+                            } catch (ValidationException $exception) {
+                                $result = ['status' => 'invalid_arguments', 'errors' => $exception->errors()];
+                            }
+                        }
                     } elseif ($call->name === AiCodingDelegation::TOOL_NAME) {
                         try {
                             if ($roundToolCalls !== 1) {
@@ -339,6 +416,10 @@ class AiAgentOrchestrator
                             $scienceContract = $scienceId === null ? null : $this->scienceContracts->resolve((int) $scienceId, $availableScience);
                             $sourceId = $call->arguments['source_message_id'] ?? null;
                             $source = $sourceId === null ? null : $sourceArtifacts->get($sourceId);
+                            if ($sourceId !== null && $source === null && $ecoPolicy !== null) {
+                                // A science checkpoint can outlive the initial artifact window.
+                                $source = $this->ecoContextTools->artifact($user, $session, $turn['parent_id'], (int) $sourceId, $ecoPolicy);
+                            }
                             if ($sourceId !== null && $source === null) {
                                 throw ValidationException::withMessages(['source_message_id' => 'Artefak tidak tersedia pada cabang ini.']);
                             }
@@ -387,6 +468,11 @@ class AiAgentOrchestrator
                             $result = ['status' => 'invalid_arguments', 'message' => 'Perbaiki brief delegasi sebelum mencoba kembali.', 'errors' => $exception->errors()];
                         }
                     } elseif ($call->name === AiScienceDelegation::TOOL_NAME) {
+                        if ($ecoPolicy !== null && ! $ecoScienceEvidenceLoaded) {
+                            // Persist these rules with the checkpoint before browser suspension.
+                            $systemInstruction .= $this->scienceDelegation->ecoEvidenceInstruction();
+                            $ecoScienceEvidenceLoaded = true;
+                        }
                         if (array_key_exists($invocationKey, $toolResultsByInvocation)) {
                             $result = $toolResultsByInvocation[$invocationKey];
                         } else {
@@ -429,6 +515,10 @@ class AiAgentOrchestrator
                                         'proposal_rows' => $proposalRows, 'boundary_enforced' => $delegationBoundaryEnforced,
                                         'run_budget_seconds' => $deadlineAt - $runStartedAt, 'processing_started_at' => $startedAt,
                                         'pending_invocation_key' => $invocationKey, 'pending_call_id' => $call->id,
+                                        ...($ecoPolicy !== null ? [
+                                            'eco_context_round_credit' => $ecoContextRoundCredit,
+                                            'eco_science_evidence_loaded' => $ecoScienceEvidenceLoaded,
+                                        ] : []),
                                     ], $deadlineAt);
 
                                     return $turn + ['phase' => 'awaiting_science'];
@@ -621,6 +711,19 @@ class AiAgentOrchestrator
         }
 
         $run->refresh()->load('steps');
+
+        if ($ecoPolicy !== null) {
+            try {
+                RefreshEcoConversationMemory::dispatch($run->id)
+                    ->onConnection(config('services.ai_queue_connection') ?: config('queue.default'))
+                    ->onQueue(config('services.ai_fast_queue', 'ai-fast'));
+            } catch (Throwable $exception) {
+                // Derived memory can be rebuilt from source on the next turn. The
+                // completed primary run must remain recoverable if its queue is unavailable.
+                report($exception);
+                Log::warning('ai.eco.memory_refresh_unavailable', ['run_id' => $run->id]);
+            }
+        }
 
         return [
             'session' => $session,

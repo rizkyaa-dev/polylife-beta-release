@@ -14,10 +14,14 @@ class AiChatBranch extends Model
         'head_message_id',
         'context_digest',
         'digest_through_message_id',
+        'eco_context_memory',
+        'eco_memory_refreshed_at',
     ];
 
     protected $casts = [
         'context_digest' => 'encrypted',
+        'eco_context_memory' => 'encrypted:array',
+        'eco_memory_refreshed_at' => 'datetime',
     ];
 
     public function session(): BelongsTo

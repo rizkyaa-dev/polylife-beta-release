@@ -3,9 +3,11 @@
 namespace App\Services\Ai;
 
 use App\Models\AiActionProposal;
+use App\Models\AiChatBranch;
 use App\Models\AiChatMessage;
 use App\Models\AiChatRunStep;
 use App\Models\AiScienceExecution;
+use Illuminate\Support\Facades\Schema;
 
 final class AiDataRetentionService
 {
@@ -35,6 +37,10 @@ final class AiDataRetentionService
                 'signature' => str_repeat('0', 64),
             ]);
         $messageProposalsRedacted = $this->redactPersistedMessageProposals($cutoff);
+        if (Schema::hasColumns('ai_chat_branches', ['eco_context_memory', 'eco_memory_refreshed_at'])) {
+            AiChatBranch::query()->whereNotNull('eco_context_memory')->where('eco_memory_refreshed_at', '<=', $cutoff)
+                ->update(['eco_context_memory' => null, 'eco_memory_refreshed_at' => null]);
+        }
 
         return [
             'expired_proposals' => $expiredProposals,

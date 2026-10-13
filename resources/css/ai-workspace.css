@@ -4,6 +4,8 @@
 @import './ai/sidebar.css';
 @import './ai/layout.css';
 @import './ai/composer.css';
+@import './ai/token-cost.css';
 @import './ai/conversation.css';
 @import './ai/overlays.css';
 @import './ai/responsive.css';
+@import './ai/mode-control.css';

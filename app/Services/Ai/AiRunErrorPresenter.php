@@ -2,11 +2,14 @@
 
 namespace App\Services\Ai;
 
+use App\Services\Ai\Exceptions\AiEcoUnavailableException;
+
 final class AiRunErrorPresenter
 {
     public function message(?string $code): string
     {
         return match ($code) {
+            'eco_unavailable' => AiEcoUnavailableException::MESSAGE,
             'provider_timeout' => 'Proses AI melewati batas waktu. Draft tetap tersedia; kamu bisa mencoba lagi.',
             'provider_connection_failed' => 'Koneksi ke penyedia AI bermasalah. Draft tetap tersedia; coba lagi setelah koneksi pulih.',
             'provider_rate_limited' => 'Penyedia AI sedang sibuk. Tunggu sebentar lalu coba lagi.',

@@ -12,8 +12,10 @@ use App\Services\Ai\AiMessageLimits;
 use App\Services\Ai\AiRunErrorPresenter;
 use App\Services\Ai\AiRunStateManager;
 use App\Services\Ai\AiTokenUsageSummary;
+use App\Services\Ai\Enums\ResponseMode;
 use App\Services\Ai\Exceptions\AiActionException;
 use App\Services\Ai\Exceptions\AiConversationBusyException;
+use App\Services\Ai\Exceptions\AiEcoUnavailableException;
 use App\Services\Ai\Exceptions\AiIdempotencyConflictException;
 use App\Services\Ai\Exceptions\AiSystemCapacityException;
 use App\Services\Ai\Exceptions\AiUserCapacityException;
@@ -42,6 +44,7 @@ class AiChatController extends Controller
             'message' => ['required', 'string', 'max:'.AiMessageLimits::MAX_CHARACTERS],
             'request_id' => ['nullable', 'uuid'],
             'science_client' => ['sometimes', 'boolean'],
+            'response_mode' => ['sometimes', Rule::enum(ResponseMode::class)],
             'session_id' => [
                 'nullable',
                 'integer',
@@ -55,10 +58,13 @@ class AiChatController extends Controller
                 $validated['message'],
                 $validated['session_id'] ?? null,
                 $validated['request_id'] ?? null,
-                (bool) ($validated['science_client'] ?? false)
+                (bool) ($validated['science_client'] ?? false),
+                ResponseMode::from($validated['response_mode'] ?? 'default')
             );
 
             return response()->json($this->acceptedResponse($result), 202);
+        } catch (AiEcoUnavailableException $exception) {
+            return response()->json(['status' => 'error', 'code' => 'eco_unavailable', 'message' => $exception->getMessage()], 422);
         } catch (AiConversationBusyException $exception) {
             return $this->busyResponse($request, $validated['session_id'] ?? null, $exception);
         } catch (AiUserCapacityException $exception) {
@@ -99,6 +105,7 @@ class AiChatController extends Controller
             'message' => ['required', 'string', 'max:'.AiMessageLimits::MAX_CHARACTERS],
             'request_id' => ['nullable', 'uuid'],
             'science_client' => ['sometimes', 'boolean'],
+            'response_mode' => ['sometimes', Rule::enum(ResponseMode::class)],
         ]);
 
         try {
@@ -108,9 +115,12 @@ class AiChatController extends Controller
                     $ownedMessage->id,
                     $validated['message'],
                     $validated['request_id'] ?? null,
-                    (bool) ($validated['science_client'] ?? false)
+                    (bool) ($validated['science_client'] ?? false),
+                    ResponseMode::from($validated['response_mode'] ?? 'default')
                 )
             ), 202);
+        } catch (AiEcoUnavailableException $exception) {
+            return response()->json(['status' => 'error', 'code' => 'eco_unavailable', 'message' => $exception->getMessage()], 422);
         } catch (AiConversationBusyException $exception) {
             return $this->busyResponse($request, $ownedMessage->session_id, $exception);
         } catch (AiUserCapacityException $exception) {

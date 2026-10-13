@@ -1,4 +1,7 @@
 import { tokenDisplay } from './token-usage.js';
+import { initTokenCost } from './token-cost.js';
+import { initModeControl } from './mode-control.js';
+import { animateEffortSlider } from './effort-slider.js';
 import { createConversationScroller } from './conversation-scroller.js';
 import { postJson, sendJson } from './transport';
 import { initHistory } from './history';
@@ -48,6 +51,7 @@ function initWorkspace(root) {
     const history = initHistory(root.dataset.workspaceUrl);
     initThinkingControl(root);
     initSettingsEffortSlider(root);
+    initModeControl(root);
     const tokenCounter = initTokenCounter(root, input);
     const onRunStatus = data => tokenCounter.update(data.run?.tokens, data.session_tokens);
     let sessionId = Number(root.dataset.sessionId) || null;
@@ -167,7 +171,7 @@ function initWorkspace(root) {
             showError('Pengiriman sebelumnya belum diketahui hasilnya. Pulihkan percakapan dengan memuat ulang sebelum mengirim pesan berbeda. Draft tetap tersedia.');
             return;
         }
-        retryRequest ??= new PendingAiTurn(createRequestId(), prompt, sessionId);
+        retryRequest ??= new PendingAiTurn(createRequestId(), prompt, sessionId, null, root.dataset.aiResponseMode);
         pendingTurns.set(form, retryRequest);
         busy = true;
         hideError();
@@ -431,7 +435,7 @@ function initMessageInteractions(root, state) {
             error.hidden = false;
             return;
         }
-        turn ??= new PendingAiTurn(createRequestId(), prompt, null);
+        turn ??= new PendingAiTurn(createRequestId(), prompt, null, null, root.dataset.aiResponseMode);
         pendingTurns.set(form, turn);
 
         state.setBusy(true);
@@ -442,6 +446,7 @@ function initMessageInteractions(root, state) {
             const url = root.dataset.editUrlTemplate.replace('__MESSAGE__', message.dataset.messageId);
             const accepted = await turn.reconcile(payload => sendJson(url, 'PATCH', {
                 message: payload.message, request_id: payload.request_id,
+                ...(payload.response_mode ? { response_mode: payload.response_mode } : {}),
                 science_client: typeof Worker === 'function' && Boolean(globalThis.crypto?.randomUUID),
             }));
             state.refresh();
@@ -589,16 +594,6 @@ function initSettingsEffortSlider(root) {
     });
 }
 
-function animateEffortSlider(slider, previous, index, count) {
-    if (previous === null || previous === index) return;
-    const distance = (previous - index) * Math.max(0, slider.clientWidth - 28) / (count - 1);
-    slider.style.setProperty('--ai-effort-slide-offset', `${distance}px`);
-    slider.classList.remove('ai-effort-sliding');
-    // Restart the thumb transition from its previous visual position.
-    void slider.offsetWidth;
-    slider.classList.add('ai-effort-sliding');
-}
-
 function initThinkingControl(root) {
     const control = root.querySelector('[data-ai-thinking]');
     if (!control) return;
@@ -688,6 +683,7 @@ function initThinkingControl(root) {
 function initTokenCounter(root, input) {
     const counter = root.querySelector('[data-ai-token-counter]');
     if (!counter) return { update: () => {}, updateDraft: () => {} };
+    const cost = counter.dataset.costProfile ? initTokenCost(counter) : null;
 
     const trigger = counter.querySelector('[data-ai-token-trigger]');
     const popover = counter.querySelector('[data-ai-token-popover]');
@@ -765,6 +761,7 @@ function initTokenCounter(root, input) {
             if (outEl) outEl.textContent = `${display.completion} out`;
             if (sessionTotalEl) sessionTotalEl.textContent = `${display.total} tok`;
         }
+        cost?.update(tokens, sessionTokens);
         updateDraft();
     };
 

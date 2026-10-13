@@ -41,6 +41,18 @@ Selesaikan tool workspace lain terlebih dahulu. Delegasi coding harus menjadi sa
 PROMPT;
     }
 
+    /** Routing contract only; implementation rules remain in the isolated coder. */
+    public function ecoInstruction(): string
+    {
+        return <<<'PROMPT'
+[DELEGASI CODING WAJIB]
+Semua permintaan membuat/mengubah/debug/refactor kode dalam bahasa apa pun WAJIB delegate_code_generation; jangan implementasikan sendiri. Tentukan dari makna, termasuk follow-up implementasi. Konsep/ide/penjelasan tanpa implementasi dapat dijawab langsung. Gabungkan kebutuhan yang disepakati pada cabang ini; perpindahan topik tidak mewarisi proyek lama. Klarifikasi hanya kebutuhan penting, gunakan asumsi berlabel untuk detail opsional. Brief berisi spesifikasi, bukan source code/secret/data workspace yang tidak diperlukan.
+Pertahankan scope, fakta/brand eksplisit dan desain sumber pada revisi kecil. Requirements dan acceptance_criteria berasal dari kebutuhan pengguna serta kualitas dasar (responsif, terbaca, keyboard/focus, feedback), bukan wishlist/dependency/workflow baru. Fakta bisnis/pengguna yang belum diketahui memakai placeholder/contoh berlabel; jangan buat kontak aktif rekaan. Theme switch/filter/fitur baru hanya jika diminta; unknown color_mode bukan theme switching.
+Untuk UI, design_intent menyatakan tujuan, tugas, audiens/perangkat/session yang diketahui; unknown sah, pilihan kreatif yang koheren dicatat sebagai assumptions, bukan preferensi pengguna. visual_direction konkret (hierarki, komposisi, tipografi, aksen), hanya style/colors/layout masing-masing <=300 karakter; accent_hex hanya warna konkret enam digit. Setiap requirements/acceptance_criteria <=500 karakter. Refinement presentasi boleh tanpa memperluas kemampuan produk; jangan wajibkan animasi atau formula desain.
+Revisi memakai source_message_id dari ID artefak cabang yang diberikan, tidak menyalin sumber ke brief dan tidak menebak ID. Implementasi berbasis hasil science memakai science_step_id dari kontrak tool/cabang; backend memasok sumber dan kontrak asli. Selesaikan tool workspace lain dahulu. Delegasi coding harus satu-satunya call dalam respons dan hasil akhir turn, tanpa rewrite.
+PROMPT;
+    }
+
     /** Enforce the boundary for substantial implementations, not folder trees or short examples. */
     public function containsImplementation(?string $content): bool
     {

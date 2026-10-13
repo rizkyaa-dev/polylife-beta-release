@@ -3,6 +3,21 @@ import assert from 'node:assert/strict';
 import { PendingAiTurn, isDefinitiveFailure, terminalRunError } from '../../resources/js/ai/turn-recovery.js';
 import { observeAiRun } from '../../resources/js/ai/run-observer.js';
 
+test('Default preserves the original submission payload', () => {
+    assert.deepEqual(new PendingAiTurn('id', 'prompt', 7).payload(), {
+        message: 'prompt', session_id: 7, request_id: 'id',
+    });
+});
+
+test('Eco mode is captured once and replayed after a lost acceptance response', async () => {
+    const turn = new PendingAiTurn('id', 'prompt', 7, null, 'eco');
+    const received = [];
+    await assert.rejects(turn.reconcile(async payload => { received.push(payload); throw new TypeError('offline'); }));
+    await turn.reconcile(async payload => { received.push(payload); return {run_id: 9, session_id: 7}; });
+    assert.deepEqual(received[0], received[1]);
+    assert.equal(received[1].response_mode, 'eco');
+});
+
 test('terminal polling exposes the persisted usage before reporting failure', async () => {
     const received = [];
     const tokens = {prompt: 100, completion: 10, total: 110, status: 'partial'};

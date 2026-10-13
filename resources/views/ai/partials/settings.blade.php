@@ -21,6 +21,7 @@
                 @endforeach
             </div>
         </fieldset>
+        @include('ai.partials.settings-mode')
         @if ($thinkingSupported)
             <fieldset>
                 <legend>Thinking effort</legend>

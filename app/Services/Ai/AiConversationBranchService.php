@@ -7,13 +7,17 @@ use App\Models\AiChatMessage;
 use App\Models\AiChatRun;
 use App\Models\AiChatSession;
 use App\Models\User;
+use App\Services\Ai\Eco\EcoContextPolicy;
+use App\Services\Ai\Enums\ResponseMode;
 use App\Services\Ai\Exceptions\AiConversationBusyException;
+use App\Services\Ai\Exceptions\AiEcoUnavailableException;
 use App\Services\Ai\Exceptions\AiIdempotencyConflictException;
 use App\Services\Ai\Exceptions\AiSystemCapacityException;
 use App\Services\Ai\Exceptions\AiUserCapacityException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -33,14 +37,16 @@ class AiConversationBranchService
         ?int $sessionId = null,
         ?int $editedMessageId = null,
         ?string $requestId = null,
-        bool $scienceClient = false
+        bool $scienceClient = false,
+        ResponseMode $responseMode = ResponseMode::Default
     ): array {
-        if ($requestId && $existing = $this->existingTurn($user, $requestId, $prompt, $sessionId, $editedMessageId)) {
+        if ($requestId && $existing = $this->existingTurn($user, $requestId, $prompt, $sessionId, $editedMessageId, $responseMode)) {
             return $existing;
         }
+        $modeAttributes = $this->modeAttributes($responseMode);
 
         try {
-            return DB::transaction(function () use ($user, $prompt, $sessionId, $editedMessageId, $requestId, $scienceClient): array {
+            return DB::transaction(function () use ($user, $prompt, $sessionId, $editedMessageId, $requestId, $scienceClient, $responseMode, $modeAttributes): array {
                 // Lock order: global admission, session, user, then recoverable runs.
                 $this->admission->acquire();
                 $session = $sessionId
@@ -53,7 +59,7 @@ class AiConversationBranchService
                 User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
 
                 $this->recoverExpiredRuns($session);
-                if ($requestId && $existing = $this->existingTurn($user, $requestId, $prompt, $sessionId, $editedMessageId)) {
+                if ($requestId && $existing = $this->existingTurn($user, $requestId, $prompt, $sessionId, $editedMessageId, $responseMode)) {
                     return $existing;
                 }
                 $activeRuns = AiChatRun::query()
@@ -110,13 +116,14 @@ class AiConversationBranchService
                 $run = $session->runs()->create([
                     'request_id' => $requestId,
                     'science_client' => $scienceClient && (bool) config('services.ai_science_browser_enabled', false),
-                    'request_fingerprint' => $this->requestFingerprint($prompt, $sessionId, $editedMessageId),
+                    'request_fingerprint' => $this->requestFingerprint($prompt, $sessionId, $editedMessageId, $responseMode),
                     'branch_id' => $branch->id,
                     'previous_branch_id' => $previousBranchId,
                     'user_message_id' => $userMessage->id,
                     'status' => 'running',
                     'started_at' => now(),
                     'lease_expires_at' => now()->addMinutes(10),
+                    ...$modeAttributes,
                 ]);
 
                 return compact('session', 'branch', 'userMessage', 'run', 'parentId') + [
@@ -126,7 +133,7 @@ class AiConversationBranchService
                 ];
             }, 3);
         } catch (QueryException $exception) {
-            if ($requestId && $existing = $this->existingTurn($user, $requestId, $prompt, $sessionId, $editedMessageId)) {
+            if ($requestId && $existing = $this->existingTurn($user, $requestId, $prompt, $sessionId, $editedMessageId, $responseMode)) {
                 return $existing;
             }
 
@@ -137,7 +144,7 @@ class AiConversationBranchService
     /**
      * @return array{session: AiChatSession, branch: AiChatBranch, user_message: AiChatMessage, run: AiChatRun, parent_id: ?int}|null
      */
-    private function existingTurn(User $user, string $requestId, string $prompt, ?int $sessionId, ?int $editedMessageId): ?array
+    private function existingTurn(User $user, string $requestId, string $prompt, ?int $sessionId, ?int $editedMessageId, ResponseMode $responseMode): ?array
     {
         $run = AiChatRun::query()
             ->where('request_id', $requestId)
@@ -150,12 +157,19 @@ class AiConversationBranchService
         if (! hash_equals((string) $run->userMessage->content, $prompt)) {
             throw new AiIdempotencyConflictException;
         }
+        if ($run->request_fingerprint === null && ($run->response_mode ?? 'default') !== $responseMode->value) {
+            throw new AiIdempotencyConflictException;
+        }
         if ($run->request_fingerprint !== null
-            && ! hash_equals($run->request_fingerprint, $this->requestFingerprint($prompt, $sessionId, $editedMessageId))) {
+            && ! hash_equals($run->request_fingerprint, $this->requestFingerprint($prompt, $sessionId, $editedMessageId, $responseMode))) {
             throw new AiIdempotencyConflictException;
         }
         if ($sessionId !== null && $run->session_id !== $sessionId) {
             throw new AiIdempotencyConflictException;
+        }
+        if ($responseMode === ResponseMode::Eco && (($run->response_mode ?? 'default') !== ResponseMode::Eco->value
+            || EcoContextPolicy::fromArray($run->context_policy) === null)) {
+            throw new AiEcoUnavailableException('persisted_policy_unavailable');
         }
 
         return [
@@ -168,9 +182,31 @@ class AiConversationBranchService
         ];
     }
 
-    private function requestFingerprint(string $prompt, ?int $sessionId, ?int $editedMessageId): string
+    private function modeAttributes(ResponseMode $responseMode): array
     {
-        return hash('sha256', json_encode([$prompt, $sessionId, $editedMessageId], JSON_THROW_ON_ERROR));
+        if ($responseMode === ResponseMode::Default) {
+            return [];
+        }
+        if (! config('ai_eco.enabled', true)) {
+            throw new AiEcoUnavailableException('disabled');
+        }
+        if (! Schema::hasColumns('ai_chat_runs', ['response_mode', 'context_policy'])
+            || ! Schema::hasColumns('ai_chat_branches', ['eco_context_memory', 'eco_memory_refreshed_at'])) {
+            throw new AiEcoUnavailableException('schema_unavailable');
+        }
+
+        return ['response_mode' => $responseMode->value, 'context_policy' => EcoContextPolicy::configured()->toArray()];
+    }
+
+    private function requestFingerprint(string $prompt, ?int $sessionId, ?int $editedMessageId, ResponseMode $responseMode): string
+    {
+        $identity = [$prompt, $sessionId, $editedMessageId];
+        // Retain the existing Default fingerprint, including requests from older clients.
+        if ($responseMode === ResponseMode::Eco) {
+            $identity[] = $responseMode->value;
+        }
+
+        return hash('sha256', json_encode($identity, JSON_THROW_ON_ERROR));
     }
 
     public function activate(User $user, int $branchId): AiChatSession

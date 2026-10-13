@@ -135,6 +135,12 @@
     transform: rotate(180deg);
 }
 
+.ai-thinking-popover, .ai-settings-effort {
+    --ai-effort-track: var(--ai-primary);
+    --ai-effort-thumb: color-mix(in srgb, var(--ai-on-primary) 75%, var(--ai-primary));
+    --ai-effort-dot: var(--ai-effort-thumb);
+}
+
 .ai-thinking-popover {
     position: absolute;
     z-index: 40;
@@ -143,14 +149,12 @@
     width: min(248px, calc(100vw - 2rem));
     max-height: min(22rem, 60dvh);
     overflow-y: auto;
-    padding: 8px 8px 4px;
+    padding: 6px 8px 4px;
     border: 1px solid var(--ai-line);
-    border-radius: 20px;
+    border-radius: 16px;
     background: var(--ai-surface);
     color: var(--ai-text);
     box-shadow: var(--ai-shadow);
-    --ai-effort-track: var(--ai-primary);
-    --ai-effort-dot: var(--ai-on-primary);
 }
 
 .ai-thinking-popover legend {
@@ -209,6 +213,11 @@
     cursor: pointer;
 }
 
+.ai-thinking-popover .ai-effort-slider, .ai-settings-effort .ai-effort-slider {
+    height: 32px;
+    margin-top: 0;
+}
+
 .ai-effort-slider::-webkit-slider-runnable-track {
     height: 24px;
     border-radius: 999px;
@@ -227,20 +236,24 @@
 
 .ai-effort-slider::-webkit-slider-thumb {
     appearance: none;
+    box-sizing: border-box;
     width: 28px;
     height: 28px;
     margin-top: -2px;
-    border: 0;
+    border: 1px solid color-mix(in srgb, var(--ai-effort-thumb) 70%, var(--ai-effort-track));
     border-radius: 50%;
-    background: var(--ai-on-primary);
+    background: var(--ai-effort-thumb);
+    box-shadow: 0 1px 3px rgb(24 18 40 / .18);
 }
 
 .ai-effort-slider::-moz-range-thumb {
+    box-sizing: border-box;
     width: 28px;
     height: 28px;
-    border: 0;
+    border: 1px solid color-mix(in srgb, var(--ai-effort-thumb) 70%, var(--ai-effort-track));
     border-radius: 50%;
-    background: var(--ai-on-primary);
+    background: var(--ai-effort-thumb);
+    box-shadow: 0 1px 3px rgb(24 18 40 / .18);
 }
 
 .ai-effort-slider:disabled {
@@ -249,13 +262,11 @@
 }
 
 .ai-settings-effort {
-    margin-top: .75rem;
-    padding: 8px 12px;
-    border-radius: 20px;
+    margin-top: .5rem;
+    padding: 6px 10px;
+    border-radius: 16px;
     background: var(--ai-control);
     border: 1px solid var(--ai-line);
-    --ai-effort-track: var(--ai-primary);
-    --ai-effort-dot: var(--ai-on-primary);
 }
 
 .ai-effort-options[hidden] {
@@ -263,11 +274,11 @@
 }
 
 .ai-effort-slider.ai-effort-sliding::-webkit-slider-thumb {
-    animation: ai-effort-slide 160ms ease-out;
+    animation: ai-effort-slide var(--ai-effort-slide-duration, 160ms) ease-out;
 }
 
 .ai-effort-slider.ai-effort-sliding::-moz-range-thumb {
-    animation: ai-effort-slide 160ms ease-out;
+    animation: ai-effort-slide var(--ai-effort-slide-duration, 160ms) ease-out;
 }
 
 @keyframes ai-effort-slide {
@@ -290,7 +301,9 @@
 
 .ai-thinking-popover .ai-thinking-status {
     color: var(--ai-muted);
-    margin: 0 8px 6px;
+    margin: 0 4px 2px;
+    font-size: .75rem;
+    line-height: 1.4;
 }
 
 .ai-thinking-popover .ai-thinking-status[data-error="true"] {

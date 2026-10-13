@@ -5,12 +5,14 @@
         <x-ai.icon name="chevron-down" />
     </summary>
     <div class="ai-thinking-popover">
-        <fieldset aria-describedby="ai-thinking-help ai-thinking-status">
+        <fieldset aria-describedby="ai-thinking-status">
             <legend class="sr-only">Kedalaman penalaran</legend>
-            <p id="ai-thinking-help" class="ai-thinking-help">Sesuaikan kedalaman penalaran untuk pesan berikutnya.</p>
-            <div class="ai-effort-heading"><strong data-ai-effort-preview>{{ $activeThinkingEffort->label() }}</strong><x-ai.icon name="chevron-right" /></div>
+            <div class="ai-thinking-mode-heading">
+                @include('ai.partials.mode-control')
+                <div class="ai-effort-heading"><strong data-ai-effort-preview>{{ $activeThinkingEffort->label() }}</strong><x-ai.icon name="chevron-right" /></div>
+            </div>
             <label class="sr-only" for="ai-effort-slider">Tingkat penalaran: Off, Low, High, Max</label>
-            <input id="ai-effort-slider" class="ai-effort-slider" type="range" min="0" max="3" step="1" value="{{ array_search($activeThinkingEffort, $thinkingEfforts) }}" aria-valuetext="{{ $activeThinkingEffort->label() }}" aria-describedby="ai-thinking-help ai-thinking-status" data-ai-effort-slider>
+            <input id="ai-effort-slider" class="ai-effort-slider" type="range" min="0" max="3" step="1" value="{{ array_search($activeThinkingEffort, $thinkingEfforts) }}" aria-valuetext="{{ $activeThinkingEffort->label() }}" aria-describedby="ai-thinking-status" data-ai-effort-slider>
             <div class="ai-thinking-options" hidden>
                 @foreach ($thinkingEfforts as $effort)
                     <label>

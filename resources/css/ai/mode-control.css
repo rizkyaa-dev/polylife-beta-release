@@ -1,0 +1,73 @@
+.ai-thinking-mode-heading {
+    display: grid;
+    grid-template-columns: 32px minmax(0, 1fr) 32px;
+    align-items: center;
+}
+
+.ai-eco-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: .875rem;
+    background: transparent;
+    color: var(--ai-muted);
+    cursor: pointer;
+    transition: color 150ms ease;
+}
+
+.ai-eco-toggle .ai-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.ai-eco-toggle:hover {
+    color: var(--ai-text);
+}
+
+.ai-eco-toggle[aria-pressed="true"] {
+    color: var(--ai-success);
+}
+
+.ai-settings-mode {
+    --ai-effort-track: var(--ai-success);
+    --ai-effort-thumb: color-mix(in srgb, var(--ai-success) 28%, var(--ai-canvas));
+    --ai-effort-dot: var(--ai-effort-thumb);
+    --ai-mode-track: radial-gradient(circle at 14px 50%, var(--ai-effort-dot) 2px, transparent 2px), radial-gradient(circle at calc(100% - 14px) 50%, var(--ai-effort-dot) 2px, transparent 2px), var(--ai-success);
+}
+
+.ai-mode-slider {
+    --ai-effort-slide-duration: 220ms;
+}
+
+.ai-mode-slider::-webkit-slider-runnable-track {
+    background: var(--ai-mode-track);
+}
+
+.ai-mode-slider::-moz-range-track {
+    background: var(--ai-mode-track);
+}
+
+.ai-mode-labels {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 .25rem .25rem;
+    color: var(--ai-muted);
+    font-size: .75rem;
+}
+
+.ai-settings-mode[data-mode="default"] .ai-mode-labels span:first-child,
+.ai-settings-mode[data-mode="eco"] .ai-mode-labels span:last-child {
+    color: var(--ai-success);
+    font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .ai-eco-toggle {
+        transition: none;
+    }
+}

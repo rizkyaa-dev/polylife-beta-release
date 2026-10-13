@@ -16,17 +16,21 @@ export function terminalRunError(message, cancelled = false) {
 
 /** A turn keeps its original identity until acceptance and completion are reconciled. */
 export class PendingAiTurn {
-    constructor(id, prompt, sessionId, accepted = null) {
+    constructor(id, prompt, sessionId, accepted = null, responseMode = 'default') {
         this.id = id;
         this.prompt = prompt;
         this.sessionId = sessionId;
         this.accepted = accepted;
         this.uncertain = false;
         this.message = null;
+        this.responseMode = responseMode === 'eco' ? 'eco' : 'default';
     }
 
     payload() {
-        return { message: this.prompt, session_id: this.sessionId, request_id: this.id };
+        return {
+            message: this.prompt, session_id: this.sessionId, request_id: this.id,
+            ...(this.responseMode === 'eco' ? { response_mode: 'eco' } : {}),
+        };
     }
 
     async reconcile(send) {
