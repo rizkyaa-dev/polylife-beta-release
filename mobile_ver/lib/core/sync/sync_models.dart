@@ -1,3 +1,5 @@
+String syncCursorKey(int userId) => 'sync_cursor:$userId';
+
 enum SyncStatus {
   synced,
   pendingCreate,

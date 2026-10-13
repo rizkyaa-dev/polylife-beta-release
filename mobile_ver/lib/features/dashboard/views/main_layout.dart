@@ -1,7 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_ver/core/theme/app_theme_tokens.dart';
+import 'package:mobile_ver/features/catatan/providers/catatan_provider.dart';
+import 'package:mobile_ver/features/jadwal/providers/jadwal_provider.dart';
+import 'package:mobile_ver/features/keuangan/providers/keuangan_provider.dart';
 import 'package:mobile_ver/features/pengumuman/providers/pengumuman_provider.dart';
 import 'package:mobile_ver/features/reminder/providers/upcoming_reminder_provider.dart';
 import 'package:mobile_ver/features/todo/providers/todo_provider.dart';
@@ -21,9 +26,7 @@ class _MainLayoutState extends ConsumerState<MainLayout>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshKegiatanSilently(force: true);
-      _refreshReminderSilently(force: true);
-      _refreshTodoSilently();
+      if (mounted) unawaited(_refreshWorkspaceSilently());
     });
   }
 
@@ -36,10 +39,19 @@ class _MainLayoutState extends ConsumerState<MainLayout>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _refreshKegiatanSilently(force: true);
-      _refreshReminderSilently(force: true);
-      _refreshTodoSilently();
+      unawaited(_refreshWorkspaceSilently());
     }
+  }
+
+  Future<void> _refreshWorkspaceSilently() async {
+    await Future.wait<Object?>([
+      _refreshKegiatanSilently(force: true),
+      _refreshReminderSilently(force: true),
+      _refreshTodoSilently(),
+      ref.read(jadwalProvider.notifier).load(),
+      ref.read(catatanProvider.notifier).fetchCatatan(showLoader: false),
+      ref.read(keuanganProvider.notifier).fetchKeuangan(showLoader: false),
+    ]);
   }
 
   Future<void> _refreshKegiatanSilently({bool force = false}) {

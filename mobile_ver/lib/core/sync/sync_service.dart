@@ -7,30 +7,80 @@ import 'package:mobile_ver/core/sync/sync_models.dart';
 import 'package:sqflite/sqflite.dart';
 
 class SyncService {
-  const SyncService();
+  const SyncService({
+    HttpApiClient client = const StaticApiClientAdapter(),
+    Database? database,
+  }) : _client = client,
+       _databaseOverride = database;
 
-  static const String _cursorKey = 'sync_cursor';
+  final HttpApiClient _client;
+  final Database? _databaseOverride;
+  static final Map<int, Future<void>> _pendingSyncs = {};
+  static final Map<int, Future<void>> _refreshes = {};
   static const int _pushBatchSize = 25;
 
-  Future<void> syncNow(int userId) async {
-    await pushPending(userId);
-    await pullChanges(userId);
+  Future<Database> get _database async =>
+      _databaseOverride ?? await AppDatabase.instance.database;
+
+  Future<void> syncNow(int userId) {
+    final existing = _refreshes[userId];
+    if (existing != null && identical(_pendingSyncs[userId], existing)) {
+      return existing;
+    }
+    final refresh = _serialize(userId, () async {
+      await _pushPending(userId);
+      await _pullChanges(userId);
+    });
+    if (userId > 0) _refreshes[userId] = refresh;
+    return refresh;
   }
 
-  Future<void> pushPending(int userId) async {
-    final db = await AppDatabase.instance.database;
+  Future<void> pushPending(int userId) =>
+      _serialize(userId, () => _pushPending(userId));
+
+  Future<void> pullChanges(int userId) =>
+      _serialize(userId, () => _pullChanges(userId));
+
+  Future<void> _serialize(int userId, Future<void> Function() action) {
+    if (userId <= 0) return Future<void>.value();
+    final previous = _pendingSyncs[userId] ?? Future<void>.value();
+    late final Future<void> next;
+    next = previous
+        .then(
+          (_) => action(),
+          onError: (Object error, StackTrace stack) => action(),
+        )
+        .whenComplete(() {
+          if (identical(_pendingSyncs[userId], next)) {
+            _pendingSyncs.remove(userId);
+          }
+          if (identical(_refreshes[userId], next)) {
+            _refreshes.remove(userId);
+          }
+        });
+    _pendingSyncs[userId] = next;
+    return next;
+  }
+
+  Future<void> _pushPending(int userId) async {
+    final db = await _database;
     final rows = await db.query(
       'sync_outbox',
       where: 'user_id = ? AND status IN (?, ?)',
       whereArgs: [userId, 'pending', 'failed'],
       orderBy: 'created_at ASC',
-      limit: _pushBatchSize,
     );
 
-    if (rows.isEmpty) {
-      return;
+    // Snapshot the queue so a failed operation cannot starve later batches.
+    for (var offset = 0; offset < rows.length; offset += _pushBatchSize) {
+      final end = offset + _pushBatchSize < rows.length
+          ? offset + _pushBatchSize
+          : rows.length;
+      if (!await _pushBatch(userId, rows.sublist(offset, end))) break;
     }
+  }
 
+  Future<bool> _pushBatch(int userId, List<Map<String, Object?>> rows) async {
     final operations = <SyncOutboxOperation>[];
     for (final row in rows) {
       final operation = await _outboxFromRow(row);
@@ -46,22 +96,22 @@ class SyncService {
     }
 
     if (operations.isEmpty) {
-      return;
+      return true;
     }
 
     try {
-      final response = await ApiClient.post('/sync/push', {
+      final response = await _client.post('/sync/push', {
         'operations': operations.map((item) => item.toApiPayload()).toList(),
       });
 
       if (response.statusCode == 401 || response.statusCode == 403) {
         await _markBatch(rows, 'auth_required', 'Sesi perlu login ulang.');
-        return;
+        return false;
       }
 
       if (response.statusCode != 200) {
         await _markBatch(rows, 'failed', 'Server menolak sinkronisasi.');
-        return;
+        return false;
       }
 
       final decoded = _decodeMap(response.body);
@@ -72,7 +122,7 @@ class SyncService {
           ? rawOps.whereType<Map>().toList()
           : const <Map>[];
 
-      await AppDatabase.instance.transaction((txn) async {
+      await (await _database).transaction((txn) async {
         for (final rawResult in results) {
           final result = Map<String, dynamic>.from(rawResult);
           final operationId = result['operation_id']?.toString();
@@ -120,18 +170,20 @@ class SyncService {
           }
         }
       });
+      return true;
     } catch (_) {
       await _markBatch(rows, 'failed', 'Koneksi belum tersedia.');
+      return false;
     }
   }
 
-  Future<void> pullChanges(int userId) async {
-    final db = await AppDatabase.instance.database;
-    final cursor = await _readCursor(db);
+  Future<void> _pullChanges(int userId) async {
+    final db = await _database;
+    final cursor = await _readCursor(db, userId);
 
     try {
-      final response = await ApiClient.get(
-        '/sync/pull?cursor=${Uri.encodeQueryComponent(cursor)}',
+      final response = await _client.get(
+        '/sync/pull?cursor=${Uri.encodeQueryComponent(cursor)}&replay_boundary=1',
       );
       if (response.statusCode != 200) {
         return;
@@ -149,7 +201,7 @@ class SyncService {
         return;
       }
 
-      await AppDatabase.instance.transaction((txn) async {
+      await db.transaction((txn) async {
         for (final entry in rawEntities.entries) {
           final entityType = entry.key.toString();
           final rows = entry.value is List ? entry.value as List : const [];
@@ -166,7 +218,7 @@ class SyncService {
         final nextCursor = data['cursor']?.toString();
         if (nextCursor != null && nextCursor.isNotEmpty) {
           await txn.insert('sync_metadata', {
-            'key': _cursorKey,
+            'key': syncCursorKey(userId),
             'value': nextCursor,
           }, conflictAlgorithm: ConflictAlgorithm.replace);
         }
@@ -209,12 +261,12 @@ class SyncService {
     });
   }
 
-  Future<String> _readCursor(Database db) async {
+  Future<String> _readCursor(Database db, int userId) async {
     final rows = await db.query(
       'sync_metadata',
       columns: ['value'],
       where: 'key = ?',
-      whereArgs: [_cursorKey],
+      whereArgs: [syncCursorKey(userId)],
       limit: 1,
     );
 
@@ -230,7 +282,7 @@ class SyncService {
     String status,
     String message,
   ) async {
-    final db = await AppDatabase.instance.database;
+    final db = await _database;
     final now = DateTime.now().toIso8601String();
     final ids = rows
         .map((row) => row['operation_id']?.toString())
@@ -317,6 +369,11 @@ class SyncService {
     if (!force && existing.isNotEmpty) {
       final status = existing.first['sync_status']?.toString();
       if (status != null && status != SyncStatus.synced.wireName) {
+        return;
+      }
+      // A replay must never regress a newer acknowledged server version.
+      final localVersion = _toInt(existing.first['server_version']);
+      if (localVersion > _toInt(record['server_version'], fallback: 1)) {
         return;
       }
     }

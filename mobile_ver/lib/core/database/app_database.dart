@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 import 'package:mobile_ver/core/security/local_data_crypto.dart';
+import 'package:mobile_ver/core/sync/sync_models.dart';
 import 'package:sqflite/sqflite.dart';
 
 class AppDatabase {
@@ -52,7 +53,7 @@ class AppDatabase {
       await txn.delete(
         'sync_metadata',
         where: 'key = ?',
-        whereArgs: ['sync_cursor'],
+        whereArgs: [syncCursorKey(userId)],
       );
     });
 

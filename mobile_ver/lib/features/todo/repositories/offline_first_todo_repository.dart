@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:sqflite/sqflite.dart';
+
 import 'package:mobile_ver/core/database/app_database.dart';
 import 'package:mobile_ver/core/sync/sync_models.dart';
 import 'package:mobile_ver/core/sync/sync_service.dart';
@@ -9,9 +11,19 @@ import 'package:mobile_ver/features/todo/models/todo_item.dart';
 import 'package:mobile_ver/features/todo/repositories/todo_repository.dart';
 
 class OfflineFirstTodoRepository implements TodoRepository {
-  OfflineFirstTodoRepository({required this.userId});
+  OfflineFirstTodoRepository({
+    required this.userId,
+    SyncService syncService = const SyncService(),
+    Database? database,
+  }) : _syncService = syncService,
+       _databaseOverride = database;
 
   final int userId;
+  final SyncService _syncService;
+  final Database? _databaseOverride;
+
+  Future<Database> get _database async =>
+      _databaseOverride ?? await AppDatabase.instance.database;
 
   @override
   Future<List<TodoItem>> fetchAll() async {
@@ -19,8 +31,8 @@ class OfflineFirstTodoRepository implements TodoRepository {
       return const <TodoItem>[];
     }
 
-    unawaited(const SyncService().syncNow(userId));
-    final db = await AppDatabase.instance.database;
+    await _syncService.syncNow(userId);
+    final db = await _database;
     final rows = await db.query(
       'todo_local',
       where: 'user_id = ? AND deleted_locally = 0',
@@ -39,7 +51,7 @@ class OfflineFirstTodoRepository implements TodoRepository {
     final payload = _toPayload(item);
     final localId = _localId(localUuid);
 
-    await AppDatabase.instance.transaction((txn) async {
+    await (await _database).transaction((txn) async {
       await txn.insert('todo_local', {
         'local_uuid': localUuid,
         'local_int_id': localId,
@@ -70,7 +82,7 @@ class OfflineFirstTodoRepository implements TodoRepository {
       );
     });
 
-    unawaited(const SyncService().pushPending(userId));
+    unawaited(_syncService.pushPending(userId));
     return item.copyWith(
       id: localId,
       localUuid: localUuid,
@@ -97,7 +109,7 @@ class OfflineFirstTodoRepository implements TodoRepository {
         ? SyncStatus.pendingCreate.wireName
         : SyncStatus.pendingUpdate.wireName;
 
-    await AppDatabase.instance.transaction((txn) async {
+    await (await _database).transaction((txn) async {
       await txn.update(
         'todo_local',
         {
@@ -140,7 +152,7 @@ class OfflineFirstTodoRepository implements TodoRepository {
       }
     });
 
-    unawaited(const SyncService().pushPending(userId));
+    unawaited(_syncService.pushPending(userId));
     return item.copyWith(
       localUuid: localUuid,
       serverId: serverId,
@@ -163,7 +175,7 @@ class OfflineFirstTodoRepository implements TodoRepository {
         row['sync_status']?.toString() ?? SyncStatus.synced.wireName;
     final now = DateTime.now().toIso8601String();
 
-    await AppDatabase.instance.transaction((txn) async {
+    await (await _database).transaction((txn) async {
       if (currentStatus == SyncStatus.pendingCreate.wireName) {
         await txn.delete(
           'todo_local',
@@ -202,12 +214,12 @@ class OfflineFirstTodoRepository implements TodoRepository {
       }
     });
 
-    unawaited(const SyncService().pushPending(userId));
+    unawaited(_syncService.pushPending(userId));
   }
 
   Future<Map<String, Object?>?> _findRow(TodoItem item) async {
     if (item.localUuid.isNotEmpty) {
-      final db = await AppDatabase.instance.database;
+      final db = await _database;
       final rows = await db.query(
         'todo_local',
         where: 'local_uuid = ?',
@@ -221,7 +233,7 @@ class OfflineFirstTodoRepository implements TodoRepository {
   }
 
   Future<Map<String, Object?>?> _findRowById(int id) async {
-    final db = await AppDatabase.instance.database;
+    final db = await _database;
     final rows = await db.query(
       'todo_local',
       where: 'user_id = ? AND (server_id = ? OR local_int_id = ?)',

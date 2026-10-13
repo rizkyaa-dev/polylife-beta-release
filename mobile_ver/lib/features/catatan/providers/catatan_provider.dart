@@ -57,7 +57,7 @@ class CatatanNotifier extends StateNotifier<AsyncValue<List<Catatan>>> {
       }
 
       try {
-        unawaited(const SyncService().syncNow(userId));
+        await const SyncService().syncNow(userId);
         state = AsyncValue.data(await _readLocalCatatan());
         return true;
       } catch (e, st) {

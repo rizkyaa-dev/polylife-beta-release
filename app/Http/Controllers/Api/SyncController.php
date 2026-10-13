@@ -80,7 +80,7 @@ class SyncController extends Controller
         $entities = [];
 
         foreach (array_keys($this->models) as $entityType) {
-            $rows = $this->queryChangedRows($entityType, $userId, $cursor)->get();
+            $rows = $this->queryChangedRows($entityType, $userId, $cursor, $request->boolean('replay_boundary'))->get();
             $entities[$entityType] = $this->serializeCollection($entityType, $rows);
 
             foreach ($rows as $row) {
@@ -488,14 +488,15 @@ class SyncController extends Controller
             ->lockForUpdate();
     }
 
-    private function queryChangedRows(string $entityType, int $userId, Carbon $cursor)
+    private function queryChangedRows(string $entityType, int $userId, Carbon $cursor, bool $replayBoundary = false)
     {
         $class = $this->models[$entityType];
 
         return $class::query()
             ->withTrashed()
             ->where('user_id', $userId)
-            ->where('updated_at', '>', $cursor)
+            // Version-aware clients can replay second-precision timestamps safely.
+            ->where('updated_at', $replayBoundary ? '>=' : '>', $cursor)
             ->orderBy('updated_at')
             ->orderBy('id');
     }

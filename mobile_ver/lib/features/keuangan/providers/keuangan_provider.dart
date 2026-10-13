@@ -127,7 +127,7 @@ class KeuanganNotifier extends StateNotifier<KeuanganState> {
     }
 
     if (userId > 0) {
-      unawaited(const SyncService().syncNow(userId));
+      await const SyncService().syncNow(userId);
       final db = await AppDatabase.instance.database;
       final rows = await db.query(
         'keuangan_local',
@@ -203,7 +203,7 @@ class KeuanganNotifier extends StateNotifier<KeuanganState> {
 
     if (userId > 0) {
       try {
-        unawaited(const SyncService().syncNow(userId));
+        await const SyncService().syncNow(userId);
         final items = await _readLocalMonth(selectedMonth);
         final options = await _localMonthOptions(selectedMonth);
         state = state.copyWith(
