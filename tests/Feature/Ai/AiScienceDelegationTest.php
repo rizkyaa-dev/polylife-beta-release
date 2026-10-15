@@ -241,4 +241,26 @@ class AiScienceDelegationTest extends TestCase
         $this->expectException(ValidationException::class);
         app(ScienceContractStore::class)->resolve(888, collect([888 => $step]));
     }
+
+    public function test_follow_up_output_binding_uses_only_user_history_from_its_branch(): void
+    {
+        $call = fn () => new LlmResponse(null, [new LlmToolCall('science', AiScienceDelegation::TOOL_NAME,
+            ['problem' => 'Solve the original linear system.', 'output_names' => ['x', 'y']])]);
+        $this->client([$call(), $this->sciencePlan(), new LlmResponse('x=1, y=2.')]);
+        $owner = User::factory()->create();
+        $first = app(AiAgentOrchestrator::class)->handle($owner, 'Solve x+2y=5 and 3x+4y=11. Return x and y.');
+        $client = $this->client([$call(), $this->sciencePlan(), new LlmResponse('Refined result.')]);
+        app(AiAgentOrchestrator::class)->handle($owner, 'Use a tighter tolerance this time.', $first['session']->id);
+        $this->assertCount(3, $client->requests);
+        $request = json_decode($client->requests[1]['messages'][0]->content, true)['request'];
+        $this->assertSame(['x', 'y'], $request['output_names']);
+        $this->assertSame('Use a tighter tolerance this time.', $request['original_problem']);
+
+        $intruder = $this->client([$call(), new LlmResponse('Output names are not supplied in this task.')]);
+        app(AiAgentOrchestrator::class)->handle(User::factory()->create(), 'Compute a result.');
+        $this->assertCount(2, $intruder->requests);
+        $result = $intruder->requests[1]['messages'][2]->toolResult['result'];
+        $this->assertSame('invalid_arguments', $result['status']);
+        $this->assertArrayHasKey('output_names.0', $result['errors']);
+    }
 }

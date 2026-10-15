@@ -288,7 +288,7 @@ class AiScienceExecutionTest extends TestCase
         $this->assertSame(1, $broker->recover());
         $this->assertSame('queued_server', $ticket->fresh()->status);
         $this->assertSame(0, $broker->recover());
-        $this->travel(250)->seconds();
+        $this->travelTo($ticket->deadline_at->copy()->addSecond());
         $broker->execute($ticket->id);
         $this->assertSame('failed', $run->fresh()->status);
         $this->assertSame('science_execution_expired', $run->fresh()->error_code);

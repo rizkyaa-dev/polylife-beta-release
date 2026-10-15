@@ -9,7 +9,9 @@ final class ClientComputationContract
 {
     public const VERSION = 'client-js-1';
 
-    public function validate(array $proposal, array $outputNames = []): array
+    public function __construct(private readonly ClientProgramSyntaxValidator $syntaxValidator) {}
+
+    public function validate(array $proposal, array $outputNames = [], ?float $deadlineAt = null): array
     {
         if (($proposal['status'] ?? null) !== 'ready') {
             unset($proposal['program']);
@@ -20,6 +22,7 @@ final class ClientComputationContract
         $data = Validator::make($proposal, [
             'status' => ['required', 'in:ready,needs_clarification,unsupported'],
             'model' => ['required', 'string', 'max:3000'],
+            'task_label' => ['sometimes', 'string', 'max:120'],
             'assumptions' => ['present', 'array', 'max:12'], 'assumptions.*' => ['string', 'max:500'],
             'units' => ['present', 'array', 'max:32'], 'units.*' => ['string', 'max:200'],
             'coverage' => ['sometimes', 'in:full,partial'],
@@ -47,6 +50,7 @@ final class ClientComputationContract
         if (strlen($data['program']['source']) > 12000 || strlen(json_encode($data['program']['inputs'], JSON_THROW_ON_ERROR)) > 8192) {
             throw ValidationException::withMessages(['program' => 'Client program exceeds its resource limit.']);
         }
+        $this->syntaxValidator->validate($data['program']['source'], $deadlineAt);
         $data['program']['version'] = self::VERSION;
         if (($data['coverage'] ?? null) === 'partial') {
             $data['partial_scope']['deferred_requested_outputs'] = array_values(array_diff($outputNames, $data['partial_scope']['outputs']));

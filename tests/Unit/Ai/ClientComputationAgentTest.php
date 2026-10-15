@@ -142,4 +142,27 @@ final class ClientComputationAgentTest extends TestCase
         $this->assertArrayHasKey('program', $client->envelopes[1]['validation_feedback']);
         $this->assertSame(['Invalid client-computation JSON.'], $client->envelopes[1]['validation_feedback']['program']);
     }
+
+    public function test_invalid_javascript_is_repaired_before_browser_offer(): void
+    {
+        $client = new class implements LlmClientInterface
+        {
+            public array $envelopes = [];
+
+            public function chat(array $messages, array $tools = [], ?string $systemInstruction = null, ?LlmRequestOptions $options = null): LlmResponse
+            {
+                $this->envelopes[] = json_decode($messages[0]->content, true);
+                $key = count($this->envelopes) === 1 ? 'target_met_at_0.08' : '"target_met_at_0.08"';
+
+                return new LlmResponse(json_encode(['status' => 'ready', 'model' => 'Target check', 'assumptions' => [], 'units' => [],
+                    'program' => ['source' => 'function compute(i){return {values:{'.$key.':i.x},checks:[{name:"input",passed:true}]}}',
+                        'inputs' => ['x' => 1], 'checks' => ['input check']]]));
+            }
+        };
+        $agent = new ClientComputationAgent(new LlmInference($client), app(ClientComputationContract::class));
+        $plan = $agent->planLocal(['problem' => 'Check target', 'output_names' => ['target_met_at_0.08']], new LlmRequestOptions(ThinkingEffort::Low, 30));
+        $this->assertSame(2, $plan['planning_attempts']);
+        $this->assertArrayHasKey('program.source', $client->envelopes[1]['validation_feedback']);
+        $this->assertSame(['x' => 1], $plan['program']['inputs']);
+    }
 }

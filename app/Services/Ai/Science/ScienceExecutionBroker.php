@@ -13,6 +13,7 @@ use App\Services\Ai\DTOs\LlmRequestOptions;
 use App\Services\Ai\Enums\ThinkingEffort;
 use App\Services\Ai\Exceptions\AiRunCancelledException;
 use App\Services\Ai\Science\Client\ClientComputationContract;
+use App\Services\Ai\Science\Client\ClientComputationPresenter;
 use App\Services\Ai\Science\Client\ScienceCapabilityTelemetry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -60,7 +61,8 @@ final class ScienceExecutionBroker
                     ? (config('services.ai_science_client_auto_execute', true) ? 'Menjalankan skrip komputasi lokal' : 'Menunggu persetujuan komputasi lokal')
                     : 'Menjalankan perhitungan sains',
                 'public_metadata' => array_merge($step->fresh()->public_metadata ?? [], ['outcome' => 'started', 'execution_phase' => 'waiting_client',
-                    'execution_mode' => $plan['execution_mode'] ?? 'registered_kernel'])]);
+                    'execution_mode' => $plan['execution_mode'] ?? 'registered_kernel'],
+                    ($plan['execution_mode'] ?? null) === 'client_script' ? ['computation_title' => ClientComputationPresenter::title($plan)] : [])]);
             $locked->update(['science_execution_id' => $execution->id, 'claim_token' => null]);
             $this->dispatchCompute($execution->id, $execution->lease_expires_at);
 
@@ -244,7 +246,8 @@ final class ScienceExecutionBroker
             $payload['result'] = $result;
             $ticket->update(['status' => 'ready', 'private_payload' => $payload, 'lease_expires_at' => now()->addSeconds(45)]);
             $step = AiChatRunStep::query()->findOrFail($ticket->step_id);
-            $failed = ($result['status'] ?? null) === 'invalid_arguments';
+            $failed = ($result['status'] ?? null) === 'invalid_arguments'
+                || ($dynamic && ($result['execution']['client_failure'] ?? null) !== null);
             $step->update(['status' => $failed ? 'failed' : 'completed',
                 'label' => $dynamic ? (($result['status'] ?? null) === 'client_computed' ? 'Komputasi lokal selesai · belum terverifikasi' : 'Komputasi lokal tidak menghasilkan jawaban') : $step->label,
                 'duration_ms' => max(0, (int) $step->created_at->diffInMilliseconds(now())),

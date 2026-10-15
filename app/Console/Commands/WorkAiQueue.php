@@ -30,7 +30,7 @@ final class WorkAiQueue extends Command
             (string) config('services.ai_compute_queue', 'ai-compute'),
             (string) config('services.ai_heavy_queue', 'ai-heavy'), 'default',
         ]);
-        $options = ['connection' => $connection, '--queue' => implode(',', $queues), '--tries' => 1, '--timeout' => 510];
+        $options = ['connection' => $connection, '--queue' => implode(',', $queues), '--tries' => 1, '--timeout' => 990];
         if ($this->option('once')) {
             $options['--once'] = true;
 

@@ -1,30 +1,16 @@
-# Coding execution budgets
+# AI execution budgets
 
-Reasoning effort is still passed unchanged to the provider. Ordinary conversation
-budgets remain unchanged. Only a validated coding delegation promotes the run to
-the coding budget, measured from the original monotonic run start:
+Low, High and Max time budgets are doubled for both Eco and Default. Off and output-token budgets are unchanged. Coding and science budgets are measured from the original run start, shared by all scripts and final generation.
 
-| Effort | Coder request maximum | Total coding run maximum |
-| --- | ---: | ---: |
-| Off | 120s | 180s |
-| Low | 180s | 240s |
-| High | 240s | 360s |
-| Max | 360s | 480s |
+| Effort | Chat total | Chat request max | Coding/science total | Coding/science request max |
+| --- | ---: | ---: | ---: | ---: |
+| Off | 60s | 30s | 180s | 120s |
+| Low | 180s | 90s | 480s | 360s |
+| High | 360s | 150s | 720s | 480s |
+| Max | 600s | 300s | 960s | 720s |
 
-Every request remains capped by the remaining run budget, reserving five seconds
-for completion. Repeated delegations never reset the run clock. Cancellation,
-bounded provider retries and lease-based recovery remain in place. These are
-initial operational limits, not measured latency guarantees.
+Every request remains capped by the remaining run budget, with five seconds reserved. Repeated delegations never reset the clock. Cancellation, bounded provider retries and lease recovery remain unchanged. These limits do not guarantee provider completion.
 
-The AI job and worker command allow 510s. Database, Redis and Beanstalkd queue
-reservation durations have a 540s minimum, including when an old environment
-override is present. This replaces the older 330s/420s deployment guidance.
-SQS visibility timeout is managed externally: configure it above 510s before
-using SQS for these jobs. Browser polling does not extend the execution deadline.
+AI jobs and the worker command allow 990s. Database, Redis and Beanstalkd reservations enforce a 1020s minimum even with older environment overrides. Set SQS visibility to at least 1020s separately. Browser observation allows 1020s without extending execution deadlines. Local script execution sandbox limits are unchanged.
 
-After deployment, rebuild cached configuration if used and restart supervised
-AI workers so they load the new PHP code and reservation settings. No frontend
-build or database migration is needed. Jobs already serialized in the queue may
-retain their old job timeout; the new limits apply to newly queued jobs.
-
-Verification: `php artisan test tests/Unit/Ai tests/Feature/Ai`.
+After deployment, rebuild cached configuration if used, rebuild frontend assets and restart persistent workers. Already serialized jobs may retain their previous timeout; new limits apply to newly queued jobs. No database migration is needed.

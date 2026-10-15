@@ -10,7 +10,7 @@ export async function observeAiRun(url, {
     random = Math.random,
     onProgress = () => {},
     onStatus = () => {},
-    timeoutMs = 540_000,
+    timeoutMs = 1_020_000,
 } = {}) {
     const startedAt = now();
     let failures = 0;

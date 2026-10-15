@@ -294,7 +294,7 @@ class AiAgentOrchestrator
             $toolResultsByInvocation[$saved['pending_invocation_key']] = $result;
             $messageHistory[] = new LlmMessage('tool', toolResult: [
                 'call_id' => $saved['pending_call_id'], 'tool_name' => AiScienceDelegation::TOOL_NAME,
-                'result' => $this->scienceDelegation->toolResult($result)]);
+                'result' => $this->scienceDelegation->toolResult($result, $ecoPolicy !== null)]);
             $resumedStep = AiChatRunStep::query()->findOrFail($resume->step_id);
             if ($this->scienceContracts->isUsable($resumedStep)) {
                 $availableScience->put($resume->step_id, $resumedStep);
@@ -477,7 +477,8 @@ class AiAgentOrchestrator
                             $result = $toolResultsByInvocation[$invocationKey];
                         } else {
                             try {
-                                $scienceRequest = $this->scienceDelegation->request($call->arguments, $userPrompt);
+                                $scienceRequest = $this->scienceDelegation->request($call->arguments, $userPrompt,
+                                    $lineage->where('role', 'user')->where('status', 'completed')->pluck('content')->values()->all());
                                 if ($roundToolCalls !== 1) {
                                     throw ValidationException::withMessages(['delegation' => 'Scientific delegation must be called alone after collecting required facts.']);
                                 }
@@ -610,7 +611,7 @@ class AiAgentOrchestrator
                             'call_id' => $call->id,
                             'tool_name' => $call->name,
                             'result' => $call->name === AiScienceDelegation::TOOL_NAME
-                                ? $this->scienceDelegation->toolResult($result) : $result,
+                                ? $this->scienceDelegation->toolResult($result, $ecoPolicy !== null) : $result,
                         ]
                     );
                 }

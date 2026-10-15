@@ -349,7 +349,9 @@ function appendProcess(message, run) {
     details.dataset.aiProcess = '';
     const seconds = Math.max(1, Math.ceil((run.duration_ms ?? 0) / 1000));
     details.innerHTML = `<summary><span></span><svg class="ai-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></summary><ol class="ai-process-steps"></ol>`;
-    details.querySelector('summary span').textContent = `Proses AI · ${seconds} dtk`;
+    const scriptCount = run.steps.filter(step => step.execution_mode === 'client_script').length;
+    const failedScriptCount = run.steps.filter(step => step.execution_mode === 'client_script' && step.status === 'failed').length;
+    details.querySelector('summary span').textContent = `Proses AI · ${seconds} dtk${scriptCount ? ` · ${scriptCount} skrip` : ''}${failedScriptCount ? ` · ${failedScriptCount} gagal` : ''}`;
     const steps = details.querySelector('ol');
     run.steps.forEach(step => {
         const item = document.createElement('li');
@@ -371,10 +373,22 @@ function appendProcess(message, run) {
             const detail = document.createElement('details');
             detail.className = 'ai-client-computation';
             const summary = document.createElement('summary');
-            summary.textContent = 'Skrip dan hasil lokal · belum terverifikasi independen';
+            summary.textContent = step.client_computation.failure_message
+                ? 'Skrip dan detail kegagalan' : 'Skrip dan hasil lokal · belum terverifikasi independen';
             const code = document.createElement('pre');
             code.textContent = `${step.client_computation.source}\n\nInput:\n${JSON.stringify(step.client_computation.inputs, null, 2)}\n\nHasil:\n${JSON.stringify(step.client_computation.result, null, 2)}`;
-            detail.append(summary, code);
+            detail.append(summary);
+            if (step.client_computation.failure_message) {
+                const error = document.createElement('p');
+                error.className = 'ai-client-computation-error';
+                error.setAttribute('role', 'status');
+                error.textContent = step.client_computation.failure_message;
+                detail.append(error);
+            }
+            const description = document.createElement('p');
+            description.className = 'ai-client-computation-description';
+            description.textContent = `Maksud perhitungan: ${step.client_computation.description ?? ''}`;
+            detail.append(description, code);
             copy.append(detail);
         }
         const meta = document.createElement('small');

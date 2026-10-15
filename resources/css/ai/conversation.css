@@ -838,3 +838,18 @@
     font-size: .8125rem;
     color: var(--ai-accent);
 }
+
+/* Keep model narration outside the source block and make failed attempts explicit. */
+.ai-process-step .ai-client-computation-description,
+.ai-process-step .ai-client-computation-error {
+    padding: .35rem .75rem;
+    font-family: inherit;
+    font-size: .8125rem;
+    line-height: 1.6;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.ai-process-step .ai-client-computation-error {
+    color: var(--ai-danger);
+}

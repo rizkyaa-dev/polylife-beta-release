@@ -30,14 +30,14 @@
 }
 
 .ai-eco-toggle[aria-pressed="true"] {
-    color: var(--ai-success);
+    color: var(--ai-eco-ink);
 }
 
 .ai-settings-mode {
-    --ai-effort-track: var(--ai-success);
-    --ai-effort-thumb: color-mix(in srgb, var(--ai-success) 28%, var(--ai-canvas));
+    --ai-effort-track: var(--ai-eco-accent);
+    --ai-effort-thumb: var(--ai-eco-thumb);
     --ai-effort-dot: var(--ai-effort-thumb);
-    --ai-mode-track: radial-gradient(circle at 14px 50%, var(--ai-effort-dot) 2px, transparent 2px), radial-gradient(circle at calc(100% - 14px) 50%, var(--ai-effort-dot) 2px, transparent 2px), var(--ai-success);
+    --ai-mode-track: radial-gradient(circle at 14px 50%, var(--ai-effort-dot) 2px, transparent 2px), radial-gradient(circle at calc(100% - 14px) 50%, var(--ai-effort-dot) 2px, transparent 2px), var(--ai-effort-track);
 }
 
 .ai-mode-slider {
@@ -62,7 +62,7 @@
 
 .ai-settings-mode[data-mode="default"] .ai-mode-labels span:first-child,
 .ai-settings-mode[data-mode="eco"] .ai-mode-labels span:last-child {
-    color: var(--ai-success);
+    color: var(--ai-eco-ink);
     font-weight: 600;
 }
 

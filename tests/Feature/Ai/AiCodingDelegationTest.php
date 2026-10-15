@@ -213,16 +213,16 @@ class AiCodingDelegationTest extends TestCase
         } catch (AiProviderException $exception) {
             $this->assertSame('provider_timeout', $exception->errorCode);
         }
-        $this->assertSame(45, $client->requests[0]['options']->timeoutSeconds);
-        $this->assertSame(180, $client->requests[1]['options']->timeoutSeconds);
-        $this->assertEqualsWithDelta(150, $client->requests[1]['options']->deadlineAt - $client->requests[0]['options']->deadlineAt, 0.001);
+        $this->assertSame(90, $client->requests[0]['options']->timeoutSeconds);
+        $this->assertSame(360, $client->requests[1]['options']->timeoutSeconds);
+        $this->assertEqualsWithDelta(300, $client->requests[1]['options']->deadlineAt - $client->requests[0]['options']->deadlineAt, 0.001);
         $this->assertNotNull($client->requests[1]['options']->ensureActive);
         $step = AiChatRunStep::query()->where('tool_name', 'delegate_code_generation')->firstOrFail();
         $this->assertSame('failed', $step->status);
         $this->assertSame('html', $step->private_payload['coding_brief']['language']);
         $this->assertDatabaseMissing('ai_chat_messages', ['role' => 'assistant']);
         $this->assertSame('low', $step->private_payload['execution_policy']['thinking_effort']);
-        $this->assertSame(180, $step->private_payload['execution_policy']['request_timeout_seconds']);
-        $this->assertSame(240, $step->private_payload['execution_policy']['run_timeout_seconds']);
+        $this->assertSame(360, $step->private_payload['execution_policy']['request_timeout_seconds']);
+        $this->assertSame(480, $step->private_payload['execution_policy']['run_timeout_seconds']);
     }
 }

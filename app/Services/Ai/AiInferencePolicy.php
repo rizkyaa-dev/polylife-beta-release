@@ -17,17 +17,17 @@ final class AiInferencePolicy
         if ($coding) {
             return match ($effort) {
                 ThinkingEffort::Off => 180,
-                ThinkingEffort::Low => 240,
-                ThinkingEffort::High => 360,
-                ThinkingEffort::Max => 480,
+                ThinkingEffort::Low => 480,
+                ThinkingEffort::High => 720,
+                ThinkingEffort::Max => 960,
             };
         }
 
         return match ($effort) {
             ThinkingEffort::Off => 60,
-            ThinkingEffort::Low => 90,
-            ThinkingEffort::High => 180,
-            ThinkingEffort::Max => 300,
+            ThinkingEffort::Low => 180,
+            ThinkingEffort::High => 360,
+            ThinkingEffort::Max => 600,
         };
     }
 
@@ -39,9 +39,9 @@ final class AiInferencePolicy
     ): LlmRequestOptions {
         $perRequestTimeout = match ($effort) {
             ThinkingEffort::Off => 30,
-            ThinkingEffort::Low => 45,
-            ThinkingEffort::High => 75,
-            ThinkingEffort::Max => 150,
+            ThinkingEffort::Low => 90,
+            ThinkingEffort::High => 150,
+            ThinkingEffort::Max => 300,
         };
         $maxOutputTokens = match ($effort) {
             ThinkingEffort::Off => 2048,
@@ -54,9 +54,9 @@ final class AiInferencePolicy
             // Writing a complete artifact is a different task from planning it.
             $perRequestTimeout = match ($effort) {
                 ThinkingEffort::Off => 120,
-                ThinkingEffort::Low => 180,
-                ThinkingEffort::High => 240,
-                ThinkingEffort::Max => 360,
+                ThinkingEffort::Low => 360,
+                ThinkingEffort::High => 480,
+                ThinkingEffort::Max => 720,
             };
         }
 

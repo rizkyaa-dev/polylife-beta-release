@@ -16,6 +16,7 @@ final class AiChatResponseFactory
         $userMessage = $run->userMessage;
         $assistantMessage = $run->assistantMessage;
         $manifest = AiCodeArtifactManifest::forRun($run);
+        $stepLabels = ClientComputationPresenter::labels($run->steps);
         if (! $userMessage || ! $assistantMessage || ! $run->session || ! $run->branch) {
             throw new \LogicException('Run AI selesai tanpa hasil percakapan yang lengkap.');
         }
@@ -58,8 +59,8 @@ final class AiChatResponseFactory
                 'tokens' => AiTokenUsageSummary::run($run),
                 'steps' => $run->steps->map(fn ($step) => [
                     'kind' => $step->kind,
-                    'status' => $step->status,
-                    'label' => $step->label,
+                    'status' => ClientComputationPresenter::status($step),
+                    'label' => $stepLabels[$step->id],
                     'execution_mode' => $step->public_metadata['execution_mode'] ?? null,
                     'tokens' => $step->public_metadata['tokens'] ?? null,
                     'client_computation' => ClientComputationPresenter::details($step->private_payload),

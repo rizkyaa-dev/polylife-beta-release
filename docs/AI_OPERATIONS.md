@@ -53,8 +53,8 @@ redelivers orphaned jobs, and prunes old sensitive payloads.
 
 ```shell
 php artisan schedule:work
-php artisan queue:work redis --queue=ai-fast --sleep=1 --tries=1 --timeout=510 --max-time=3600
-php artisan queue:work redis --queue=ai-heavy --sleep=1 --tries=1 --timeout=510 --max-time=3600
+php artisan queue:work redis --queue=ai-fast --sleep=1 --tries=1 --timeout=990 --max-time=3600
+php artisan queue:work redis --queue=ai-heavy --sleep=1 --tries=1 --timeout=990 --max-time=3600
 php artisan queue:work redis --queue=ai-compute --sleep=1 --tries=1 --timeout=30 --max-time=3600
 php artisan queue:work redis --queue=default --sleep=1 --tries=1 --timeout=90 --max-time=3600
 ```
@@ -63,9 +63,9 @@ The compute consumer processes science receipts and server computation. It is
 required when science delegation is enabled, including browser computation:
 client receipts must be settled before the original chat run resumes. Custom
 queue names must match `AI_COMPUTE_QUEUE`. Local `ai:work` consumes all three AI queues.
-Queue reservation/visibility must exceed 510 seconds; database, Redis and
-Beanstalkd configurations enforce a minimum of 540 seconds. Set SQS visibility
-to at least 540 seconds separately.
+Queue reservation/visibility must exceed 990 seconds; database, Redis and
+Beanstalkd configurations enforce a minimum of 1020 seconds. Set SQS visibility
+to at least 1020 seconds separately.
 
 Run multiple fast/heavy/compute workers under Supervisor, systemd, or the platform's
 process manager. Restart workers after every deployment with

@@ -39,18 +39,95 @@
 }
 
 @media (max-width: 599px) {
+    .ai-topbar {
+        padding: max(.75rem, env(safe-area-inset-top)) 1rem .75rem;
+    }
+    .ai-topbar-inner, .ai-topbar-heading {
+        gap: .5rem;
+    }
+    .ai-assistant-name, .ai-assistant-tone {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .ai-chat-stage {
+        padding-inline: 1rem;
+    }
+    .ai-welcome {
+        padding-bottom: 1.5rem;
+    }
+    .ai-welcome h1 {
+        font-size: clamp(1.5rem, 6.8vw, 1.875rem);
+        line-height: 1.35;
+    }
     .ai-composer {
         padding-inline: .75rem;
+        border-radius: 1.5rem;
     }
     .ai-composer-send {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto 44px;
+        gap: .375rem;
         width: 100%;
-        justify-content: space-between;
+        margin-left: 0;
+    }
+    /* Long counts wrap inside their chip while the actions keep a stable position. */
+    .ai-composer-send .ai-token-counter {
+        grid-column: 1;
+        grid-row: 1;
+        min-width: 0;
+    }
+    .ai-composer-send .ai-thinking-control {
+        grid-column: 2;
+        grid-row: 1;
+    }
+    .ai-composer-send .ai-send-button {
+        grid-column: 3;
+        grid-row: 1;
+        justify-self: end;
+    }
+    .ai-token-pill {
+        gap: .375rem;
+        padding: .375rem .625rem;
+        border: 1px solid var(--ai-line);
+        border-radius: 999px;
+        background: var(--ai-control);
+    }
+    .ai-token-icon .ai-icon {
+        width: .875rem;
+        height: .875rem;
     }
     .ai-token-text {
         flex-wrap: wrap;
+        gap: .125rem .25rem;
+        font-family: inherit;
+        font-size: .75rem;
+        line-height: 1.35;
+    }
+    .ai-token-in, .ai-token-out {
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
     .ai-thinking-control summary {
         padding-inline: .25rem;
+    }
+    .ai-thinking-control summary > span:first-child {
+        display: none;
+    }
+    .ai-suggestions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: .75rem;
+    }
+    .ai-suggestions button {
+        min-width: 0;
+        justify-content: center;
+        padding-inline: .5rem;
+        font-size: .8125rem;
+    }
+    .ai-suggestions button:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
     }
 }
 
@@ -114,6 +191,33 @@
 }
 
 @media (max-width: 1024px) {
+    #app-sidebar.sidebar-mode-ai {
+        width: min(20rem, calc(100vw - 2.5rem));
+        padding-inline: 1rem;
+        padding-bottom: max(.75rem, env(safe-area-inset-bottom));
+    }
+    #app-sidebar.sidebar-mode-ai .sidebar-brand-wrapper {
+        margin-bottom: 1rem;
+        padding-right: 2.75rem;
+    }
+    #app-sidebar.sidebar-mode-ai .ai-mobile-sidebar-close {
+        top: calc(1.1rem + env(safe-area-inset-top));
+        right: .75rem;
+    }
+    #app-sidebar.sidebar-mode-ai .workspace-mode-switch {
+        margin-bottom: .75rem;
+    }
+    #app-sidebar.sidebar-mode-ai .ai-sidebar-nav {
+        gap: .625rem;
+        padding-bottom: .75rem;
+    }
+    #app-sidebar.sidebar-mode-ai .ai-history-heading {
+        padding-top: .875rem;
+    }
+    #app-sidebar.sidebar-mode-ai .ai-sidebar-footer {
+        gap: .5rem;
+        padding-bottom: 0;
+    }
     .ai-code-preview {
         width: 100%;
     }

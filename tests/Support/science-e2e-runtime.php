@@ -78,7 +78,7 @@ if ($mode === 'init') {
     echo json_encode(['initialized' => true, 'immediate_transactions' => DB::connection()->getPdo() instanceof ScienceE2eSqlitePdo || version_compare(PHP_VERSION, '8.4.0', '>=')], JSON_THROW_ON_ERROR).PHP_EOL;
 } elseif ($mode === 'worker') {
     Artisan::call('queue:work', ['connection' => 'database', '--queue' => 'ai-fast,ai-compute,ai-heavy',
-        '--sleep' => 1, '--tries' => 1, '--timeout' => 510], new ConsoleOutput);
+        '--sleep' => 1, '--tries' => 1, '--timeout' => 990], new ConsoleOutput);
 } elseif ($mode === 'inspect') {
     echo json_encode(['runs' => AiChatRun::get(['id', 'status', 'error_code', 'attempts', 'science_client', 'science_execution_id'])->toArray(),
         'queued_jobs' => DB::table('jobs')->count(), 'failed_jobs' => DB::table('failed_jobs')->count(),
@@ -122,7 +122,7 @@ if ($mode === 'init') {
     echo json_encode(['delivered' => true], JSON_THROW_ON_ERROR).PHP_EOL;
 } elseif ($mode === 'crash-drain') {
     Artisan::call('queue:work', ['connection' => 'database', '--queue' => 'ai-fast,ai-compute,ai-heavy',
-        '--stop-when-empty' => true, '--tries' => 1, '--timeout' => 510]);
+        '--stop-when-empty' => true, '--tries' => 1, '--timeout' => 990]);
     echo json_encode(['drained' => true], JSON_THROW_ON_ERROR).PHP_EOL;
 } else {
     throw new InvalidArgumentException('Unknown science E2E mode.');

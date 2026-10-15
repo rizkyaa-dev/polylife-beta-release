@@ -7,6 +7,9 @@
     $nextRevision = $revisionIndex < $revisions->count() - 1 ? $revisions->get($revisionIndex + 1) : null;
     $run = $isUser ? null : ($message->run ?? null);
     $hasProcess = $run && $run->steps->isNotEmpty();
+    $stepLabels = $hasProcess ? \App\Services\Ai\Science\Client\ClientComputationPresenter::labels($run->steps) : [];
+    $failedScriptCount = $hasProcess ? $run->steps->filter(fn ($step) => ($step->public_metadata['execution_mode'] ?? null) === 'client_script' && \App\Services\Ai\Science\Client\ClientComputationPresenter::status($step) === 'failed')->count() : 0;
+    $scriptCount = $hasProcess ? \App\Services\Ai\Science\Client\ClientComputationPresenter::count($run->steps) : 0;
 @endphp
 <article class="ai-message ai-message-{{ $message->role }}"
     @if ($message->id ?? null) data-message-id="{{ $message->id }}" @endif
@@ -19,17 +22,21 @@
         @unless ($isUser)
             @if ($hasProcess)
                 <details class="ai-process" data-ai-process>
-                    <summary><span>Proses AI · {{ max(1, (int) ceil(($run->duration_ms ?? 0) / 1000)) }} dtk</span><x-ai.icon name="chevron-down" /></summary>
+                    <summary><span>Proses AI · {{ max(1, (int) ceil(($run->duration_ms ?? 0) / 1000)) }} dtk{{ $scriptCount ? ' · '.$scriptCount.' skrip' : '' }}{{ $failedScriptCount ? ' · '.$failedScriptCount.' gagal' : '' }}</span><x-ai.icon name="chevron-down" /></summary>
                     <ol class="ai-process-steps">
                         @foreach ($run->steps as $step)
-                            <li class="ai-process-step ai-process-step-{{ $step->kind }}" data-status="{{ $step->status }}">
+                            <li class="ai-process-step ai-process-step-{{ $step->kind }}" data-status="{{ \App\Services\Ai\Science\Client\ClientComputationPresenter::status($step) }}">
                                 <span class="ai-process-step-mark">@if ($step->kind === 'tool_call')<x-ai.icon :name="($step->public_metadata['execution_mode'] ?? null) === 'client_script' ? 'terminal' : 'tool'" />@endif</span>
                                 <div>
-                                    <strong>{{ $step->label }}</strong>
+                                    <strong>{{ $stepLabels[$step->id] }}</strong>
                                     @php($localComputation = \App\Services\Ai\Science\Client\ClientComputationPresenter::details($step->private_payload))
                                     @if ($localComputation)
                                         <details class="ai-client-computation">
-                                            <summary>Skrip dan hasil lokal · belum terverifikasi independen</summary>
+                                            <summary>{{ $localComputation['failure_message'] ? 'Skrip dan detail kegagalan' : 'Skrip dan hasil lokal · belum terverifikasi independen' }}</summary>
+                                            @if ($localComputation['failure_message'])
+                                                <p class="ai-client-computation-error" role="status">{{ $localComputation['failure_message'] }}</p>
+                                            @endif
+                                            <p class="ai-client-computation-description"><strong>Maksud perhitungan:</strong> {{ $localComputation['description'] }}</p>
                                             <pre>{{ $localComputation['source'] }}
 
 Input:
@@ -39,7 +46,7 @@ Hasil:
 {{ json_encode($localComputation['result'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
                                         </details>
                                     @endif
-                                    <small>{{ $step->kind === 'tool_call' ? 'Aktivitas alat' : 'Pemrosesan AI' }}@if ($step->duration_ms !== null) · {{ max(1, (int) round($step->duration_ms / 1000)) }} dtk @endif · {{ $step->status === 'failed' ? 'Gagal' : 'Selesai' }}</small>
+                                    <small>{{ $step->kind === 'tool_call' ? 'Aktivitas alat' : 'Pemrosesan AI' }}@if ($step->duration_ms !== null) · {{ max(1, (int) round($step->duration_ms / 1000)) }} dtk @endif · {{ \App\Services\Ai\Science\Client\ClientComputationPresenter::status($step) === 'failed' ? 'Gagal' : 'Selesai' }}</small>
                                 </div>
                             </li>
                         @endforeach

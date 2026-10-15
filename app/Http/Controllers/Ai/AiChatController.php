@@ -19,6 +19,7 @@ use App\Services\Ai\Exceptions\AiEcoUnavailableException;
 use App\Services\Ai\Exceptions\AiIdempotencyConflictException;
 use App\Services\Ai\Exceptions\AiSystemCapacityException;
 use App\Services\Ai\Exceptions\AiUserCapacityException;
+use App\Services\Ai\Science\Client\ClientComputationPresenter;
 use App\Services\Ai\Science\ScienceExecutionBroker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -190,15 +191,18 @@ class AiChatController extends Controller
             ]);
         }
 
+        $steps = $chatRun->steps()->get();
+        $stepLabels = ClientComputationPresenter::labels($steps);
+
         return response()->json([
             'status' => 'running',
             'run_id' => $chatRun->id,
             'phase' => $chatRun->heartbeat_at === null ? 'queued' : 'processing',
             'science_execution' => $this->scienceBroker->offer($chatRun),
-            'steps' => $chatRun->steps()->get()->map(fn ($step) => [
+            'steps' => $steps->map(fn ($step) => [
                 'kind' => $step->kind,
-                'status' => $step->status,
-                'label' => $step->label,
+                'status' => ClientComputationPresenter::status($step),
+                'label' => $stepLabels[$step->id],
                 'execution_mode' => $step->public_metadata['execution_mode'] ?? null,
             ])->values(),
         ], 202);

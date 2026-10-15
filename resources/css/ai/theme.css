@@ -26,6 +26,9 @@ body[data-ai-mode="1"] {
     --ai-selection-mark: #ffffff;
     --ai-danger: #963d4b;
     --ai-success: #38684f;
+    --ai-eco-accent: #059669;
+    --ai-eco-ink: #047857;
+    --ai-eco-thumb: #ecfdf5;
     --ai-code-surface: #edf0f8;
     --ai-code-header: #e3e7f2;
     --ai-shadow: 0 8px 24px rgb(45 45 60 / .08);
@@ -59,6 +62,9 @@ body[data-ai-mode="1"] {
     --ai-on-primary: #24243c;
     --ai-danger: #e4a7af;
     --ai-success: #97bca9;
+    --ai-eco-accent: var(--ai-success);
+    --ai-eco-ink: var(--ai-success);
+    --ai-eco-thumb: color-mix(in srgb, var(--ai-success) 28%, var(--ai-canvas));
     --ai-code-surface: #1e2333;
     --ai-code-header: #2b3145;
     --ai-shadow: 0 8px 24px rgb(0 0 0 / .16);

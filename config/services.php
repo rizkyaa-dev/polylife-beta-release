@@ -80,6 +80,7 @@ return [
     'ai_max_tool_calls_per_response' => (int) env('AI_MAX_TOOL_CALLS_PER_RESPONSE', 8),
     'ai_max_tool_calls_per_run' => (int) env('AI_MAX_TOOL_CALLS_PER_RUN', 16),
     'ai_coding_output_tokens' => (int) env('AI_CODING_OUTPUT_TOKENS', 16384),
+    'ai_science_syntax_node_binary' => env('AI_SCIENCE_SYNTAX_NODE_BINARY', 'node'),
     'ai_science_dynamic_enabled' => (bool) env('AI_SCIENCE_DYNAMIC_ENABLED', false),
     'ai_science_client_auto_execute' => (bool) env('AI_SCIENCE_CLIENT_AUTO_EXECUTE', true),
     'ai_science_capability_telemetry_enabled' => (bool) env('AI_SCIENCE_CAPABILITY_TELEMETRY_ENABLED', false),

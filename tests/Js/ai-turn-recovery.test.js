@@ -128,3 +128,17 @@ test('authentication rejection after ambiguous acceptance does not erase origina
     assert.equal(turn.payload().request_id, 'original-id');
     assert.equal(isDefinitiveFailure({ httpStatus: 401 }, turn.uncertain), false);
 });
+
+
+test('observer keeps watching a long Max run beyond the previous nine-minute limit', async () => {
+    let elapsed = 0;
+    const result = await observeAiRun('/runs/7', {
+        now: () => elapsed,
+        random: () => 0.5,
+        sleep: async ms => { elapsed += ms; },
+        read: async () => elapsed >= 960_000 ? { status: 'success', reply: 'complete' } : { status: 'running' },
+    });
+    assert.equal(result.reply, 'complete');
+    assert.ok(elapsed >= 960_000);
+    assert.ok(elapsed < 1_020_000);
+});

@@ -29,9 +29,9 @@ class AiInferencePolicyTest extends TestCase
     {
         return [
             'off' => [ThinkingEffort::Off, 60, 30, 2048],
-            'low' => [ThinkingEffort::Low, 90, 45, 4096],
-            'high' => [ThinkingEffort::High, 180, 75, 8192],
-            'max' => [ThinkingEffort::Max, 300, 150, 16384],
+            'low' => [ThinkingEffort::Low, 180, 90, 4096],
+            'high' => [ThinkingEffort::High, 360, 150, 8192],
+            'max' => [ThinkingEffort::Max, 600, 300, 16384],
         ];
     }
 
@@ -48,7 +48,7 @@ class AiInferencePolicyTest extends TestCase
 
         $this->assertSame(ThinkingEffort::Low, $options->thinkingEffort);
         $this->assertSame(16384, $options->maxOutputTokens);
-        $this->assertSame(45, $options->timeoutSeconds);
+        $this->assertSame(90, $options->timeoutSeconds);
     }
 
     public function test_coder_budget_is_separate_but_never_extends_remaining_run_time(): void
@@ -56,24 +56,25 @@ class AiInferencePolicyTest extends TestCase
         $policy = new AiInferencePolicy;
         $this->assertSame(85, $policy->requestOptions(ThinkingEffort::Low, 85, 16384, true)->timeoutSeconds);
         $this->assertSame(17, $policy->requestOptions(ThinkingEffort::Low, 17, 16384, true)->timeoutSeconds);
-        $this->assertSame(90, $policy->runTimeoutSeconds(ThinkingEffort::Low));
+        $this->assertSame(180, $policy->runTimeoutSeconds(ThinkingEffort::Low));
         $this->assertSame(1, $policy->requestOptions(ThinkingEffort::Max, 1)->timeoutSeconds);
     }
 
     public function test_coding_budgets_preserve_effort_and_remain_bounded(): void
     {
         $policy = new AiInferencePolicy;
-        foreach ([[ThinkingEffort::Off, 120, 180], [ThinkingEffort::Low, 180, 240],
-            [ThinkingEffort::High, 240, 360], [ThinkingEffort::Max, 360, 480]] as [$effort, $request, $run]) {
+        foreach ([[ThinkingEffort::Off, 120, 180], [ThinkingEffort::Low, 360, 480],
+            [ThinkingEffort::High, 480, 720], [ThinkingEffort::Max, 720, 960]] as [$effort, $request, $run]) {
             $options = $policy->requestOptions($effort, 999, 16384, true);
             $this->assertSame($request, $options->timeoutSeconds);
             $this->assertSame($run, $policy->runTimeoutSeconds($effort, true));
+            $this->assertSame($run, $policy->scienceRunTimeoutSeconds($effort));
             $this->assertSame($effort, $options->thinkingEffort);
             $this->assertSame(17, $policy->requestOptions($effort, 17, 16384, true)->timeoutSeconds);
         }
-        $this->assertGreaterThan(480, (new ProcessAiChatRun(1))->timeout);
+        $this->assertGreaterThan(960, (new ProcessAiChatRun(1))->timeout);
         foreach (['database', 'redis', 'beanstalkd'] as $connection) {
-            $this->assertGreaterThan(510, config("queue.connections.{$connection}.retry_after"));
+            $this->assertGreaterThan(990, config("queue.connections.{$connection}.retry_after"));
         }
     }
 }

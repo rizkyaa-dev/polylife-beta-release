@@ -135,7 +135,11 @@ final class EcoContextAssembler
                 $result = $step->private_payload;
                 unset($result['design_review']);
                 if ($step->tool_name === AiScienceDelegation::TOOL_NAME) {
-                    $result = $this->science->toolResult($result);
+                    $original = $result['science_request']['original_problem'] ?? null;
+                    $alreadyIncluded = is_string($original) && $selected->contains(
+                        fn (AiChatMessage $message): bool => $message->role === 'user' && $message->content === $original
+                    );
+                    $result = $this->science->toolResult($result, $alreadyIncluded);
                 }
                 $candidate = $data;
                 $candidate['tool_facts'][] = ['tool' => $step->tool_name, 'recorded_at' => $step->created_at?->toIso8601String(), 'result' => $result];
