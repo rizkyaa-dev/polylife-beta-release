@@ -41,6 +41,11 @@ Thumbs.db
 Homestead.json
 Homestead.yaml
 
+# Local documentation artifacts
+/docs/docx-docs/
+/docs/quiz ppl/
+/docs/tugas ppl/
+
 # Flutter (mobile_ver) generated/cache files
 /mobile_ver/.dart_tool/
 /mobile_ver/.flutter-plugins
