@@ -1,61 +1,220 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# PolyLife
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <strong>Platform Terpadu Manajemen Akademik, Produktivitas, dan Keuangan Mahasiswa</strong>
 </p>
 
-## About Laravel
+<p align="center">
+  <img src="https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white" alt="Laravel 12">
+  <img src="https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white" alt="PHP 8.2+">
+  <img src="https://img.shields.io/badge/TailwindCSS-3.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter">
+  <img src="https://img.shields.io/badge/Pest_PHP-Tested-48BB78?style=for-the-badge&logo=pest&logoColor=white" alt="Pest Tested">
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License MIT">
+</p>
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 📌 Tentang PolyLife
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+**PolyLife** adalah aplikasi workspace produktivitas serbaguna yang dirancang khusus untuk mahasiswa dan civitas akademika. PolyLife memadukan pencatatan keuangan pribadi, kalender jadwal kuliah, penugasan akademik, daftar tugas (to-do list), catatan materi kuliah, simulasi IPK/IPS, hingga pengingat otomatis (push notification) dan asisten komputasi AI dalam satu ekosistem web dan mobile.
 
-## Learning Laravel
+PolyLife hadir dengan antarmuka modern yang responsif (Blade + Tailwind CSS), arsitektur modular di atas Laravel 12, serta aplikasi mobile pendamping berbasis Flutter dengan dukungan sinkronisasi offline-first.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+---
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## ✨ Fitur Utama
 
-## Laravel Sponsors
+### 1. 📊 Dashboard Terpadu
+- **Overview Harian**: Jadwal kuliah hari ini, ringkasan tugas prioritas, dan status to-do list aktif.
+- **Arus Kas Bulanan**: Grafik mini pemasukan vs. pengeluaran dan indikator saldo akun.
+- **Reminder & Pengumuman**: Notifikasi pengingat terdekat dan papan siaran resmi kampus/afiliasi.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 2. 💰 Manajemen Keuangan & Statistik
+- **Pencatatan Transaksi**: Kelola pemasukan dan pengeluaran dengan kategori yang dapat disesuaikan.
+- **Anggaran (Budgeting)**: Batasan pengeluaran bulanan per kategori untuk mencegah pemborosan.
+- **Deteksi Anomali**: Algoritma statistik pendeteksi lonjakan pengeluaran tidak wajar.
+- **Analisis & Statistik Tahunan**: Grafik komparasi bulanan, saldo kumulatif, top kategori, dan dropdown filter tahunan dinamis yang menyesuaikan riwayat transaksi riil.
 
-### Premium Partners
+### 3. 📚 Akademik, Jadwal & Tugas
+- **Kalender Kuliah & Agenda**: Tampilan jadwal mingguan/bulanan, multi-matkul, serta filter agenda (kuliah, UTS, UAS, kegiatan organisasi, libur).
+- **Impor Batch Mata Kuliah**: Fitur parser cerdas untuk menyalin jadwal kuliah langsung dari format tabel teks ke sistem.
+- **Penugasan (Tugas)**: Pelacakan deadline tugas kuliah, tingkat prioritas, dan status penyelesaian.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### 4. ✅ To-Do List & Pengingat (Reminder)
+- **To-Do List Cepat**: Tambah dan centang tugas dengan toggle status instan via AJAX.
+- **Web Push Notifications**: Notifikasi browser otomatis menggunakan standar Web Push (VAPID).
+- **Target Reminder Luwes**: Menghubungkan pengingat ke to-do list, tugas kuliah, maupun jadwal kegiatan.
 
-## Contributing
+### 5. 📝 Catatan (Notes)
+- **Pencatatan Terstruktur**: Editor catatan materi dan ide dengan pengelompokan kategori.
+- **Tempat Sampah & Pemulihan (Trash & Restore)**: Fitur soft-delete untuk mencegah kehilangan catatan penting.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 6. 🎓 Simulasi IPK/IPS & Peta Nilai Mutu
+- **Kalkulator IPK**: Perhitungan IPK berjalan berdasarkan SKS dan nilai bobot.
+- **Target IPS Semester**: Simulasi target pencapaian nilai per semester.
+- **Konfigurasi Nilai Mutu**: Penyesuaian rentang skor dan bobot huruf mutu (A, B+, B, dst.) sesuai standar masing-masing kampus/program studi.
 
-## Code of Conduct
+### 7. 🤖 AI Assistant & Science Execution Sandbox
+- **Chat Asisten Mahasiswa**: Tanya jawab materi dan bantuan produktivitas dengan dukungan model LLM (Gemini / OpenAI / DeepSeek).
+- **Client-Side Science Sandbox**: Eksekusi komputasi ilmiah dan analisis formula secara aman di sisi browser klien (QuickJS Web Worker).
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 8. 👥 Multi-Role & Institusi Kampus
+- **Mahasiswa (User)**: Akses workspace pribadi lengkap.
+- **Admin Afiliasi / Fakultas**: Mengirim siaran pengumuman terverifikasi dan mengelola data mahasiswa terafiliasi.
+- **Endmin (Super Admin)**: Manajemen pengguna, konfigurasi institusi kampus, serta pencatatan audit log sistem.
+- **Guest / Demo Workspace**: Mode pratinjau interaktif tanpa login (`/guest`) dengan data contoh yang aman.
 
-## Security Vulnerabilities
+### 9. 📱 Sinkronisasi Mobile (Flutter)
+- Aplikasi Android/iOS pendamping di direktori `mobile_ver/`.
+- Otentikasi aman berbasis Laravel Sanctum.
+- Arsitektur sinkronisasi offline-first (`sync/pull` & `sync/push`) dengan antrean transaksi lokal (Sqflite).
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## 🛠️ Tech Stack
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-"# polylife" 
-"# polylife-beta-release" 
+| Komponen | Teknologi |
+|---|---|
+| **Backend Framework** | [Laravel 12](https://laravel.com/) (PHP 8.2+) |
+| **Authentication & API** | Laravel Sanctum |
+| **Frontend Web** | Blade, [Tailwind CSS 3](https://tailwindcss.com/), [Vite 7](https://vitejs.dev/) |
+| **Komponen Reaktif** | [Livewire 3](https://livewire.laravel.com/) & Volt |
+| **Visualisasi & Rendering** | [Chart.js](https://www.chartjs.org/), [KaTeX](https://katex.org/), [QuickJS](https://bellard.org/quickjs/) |
+| **Mobile App** | [Flutter 3](https://flutter.dev/) (Dart) |
+| **Notifikasi Push** | Minishlink Web-Push (VAPID) |
+| **Database** | MySQL / PostgreSQL / SQLite |
+| **Testing** | [Pest PHP](https://pestphp.com/) (Feature & Unit) |
+
+---
+
+## 🚀 Panduan Instalasi & Menjalankan Proyek
+
+### Prasyarat Sistem
+- PHP >= 8.2 dengan ekstensi `pdo`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `curl`
+- [Composer](https://getcomposer.org/) >= 2.x
+- [Node.js](https://nodejs.org/) >= 18.x & NPM
+- Database server (MySQL / MariaDB / PostgreSQL / SQLite)
+
+### Langkah Instalasi (Web Application)
+
+1. **Clone Repository**
+   ```bash
+   git clone https://github.com/rizkyaa-dev/polylife-beta-release.git
+   cd polylife-beta-release
+   ```
+
+2. **Install Dependensi PHP & JavaScript**
+   ```bash
+   composer install
+   npm install
+   ```
+
+3. **Salin File Environment**
+   ```bash
+   cp .env.example .env
+   # Pada Windows PowerShell:
+   # Copy-Item .env.example .env
+   ```
+
+4. **Generate Application Key**
+   ```bash
+   php artisan key:generate
+   ```
+
+5. **Konfigurasi Database**
+   Buka file `.env` dan sesuaikan koneksi database Anda:
+   ```env
+   DB_CONNECTION=mysql
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_DATABASE=polylife
+   DB_USERNAME=root
+   DB_PASSWORD=
+   ```
+
+6. **Jalankan Migrasi & Seeder**
+   ```bash
+   php artisan migrate --seed
+   ```
+
+7. **Kompilasi Asset Frontend**
+   ```bash
+   # Mode pengembangan (HMR):
+   npm run dev
+
+   # Atau mode build produksi:
+   npm run build
+   ```
+
+8. **Jalankan Server Lokal**
+   ```bash
+   php artisan serve
+   ```
+   Buka peramban di [http://localhost:8000](http://localhost:8000).
+
+---
+
+## ⚙️ Menjalankan Worker Antrean (Queue)
+
+Fitur pengingat push notification dan pemrosesan latar belakang memerlukan queue worker yang berjalan:
+
+```bash
+php artisan queue:listen
+```
+
+Untuk memantau log secara real-time saat pengembangan:
+```bash
+php artisan pail
+```
+
+---
+
+## 📱 Panduan Aplikasi Mobile (Flutter)
+
+Aplikasi mobile berada di direktori `mobile_ver/`.
+
+1. **Masuk ke Direktori Mobile**
+   ```bash
+   cd mobile_ver
+   ```
+
+2. **Ambil Paket Dependensi**
+   ```bash
+   flutter pub get
+   ```
+
+3. **Jalankan Aplikasi dengan Konfigurasi API**
+   ```bash
+   # Android Emulator (akses localhost host OS):
+   flutter run
+
+   # Perangkat Fisik (dalam jaringan Wi-Fi lokal yang sama):
+   flutter run --dart-define=POLYLIFE_API_BASE_URL=http://<IP_KOMPUTER_ANDA>:8000/api/v1
+   ```
+
+Untuk dokumentasi lengkap arsitektur mobile dan sinkronisasi offline, baca [mobile_ver/README.md](mobile_ver/README.md).
+
+---
+
+## 🧪 Pengujian (Testing)
+
+Proyek ini dilengkapi dengan suite pengujian otomatis berbasis **Pest PHP**:
+
+```bash
+# Menjalankan seluruh pengujian backend:
+php artisan test
+
+# Menjalankan pengujian spesifik fitur:
+php artisan test --filter=KeuanganStatistik
+php artisan test --filter=Api
+
+# Menjalankan pengujian mobile:
+cd mobile_ver && flutter test
+```
+
+---
+
+## 📄 Lisensi
+
+Proyek ini dilisensikan di bawah lisensi [MIT License](LICENSE).
