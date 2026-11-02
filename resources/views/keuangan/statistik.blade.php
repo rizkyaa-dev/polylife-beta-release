@@ -29,7 +29,7 @@
             </div>
             <form method="GET" action="{{ $statistikAction }}" class="flex items-center gap-2">
                 <label for="tahun" class="text-sm text-gray-600 dark:text-slate-300">Tahun</label>
-                <select id="tahun" name="tahun" class="px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                <select id="tahun" name="tahun" class="appearance-none bg-none [background-image:none] px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 text-center cursor-pointer dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                     @foreach($tahunOptions as $tahunOption)
                         <option value="{{ $tahunOption }}" {{ $tahun == $tahunOption ? 'selected' : '' }}>{{ $tahunOption }}</option>
                     @endforeach

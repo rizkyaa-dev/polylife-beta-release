@@ -64,9 +64,27 @@ class GuestWorkspaceController extends Controller
     public function keuanganStatistik(Request $request)
     {
         $now = Carbon::now();
-        $year = $this->statisticYearRange->resolve($request->query('tahun'), $now);
         $allGuestRecords = GuestWorkspace::keuangan();
 
+        $availableYears = $allGuestRecords
+            ->map(function ($row) {
+                try {
+                    return (int) Carbon::parse($row->tanggal)->year;
+                } catch (\Throwable) {
+                    return null;
+                }
+            })
+            ->filter(fn ($y) => $y > 0)
+            ->unique()
+            ->sortDesc()
+            ->values()
+            ->all();
+
+        if (empty($availableYears)) {
+            $availableYears = [(int) $now->year];
+        }
+
+        $year = $this->statisticYearRange->resolveFromAvailable($request->query('tahun'), $availableYears, $now);
         $initialBalance = 0.0;
         $yearRecords = collect();
 
@@ -93,7 +111,7 @@ class GuestWorkspaceController extends Controller
 
         return view('keuangan.statistik', array_merge([
             'tahun' => $year,
-            'tahunOptions' => $this->statisticYearRange->options($now),
+            'tahunOptions' => $availableYears,
             'guestMode' => true,
         ], $statistics));
     }

@@ -24,6 +24,25 @@ class StatisticYearRange
     }
 
     /**
+     * @param list<int> $availableYears
+     */
+    public function resolveFromAvailable(mixed $rawYear, array $availableYears, ?CarbonInterface $now = null): int
+    {
+        $year = filter_var($rawYear, FILTER_VALIDATE_INT);
+
+        if ($year !== false && in_array((int) $year, $availableYears, true)) {
+            return (int) $year;
+        }
+
+        $currentYear = (int) ($now ? Carbon::instance($now)->year : Carbon::now()->year);
+        if (in_array($currentYear, $availableYears, true)) {
+            return $currentYear;
+        }
+
+        return $availableYears[0] ?? $currentYear;
+    }
+
+    /**
      * @return list<int>
      */
     public function options(?CarbonInterface $now = null): array

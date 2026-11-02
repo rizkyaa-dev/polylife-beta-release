@@ -89,3 +89,37 @@ test('guest keuangan statistik calculates initial balance and metrics properly',
     $response->assertOk();
     $response->assertSee('Ringkasan Tahunan');
 });
+
+test('keuangan statistik only offers years with available transaction data in dropdown', function () {
+    $user = User::factory()->create();
+
+    // User only has transactions in 2026 and 2024 (no 2025, 2023, 2022, 2021)
+    Keuangan::create([
+        'user_id' => $user->id,
+        'jenis' => 'pemasukan',
+        'kategori' => 'Gaji',
+        'nominal' => 3000000,
+        'tanggal' => '2024-06-15',
+    ]);
+
+    Keuangan::create([
+        'user_id' => $user->id,
+        'jenis' => 'pemasukan',
+        'kategori' => 'Bonus',
+        'nominal' => 4000000,
+        'tanggal' => '2026-03-20',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('keuangan.statistik'));
+
+    $response->assertOk();
+    $tahunOptions = $response->viewData('tahunOptions');
+    expect($tahunOptions)->toBe([2026, 2024]);
+
+    $response->assertSee('<option value="2026"', false);
+    $response->assertSee('<option value="2024"', false);
+    $response->assertDontSee('<option value="2025"', false);
+    $response->assertDontSee('<option value="2023"', false);
+    $response->assertDontSee('<option value="2022"', false);
+    $response->assertDontSee('<option value="2021"', false);
+});
