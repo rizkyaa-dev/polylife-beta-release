@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/TailwindCSS-3.x-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
   <img src="https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter">
   <img src="https://img.shields.io/badge/Pest_PHP-Tested-48BB78?style=for-the-badge&logo=pest&logoColor=white" alt="Pest Tested">
-  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License MIT">
+  <img src="https://img.shields.io/badge/License-Source_Available_Non--Commercial-red?style=for-the-badge" alt="Source Available Non-Commercial License">
 </p>
 
 ---
@@ -217,4 +217,8 @@ cd mobile_ver && flutter test
 
 ## 📄 Lisensi
 
-Proyek ini dilisensikan di bawah lisensi [MIT License](LICENSE).
+Hak cipta (c) 2026 **rizkyaa-dev**.
+
+Kode sumber dan materi proyek PolyLife dilisensikan di bawah **[Source Available Non-Commercial License](LICENSE)**. Perangkat lunak ini tersedia hanya untuk kebutuhan non-komersial (pribadi, edukasi, dan penelitian akademis). Penggunaan komersial, korporasi, enterprise, atau monetisasi dalam bentuk apa pun dilarang tanpa izin tertulis dari pemegang hak cipta.
+
+*Catatan: Komponen pihak ketiga (seperti framework Laravel dan dependensi terkait) tetap tunduk pada lisensi masing-masing.*
